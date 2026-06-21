@@ -5,6 +5,16 @@ import { randomJobColor } from "@/types/database";
 
 const JOBS_KEY = ["jobs"] as const;
 
+/**
+ * Mehrtägige Jobs sollen im Kalender (Wochen-/Tagesansicht) als durchgezogener
+ * Balken oben erscheinen statt das Stundenraster über alle Tage zu blocken —
+ * genau wie "normale" ganztägige Termine. Daher: all_day automatisch true,
+ * sobald Start- und Enddatum auf unterschiedliche Kalendertage fallen.
+ */
+function isMultiDay(startDate: string, endDate: string): boolean {
+  return startDate.slice(0, 10) !== endDate.slice(0, 10);
+}
+
 export function useJobs() {
   return useQuery({
     queryKey: JOBS_KEY,
@@ -72,7 +82,7 @@ export function useCreateJob() {
         title: customerLabel?.trim() || job.title,
         start_at: job.start_date,
         end_at: job.end_date,
-        all_day: false,
+        all_day: isMultiDay(job.start_date, job.end_date),
         source: "intern",
       });
       // Der Job ist bereits angelegt; ein Kalenderfehler soll das nicht rückgängig machen,
@@ -111,7 +121,7 @@ export function useUpdateJobStatus() {
 export function useUpdateJob() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...fields }: Partial<Job> & { id: string }) => {
+    mutationFn: async ({ id, customerLabel, ...fields }: Partial<Job> & { id: string; customerLabel?: string | null }) => {
       const { data, error } = await supabase
         .from("jobs")
         .update(fields)
@@ -119,7 +129,32 @@ export function useUpdateJob() {
         .select()
         .single();
       if (error) throw error;
-      return data as Job;
+      const job = data as Job;
+
+      // Falls Start/Ende/Titel sich geändert haben, den verknüpften (internen)
+      // Kalendereintrag mitziehen — inkl. Neuberechnung von all_day, damit ein
+      // nachträglich verlängerter Job auch als Balken statt Stundenblock erscheint.
+      if (fields.start_date || fields.end_date || fields.title || customerLabel !== undefined) {
+        const calendarUpdate: Record<string, unknown> = {};
+        if (fields.start_date) calendarUpdate.start_at = job.start_date;
+        if (fields.end_date) calendarUpdate.end_at = job.end_date;
+        if (fields.start_date || fields.end_date) {
+          calendarUpdate.all_day = isMultiDay(job.start_date, job.end_date);
+        }
+        if (customerLabel !== undefined) calendarUpdate.title = customerLabel?.trim() || job.title;
+        else if (fields.title) calendarUpdate.title = fields.title;
+
+        if (Object.keys(calendarUpdate).length > 0) {
+          const { error: calendarError } = await supabase
+            .from("calendar_entries")
+            .update(calendarUpdate)
+            .eq("job_id", id)
+            .eq("source", "intern");
+          if (calendarError) throw calendarError;
+        }
+      }
+
+      return job;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: JOBS_KEY });

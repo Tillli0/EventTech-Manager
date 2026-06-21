@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Briefcase, Calendar, Check, ChevronDown, GripVertical,
-  List, Plus, StickyNote, Trash2, X,
+  Briefcase, Check, GripVertical,
+  List, Lock, Plus, StickyNote, Trash2, Unlock, X,
 } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
@@ -13,13 +13,16 @@ import {
   useCreateChecklistItem, useUpdateChecklistItem, useDeleteChecklistItem, useReorderChecklistItems,
 } from "@/hooks/useTasks";
 import { TASK_STATUS_OPTIONS, TASK_PRIORITY_OPTIONS, type TaskStatus, type TaskPriority, type TaskChecklistItem } from "@/types/database";
-import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
 interface Props {
   taskId: string | null;
   onClose: () => void;
 }
+
+type SaveState = "idle" | "saving" | "saved";
+
+const AUTOSAVE_DELAY = 600;
 
 export function TaskDetailDialog({ taskId, onClose }: Props) {
   const { data: task, isLoading } = useTask(taskId ?? undefined);
@@ -31,7 +34,10 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
   const deleteItem = useDeleteChecklistItem();
   const reorderItems = useReorderChecklistItems();
 
-  const [editing, setEditing] = useState(false);
+  // Gesperrt = reine Ansicht (kein Edit, kein Autosave). Standardmäßig offen/editierbar.
+  const [locked, setLocked] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("normal");
@@ -44,6 +50,8 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
   const [localItems, setLocalItems] = useState<TaskChecklistItem[]>([]);
   const dragIdx = useRef<number | null>(null);
 
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!task) return;
     setTitle(task.title);
@@ -53,20 +61,73 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
     setDueDate(task.due_date ?? "");
     setContentType(task.content_type ?? "notes");
     setLocalItems(task.checklist_items ? [...task.checklist_items] : []);
-  }, [task]);
+    setLocked(false);
+    setSaveState("idle");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.id]);
 
-  async function handleSave() {
-    if (!task || !title.trim()) return;
-    await updateTask.mutateAsync({
-      id: task.id,
-      title: title.trim(),
-      description: description.trim() || null,
-      priority,
-      status,
-      due_date: dueDate || null,
-      content_type: contentType,
-    });
-    setEditing(false);
+  // Checklisten-Änderungen vom Server (z.B. nach Hinzufügen/Löschen) übernehmen,
+  // ohne den oben stehenden Reset-Effekt erneut auszulösen.
+  useEffect(() => {
+    if (!task) return;
+    setLocalItems(task.checklist_items ? [...task.checklist_items] : []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.checklist_items]);
+
+  function queueAutosave(fields: Partial<{ title: string; description: string | null; due_date: string | null }>) {
+    if (locked || !task) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSaveState("saving");
+    debounceRef.current = setTimeout(async () => {
+      await updateTask.mutateAsync({ id: task.id, ...fields });
+      setSaveState("saved");
+    }, AUTOSAVE_DELAY);
+  }
+
+  async function saveImmediately(fields: Partial<{ priority: TaskPriority; content_type: "notes" | "list" }>) {
+    if (!task || locked) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setSaveState("saving");
+    await updateTask.mutateAsync({ id: task.id, ...fields });
+    setSaveState("saved");
+  }
+
+  function handleTitleChange(value: string) {
+    setTitle(value);
+    queueAutosave({ title: value });
+  }
+  function handleDescriptionChange(value: string) {
+    setDescription(value);
+    queueAutosave({ description: value.trim() || null });
+  }
+  function handleDueDateChange(value: string) {
+    setDueDate(value);
+    queueAutosave({ due_date: value || null });
+  }
+  function handlePriorityChange(value: TaskPriority) {
+    setPriority(value);
+    saveImmediately({ priority: value });
+  }
+  function handleContentTypeChange(value: "notes" | "list") {
+    setContentType(value);
+    saveImmediately({ content_type: value });
+  }
+
+  // Ausstehenden Debounce-Timer beim Wechsel/Unmount aufräumen
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [taskId]);
+
+  function handleClose() {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      if (task && !locked) {
+        updateTask.mutate({ id: task.id, title, description: description.trim() || null, due_date: dueDate || null });
+      }
+    }
+    onClose();
   }
 
   async function handleDelete() {
@@ -77,25 +138,30 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
   }
 
   async function handleAddItem() {
-    if (!task || !newItemText.trim()) return;
+    if (!task || !newItemText.trim() || locked) return;
     const sortOrder = localItems.length;
     await createItem.mutateAsync({ taskId: task.id, text: newItemText.trim(), sortOrder });
     setNewItemText("");
   }
 
+  // Abhaken bleibt auch im Lock-Modus möglich — reines Erledigt-Markieren ist
+  // Alltagsnutzung, kein inhaltliches Bearbeiten. Text/Reihenfolge/Löschen bleiben gesperrt.
   async function handleToggleItem(item: TaskChecklistItem) {
     if (!task) return;
     await updateItem.mutateAsync({ id: item.id, taskId: task.id, checked: !item.checked });
   }
 
   async function handleDeleteItem(item: TaskChecklistItem) {
-    if (!task) return;
+    if (!task || locked) return;
     await deleteItem.mutateAsync({ id: item.id, taskId: task.id });
   }
 
-  // Drag-to-reorder
-  function onDragStart(idx: number) { dragIdx.current = idx; }
+  function onDragStart(idx: number) {
+    if (locked) return;
+    dragIdx.current = idx;
+  }
   function onDragOver(e: React.DragEvent, idx: number) {
+    if (locked) return;
     e.preventDefault();
     if (dragIdx.current === null || dragIdx.current === idx) return;
     const reordered = [...localItems];
@@ -105,7 +171,7 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
     setLocalItems(reordered);
   }
   async function onDragEnd() {
-    if (!task) return;
+    if (!task || locked) return;
     dragIdx.current = null;
     const withOrder = localItems.map((item, i) => ({ id: item.id, sort_order: i }));
     await reorderItems.mutateAsync({ taskId: task.id, items: withOrder });
@@ -114,42 +180,67 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
   if (!taskId) return null;
 
   return (
-    <Dialog open={!!taskId} onClose={onClose} title={isLoading ? "Aufgabe …" : (task?.title ?? "Aufgabe")}>
+    <Dialog open={!!taskId} onClose={handleClose} title={isLoading ? "Aufgabe …" : (task?.title ?? "Aufgabe")}>
       {isLoading && <p className="text-sm text-ink-muted py-4 text-center">Wird geladen …</p>}
 
-      {task && !editing && (
+      {task && (
         <div className="space-y-4">
-          {/* Badges */}
-          <div className="flex flex-wrap gap-2">
-            <TaskPriorityBadge priority={task.priority} />
-            <TaskStatusBadge status={task.status} />
-            {task.due_date && (
-              <span className="flex items-center gap-1 text-xs text-ink-faint">
-                <Calendar size={12} />{formatDate(task.due_date)}
-              </span>
-            )}
-            {task.job && (
-              <Link
-                to={`/jobs/${task.job_id}`}
-                onClick={onClose}
-                className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink"
+          {/* Kopfzeile: Badges links, Lock-Schalter + Save-Indikator rechts */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <TaskPriorityBadge priority={priority} />
+              <TaskStatusBadge status={status} />
+              {task.job && (
+                <Link
+                  to={`/jobs/${task.job_id}`}
+                  onClick={onClose}
+                  className="flex items-center gap-1 text-xs text-ink-faint hover:text-ink"
+                >
+                  <Briefcase size={12} />{task.job.title}
+                </Link>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {!locked && (
+                <span className="w-16 text-right text-xs text-ink-faint">
+                  {saveState === "saving" ? "Speichert …" : saveState === "saved" ? "Gespeichert" : ""}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setLocked((v) => !v)}
+                title={locked ? "Entsperren zum Bearbeiten" : "Sperren (nur Lesen)"}
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-md border transition-colors",
+                  locked ? "border-accent bg-accent/10 text-accent" : "border-border text-ink-muted hover:text-ink hover:bg-bg-raised",
+                )}
               >
-                <Briefcase size={12} />{task.job.title}
-              </Link>
-            )}
+                {locked ? <Lock size={14} /> : <Unlock size={14} />}
+              </button>
+            </div>
           </div>
+
+          {/* Titel — direkt editierbar */}
+          <FormField label="Titel">
+            <Input value={title} onChange={(e) => handleTitleChange(e.target.value)} disabled={locked} required />
+          </FormField>
 
           {/* Schnell-Status */}
           <div className="flex gap-1.5">
             {TASK_STATUS_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => updateStatus.mutate({ id: task.id, status: opt.value })}
+                disabled={locked}
+                onClick={() => {
+                  setStatus(opt.value);
+                  updateStatus.mutate({ id: task.id, status: opt.value });
+                }}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors border",
-                  task.status === opt.value
+                  "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                  status === opt.value
                     ? "border-accent bg-accent text-white"
                     : "border-border text-ink-muted hover:text-ink",
+                  locked && "cursor-not-allowed opacity-60",
                 )}
               >
                 {opt.label}
@@ -157,30 +248,65 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
             ))}
           </div>
 
-          {/* Inhalt: Notizen oder Checkliste */}
-          {task.content_type === "notes" ? (
-            <div>
-              {task.description ? (
-                <p className="text-sm text-ink whitespace-pre-wrap">{task.description}</p>
-              ) : (
-                <p className="text-sm text-ink-faint italic">Keine Beschreibung.</p>
+          {/* Typ: Notizen oder Liste */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => handleContentTypeChange("notes")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-lg border py-2 text-sm font-medium transition-colors",
+                contentType === "notes" ? "border-accent bg-accent/5 text-accent" : "border-border text-ink-muted hover:text-ink",
+                locked && "cursor-not-allowed opacity-60",
               )}
-            </div>
+            >
+              <StickyNote size={15} />Notizen
+            </button>
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => handleContentTypeChange("list")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-lg border py-2 text-sm font-medium transition-colors",
+                contentType === "list" ? "border-accent bg-accent/5 text-accent" : "border-border text-ink-muted hover:text-ink",
+                locked && "cursor-not-allowed opacity-60",
+              )}
+            >
+              <List size={15} />Checkliste
+            </button>
+          </div>
+
+          {/* Inhalt: Notizen oder Checkliste — direkt editierbar */}
+          {contentType === "notes" ? (
+            <FormField label="Beschreibung">
+              <Textarea
+                value={description}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
+                disabled={locked}
+                rows={4}
+                placeholder={locked ? "Keine Beschreibung." : "Beschreibung eingeben …"}
+              />
+            </FormField>
           ) : (
             <div className="space-y-1.5">
               {localItems.length === 0 && (
-                <p className="text-sm text-ink-faint italic">Noch keine Einträge.</p>
+                <p className="text-sm italic text-ink-faint">Noch keine Einträge.</p>
               )}
               {localItems.map((item, idx) => (
                 <div
                   key={item.id}
-                  draggable
+                  draggable={!locked}
                   onDragStart={() => onDragStart(idx)}
                   onDragOver={(e) => onDragOver(e, idx)}
                   onDragEnd={onDragEnd}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-bg-raised group"
+                  className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-bg-raised"
                 >
-                  <span className="cursor-grab text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity touch-none">
+                  <span
+                    className={cn(
+                      "touch-none text-ink-faint transition-opacity",
+                      locked ? "opacity-0" : "cursor-grab opacity-0 group-hover:opacity-100",
+                    )}
+                  >
                     <GripVertical size={14} />
                   </span>
                   <button
@@ -195,42 +321,44 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
                   >
                     {item.checked && <Check size={11} />}
                   </button>
-                  <span className={cn("flex-1 text-sm", item.checked && "line-through text-ink-faint")}>
+                  <span className={cn("flex-1 text-sm", item.checked && "text-ink-faint line-through")}>
                     {item.text}
                   </span>
-                  <button
-                    onClick={() => handleDeleteItem(item)}
-                    className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-status-defekt transition-all"
-                  >
-                    <X size={13} />
-                  </button>
+                  {!locked && (
+                    <button
+                      onClick={() => handleDeleteItem(item)}
+                      className="text-ink-faint opacity-0 transition-all hover:text-status-defekt group-hover:opacity-100"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
                 </div>
               ))}
-              {/* Neuer Eintrag */}
-              <div className="flex items-center gap-2 pt-1">
-                <span style={{ width: 14 }} />
-                <span style={{ width: 18 }} className="shrink-0" />
-                <input
-                  value={newItemText}
-                  onChange={(e) => setNewItemText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-                  placeholder="Neuer Eintrag …"
-                  className="flex-1 bg-transparent text-sm text-ink-muted outline-none placeholder:text-ink-faint"
-                />
-                {newItemText && (
-                  <button onClick={handleAddItem} className="text-accent">
-                    <Plus size={15} />
-                  </button>
-                )}
-              </div>
-              {/* Fortschritt */}
+              {!locked && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span style={{ width: 14 }} />
+                  <span style={{ width: 18 }} className="shrink-0" />
+                  <input
+                    value={newItemText}
+                    onChange={(e) => setNewItemText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                    placeholder="Neuer Eintrag …"
+                    className="flex-1 bg-transparent text-sm text-ink-muted outline-none placeholder:text-ink-faint"
+                  />
+                  {newItemText && (
+                    <button onClick={handleAddItem} className="text-accent">
+                      <Plus size={15} />
+                    </button>
+                  )}
+                </div>
+              )}
               {localItems.length > 0 && (
                 <div className="pt-1">
-                  <div className="flex items-center justify-between text-xs text-ink-faint mb-1">
+                  <div className="mb-1 flex items-center justify-between text-xs text-ink-faint">
                     <span>{localItems.filter((i) => i.checked).length} / {localItems.length}</span>
                     <span>{Math.round((localItems.filter((i) => i.checked).length / localItems.length) * 100)}%</span>
                   </div>
-                  <div className="h-1 w-full rounded-full bg-border overflow-hidden">
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-border">
                     <div
                       className="h-full rounded-full bg-status-verfuegbar transition-all"
                       style={{ width: `${(localItems.filter((i) => i.checked).length / localItems.length) * 100}%` }}
@@ -241,78 +369,22 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
             </div>
           )}
 
-          <div className="flex justify-between border-t border-border pt-4">
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setEditing(true)}>Bearbeiten</Button>
-              <Button variant="danger" onClick={handleDelete}><Trash2 size={14} /></Button>
-            </div>
-            <Button variant="ghost" onClick={onClose}>Schließen</Button>
-          </div>
-        </div>
-      )}
-
-      {task && editing && (
-        <div className="space-y-4">
-          <FormField label="Titel *">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus />
-          </FormField>
-
-          {/* Typ: Notizen oder Liste */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setContentType("notes")}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-colors",
-                contentType === "notes" ? "border-accent bg-accent/5 text-accent" : "border-border text-ink-muted hover:text-ink",
-              )}
-            >
-              <StickyNote size={15} />Notizen
-            </button>
-            <button
-              type="button"
-              onClick={() => setContentType("list")}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-colors",
-                contentType === "list" ? "border-accent bg-accent/5 text-accent" : "border-border text-ink-muted hover:text-ink",
-              )}
-            >
-              <List size={15} />Checkliste
-            </button>
-          </div>
-
-          {contentType === "notes" && (
-            <FormField label="Beschreibung">
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
-            </FormField>
-          )}
-
           <div className="grid grid-cols-2 gap-3">
             <FormField label="Priorität">
-              <Select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)}>
+              <Select value={priority} onChange={(e) => handlePriorityChange(e.target.value as TaskPriority)} disabled={locked}>
                 {TASK_PRIORITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </Select>
             </FormField>
-            <FormField label="Status">
-              <Select value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)}>
-                {TASK_STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </Select>
+            <FormField label="Fällig am">
+              <Input type="date" value={dueDate} onChange={(e) => handleDueDateChange(e.target.value)} disabled={locked} />
             </FormField>
           </div>
 
-          <FormField label="Fällig am">
-            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-          </FormField>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setEditing(false)}>Abbrechen</Button>
-            <Button onClick={handleSave} disabled={!title.trim() || updateTask.isPending}>
-              {updateTask.isPending ? "Wird gespeichert …" : "Speichern"}
-            </Button>
+          <div className="flex justify-between border-t border-border pt-4">
+            <Button variant="danger" onClick={handleDelete} disabled={locked}><Trash2 size={14} />Löschen</Button>
+            <Button variant="ghost" onClick={handleClose}>Schließen</Button>
           </div>
         </div>
       )}
