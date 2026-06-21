@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { FormField, Input, Select } from "@/components/ui/Input";
+import { FormField, Input, Select, Label } from "@/components/ui/Input";
 import { useCreateJob } from "@/hooks/useJobs";
 import { useCustomers } from "@/hooks/useCustomers";
+import { JobColorPicker } from "@/components/jobs/JobColorPicker";
+import { randomJobColor } from "@/types/database";
 
 export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createJob = useCreateJob();
@@ -14,6 +16,12 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
   const [location, setLocation] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [color, setColor] = useState(() => randomJobColor());
+
+  // Bei jedem Öffnen des Dialogs eine neue zufällige Farbe vorschlagen.
+  useEffect(() => {
+    if (open) setColor(randomJobColor());
+  }, [open]);
 
   function reset() {
     setTitle("");
@@ -21,6 +29,7 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
     setLocation("");
     setStartDate("");
     setEndDate("");
+    setColor(randomJobColor());
   }
 
   function customerLabel(c: { company_name: string | null; first_name: string | null; last_name: string | null }) {
@@ -39,6 +48,7 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
       location: location.trim() || null,
       start_date: new Date(startDate).toISOString(),
       end_date: new Date(endDate).toISOString(),
+      color,
       customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
     });
 
@@ -67,6 +77,11 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
         <FormField label="Ort">
           <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="z.B. Gasthaus zur Linde, Kassel" />
         </FormField>
+
+        <div>
+          <Label>Farbe (Kalenderanzeige)</Label>
+          <JobColorPicker value={color} onChange={setColor} />
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Start *">

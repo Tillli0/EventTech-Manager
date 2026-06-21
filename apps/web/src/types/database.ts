@@ -137,10 +137,20 @@ export interface Job {
   pickup_at: string | null;
   return_at: string | null;
   notes: string | null;
+  color: string;
   created_at: string;
   updated_at: string;
   customer?: Customer | null;
   packlist_items?: PacklistItem[];
+  milestones?: JobMilestone[];
+}
+
+export interface JobMilestone {
+  id: string;
+  job_id: string;
+  title: string;
+  at: string;
+  created_at: string;
 }
 
 export interface PacklistItem {
@@ -242,3 +252,22 @@ export const CUSTOMER_SOURCE_LABELS: Record<CustomerSource, string> = {
   telefon: "Telefon",
   sonstiges: "Sonstiges",
 };
+
+/**
+ * Feste Farbpalette für Jobs (Kalenderdarstellung). Bei der Job-Erstellung wird
+ * automatisch eine Farbe zufällig zugewiesen, im Job kann sie danach geändert werden.
+ */
+export const JOB_COLOR_PALETTE: string[] = [
+  "#6366f1", // indigo
+  "#0ea5e9", // sky
+  "#10b981", // emerald
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#ec4899", // pink
+  "#8b5cf6", // violet
+  "#14b8a6", // teal
+];
+
+export function randomJobColor(): string {
+  return JOB_COLOR_PALETTE[Math.floor(Math.random() * JOB_COLOR_PALETTE.length)];
+}

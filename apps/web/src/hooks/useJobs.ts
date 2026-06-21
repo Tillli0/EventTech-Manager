@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { Job, JobStatus, PacklistItem } from "@/types/database";
+import type { Job, JobStatus, PacklistItem, JobMilestone } from "@/types/database";
+import { randomJobColor } from "@/types/database";
 
 const JOBS_KEY = ["jobs"] as const;
 
@@ -27,7 +28,7 @@ export function useJob(id: string | undefined) {
       const { data, error } = await supabase
         .from("jobs")
         .select(
-          "*, customer:customers(*), packlist_items(*, device:devices(*, barcodes(*)))",
+          "*, customer:customers(*), packlist_items(*, device:devices(*, barcodes(*))), milestones:job_milestones(*)",
         )
         .eq("id", id)
         .single();
@@ -44,6 +45,8 @@ interface CreateJobInput {
   start_date: string;
   end_date: string;
   notes?: string | null;
+  /** Wird automatisch zufällig vorbelegt, falls nicht angegeben. */
+  color?: string;
   /** Optional vorab geladener Kunde, um einen zweiten Request für den Kalendertitel zu sparen. */
   customerLabel?: string | null;
 }
@@ -51,12 +54,17 @@ interface CreateJobInput {
 /**
  * Legt einen Job an und erzeugt automatisch einen passenden Kalendereintrag
  * (1:1 zu Job-Start/Ende, Titel = Kundenname, Fallback Job-Titel).
+ * Die Job-Farbe wird, falls nicht explizit übergeben, zufällig aus der Palette gewählt.
  */
 export function useCreateJob() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ customerLabel, ...input }: CreateJobInput) => {
-      const { data: job, error } = await supabase.from("jobs").insert(input).select().single();
+    mutationFn: async ({ customerLabel, color, ...input }: CreateJobInput) => {
+      const { data: job, error } = await supabase
+        .from("jobs")
+        .insert({ ...input, color: color ?? randomJobColor() })
+        .select()
+        .single();
       if (error) throw error;
 
       const { error: calendarError } = await supabase.from("calendar_entries").insert({
@@ -117,6 +125,7 @@ export function useUpdateJob() {
       queryClient.invalidateQueries({ queryKey: JOBS_KEY });
       queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, variables.id] });
       queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["job-milestones"] });
     },
   });
 }
@@ -263,6 +272,71 @@ export function useDeviceAvailability(
       const { data, error } = await query;
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+// ============================================================
+// Unterevents (Meilensteine) — z.B. Aufbau, Abbau, Eventstart
+// ============================================================
+
+export function useCreateJobMilestone() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ jobId, title, at }: { jobId: string; title: string; at: string }) => {
+      const { data, error } = await supabase
+        .from("job_milestones")
+        .insert({ job_id: jobId, title, at })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as JobMilestone;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, variables.jobId] });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["job-milestones"] });
+    },
+  });
+}
+
+export function useUpdateJobMilestone() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      jobId,
+      ...fields
+    }: { id: string; jobId: string } & Partial<Pick<JobMilestone, "title" | "at">>) => {
+      const { data, error } = await supabase
+        .from("job_milestones")
+        .update(fields)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as JobMilestone;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, variables.jobId] });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["job-milestones"] });
+    },
+  });
+}
+
+export function useDeleteJobMilestone() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, jobId }: { id: string; jobId: string }) => {
+      const { error } = await supabase.from("job_milestones").delete().eq("id", id);
+      if (error) throw error;
+      return jobId;
+    },
+    onSuccess: (jobId) => {
+      queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, jobId] });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["job-milestones"] });
     },
   });
 }

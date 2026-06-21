@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { CalendarEntry } from "@/types/database";
+import type { CalendarEntry, JobMilestone } from "@/types/database";
 
 const CALENDAR_KEY = ["calendar"] as const;
 
@@ -75,6 +75,26 @@ export function useDeleteCalendarEntry() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CALENDAR_KEY });
+    },
+  });
+}
+
+/**
+ * Lädt alle Job-Unterevents (Meilensteine wie Aufbau/Abbau) im sichtbaren
+ * Kalenderzeitraum, inkl. Job-Farbe und -Titel für die Darstellung als Punkt.
+ */
+export function useJobMilestonesInRange(rangeStart: string, rangeEnd: string) {
+  return useQuery({
+    queryKey: ["job-milestones", rangeStart, rangeEnd],
+    queryFn: async (): Promise<(JobMilestone & { job: { id: string; title: string; color: string } })[]> => {
+      const { data, error } = await supabase
+        .from("job_milestones")
+        .select("*, job:jobs(id, title, color)")
+        .gte("at", rangeStart)
+        .lte("at", rangeEnd)
+        .order("at", { ascending: true });
+      if (error) throw error;
+      return data as (JobMilestone & { job: { id: string; title: string; color: string } })[];
     },
   });
 }

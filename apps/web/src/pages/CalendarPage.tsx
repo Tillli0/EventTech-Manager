@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus, Download, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { LoadingState, ErrorState } from "@/components/ui/States";
-import { useCalendarEntries, detectCollisions } from "@/hooks/useCalendar";
+import { useCalendarEntries, useJobMilestonesInRange, detectCollisions } from "@/hooks/useCalendar";
 import { MonthGrid, formatMonthLabel } from "@/components/calendar/MonthGrid";
 import { CalendarEntryDialog } from "@/components/calendar/CalendarEntryDialog";
 import { exportToIcs } from "@/lib/ics";
 import type { CalendarEntry } from "@/types/database";
 
 export function CalendarPage() {
+  const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [dialogState, setDialogState] = useState<{ entry?: CalendarEntry | null; prefillDate?: Date | null } | null>(
     null,
@@ -20,6 +22,7 @@ export function CalendarPage() {
   const rangeEnd = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 }).toISOString();
 
   const { data: entries, isLoading, error } = useCalendarEntries(rangeStart, rangeEnd);
+  const { data: milestones } = useJobMilestonesInRange(rangeStart, rangeEnd);
 
   const collidingIds = useMemo(() => (entries ? detectCollisions(entries) : new Set<string>()), [entries]);
 
@@ -76,9 +79,11 @@ export function CalendarPage() {
         <MonthGrid
           currentMonth={currentMonth}
           entries={entries}
+          milestones={milestones ?? []}
           collidingIds={collidingIds}
           onDayClick={(day) => setDialogState({ prefillDate: day })}
           onEntryClick={(entry) => setDialogState({ entry })}
+          onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
         />
       )}
 
