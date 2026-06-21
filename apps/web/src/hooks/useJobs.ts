@@ -160,6 +160,25 @@ export function useAddPacklistItem() {
   });
 }
 
+/** Fügt mehrere Geräte gleichzeitig zur Packliste hinzu (z.B. aus der Inventar-Übersicht). */
+export function useAddPacklistItems() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ jobId, deviceIds }: { jobId: string; deviceIds: string[] }) => {
+      if (deviceIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("packlist_items")
+        .insert(deviceIds.map((deviceId) => ({ job_id: jobId, device_id: deviceId, quantity: 1 })))
+        .select("*, device:devices(*, barcodes(*))");
+      if (error) throw error;
+      return data as PacklistItem[];
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, variables.jobId] });
+    },
+  });
+}
+
 export function useRemovePacklistItem() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -239,6 +258,49 @@ export function useMarkPacklistItemReturned() {
     onSuccess: ({ jobId }) => {
       queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, jobId] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
+    },
+  });
+}
+
+/**
+ * Lädt für den angegebenen Zeitraum alle Geräte, die bereits in einem anderen
+ * aktiven Job verplant sind — als Map deviceId -> Liste der kollidierenden Jobs.
+ * Effizienter als useDeviceAvailability für die Auswahl-Übersicht mit vielen Geräten.
+ */
+export function useDevicesAvailabilityMap(
+  startDate: string | undefined,
+  endDate: string | undefined,
+  excludeJobId?: string,
+) {
+  return useQuery({
+    queryKey: ["devices-availability-map", startDate, endDate, excludeJobId],
+    enabled: !!startDate && !!endDate,
+    queryFn: async () => {
+      let query = supabase
+        .from("packlist_items")
+        .select("device_id, job_id, jobs!inner(id, title, status, start_date, end_date)")
+        .in("jobs.status", ["anfrage", "bestaetigt", "laeuft"])
+        .lt("jobs.start_date", endDate)
+        .gt("jobs.end_date", startDate);
+
+      if (excludeJobId) {
+        query = query.neq("job_id", excludeJobId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const map = new Map<string, { id: string; title: string; start_date: string; end_date: string }[]>();
+      for (const row of data as unknown as {
+        device_id: string;
+        jobs: { id: string; title: string; start_date: string; end_date: string };
+      }[]) {
+        if (!row.jobs) continue;
+        const existing = map.get(row.device_id) ?? [];
+        existing.push(row.jobs);
+        map.set(row.device_id, existing);
+      }
+      return map;
     },
   });
 }

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ScanLine, Trash2, PackageCheck, PackageX, AlertTriangle } from "lucide-react";
+import { ScanLine, Trash2, PackageCheck, PackageX, AlertTriangle, ListPlus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -11,6 +11,7 @@ import {
 } from "@/hooks/useJobs";
 import { useUsbScannerInput } from "@/components/barcode/BarcodeScanner";
 import { DeviceAvailabilityWarning } from "@/components/jobs/DeviceAvailabilityWarning";
+import { AddDevicesDialog } from "@/components/jobs/AddDevicesDialog";
 import type { Job, PacklistItem } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
@@ -19,6 +20,7 @@ export function PacklistSection({ job }: { job: Job }) {
   const [scanInput, setScanInput] = useState("");
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanFeedback, setScanFeedback] = useState<{ message: string; hasConflict: boolean } | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addItem = useAddPacklistItem();
@@ -87,22 +89,28 @@ export function PacklistSection({ job }: { job: Job }) {
 
   return (
     <div>
-      <form onSubmit={handleManualSubmit} className="mb-4 flex gap-2">
-        <div className="relative flex-1">
-          <ScanLine size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-          <Input
-            ref={inputRef}
-            value={scanInput}
-            onChange={(e) => setScanInput(e.target.value)}
-            placeholder="Barcode scannen oder eintippen …"
-            className="pl-9 font-mono"
-            autoFocus
-          />
-        </div>
-        <Button type="submit" variant="secondary">
-          Hinzufügen
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+        <form onSubmit={handleManualSubmit} className="flex flex-1 gap-2">
+          <div className="relative flex-1">
+            <ScanLine size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
+            <Input
+              ref={inputRef}
+              value={scanInput}
+              onChange={(e) => setScanInput(e.target.value)}
+              placeholder="Barcode scannen oder eintippen …"
+              className="pl-9 font-mono"
+              autoFocus
+            />
+          </div>
+          <Button type="submit" variant="secondary">
+            Hinzufügen
+          </Button>
+        </form>
+        <Button type="button" variant="secondary" onClick={() => setShowAddDialog(true)}>
+          <ListPlus size={16} />
+          Aus Inventar
         </Button>
-      </form>
+      </div>
 
       {scanError && (
         <p className="mb-3 flex items-center gap-1.5 text-sm text-status-defekt">
@@ -124,7 +132,7 @@ export function PacklistSection({ job }: { job: Job }) {
 
       {items.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-ink-muted">
-          Noch keine Geräte auf der Packliste. Barcode scannen, um Geräte hinzuzufügen.
+          Noch keine Geräte auf der Packliste. Barcode scannen oder über „Aus Inventar" auswählen.
         </p>
       ) : (
         <div className="space-y-2">
@@ -145,6 +153,15 @@ export function PacklistSection({ job }: { job: Job }) {
           ))}
         </div>
       )}
+
+      <AddDevicesDialog
+        open={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
+        jobId={job.id}
+        jobStartDate={job.start_date}
+        jobEndDate={job.end_date}
+        excludeDeviceIds={items.map((item) => item.device_id)}
+      />
     </div>
   );
 }

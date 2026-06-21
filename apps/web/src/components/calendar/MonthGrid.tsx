@@ -14,8 +14,9 @@ import type { CalendarEntry, JobMilestone } from "@/types/database";
 import { formatTime } from "@/lib/format";
 
 const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-const ROW_HEIGHT = 22;
+const ROW_HEIGHT = 26;
 const MAX_VISIBLE_LANES = 3;
+const MAX_VISIBLE_MILESTONES_PER_DAY = 3;
 
 type MilestoneWithJob = JobMilestone & { job: { id: string; title: string; color: string } };
 
@@ -158,13 +159,13 @@ export function MonthGrid({
                     key={d.toISOString()}
                     onClick={() => onDayClick(d)}
                     className={cn(
-                      "flex items-start border-r border-border p-1.5 pb-0 text-left transition-colors last:border-r-0 hover:bg-bg-raised",
+                      "flex items-start border-r border-border p-2 pb-0.5 text-left transition-colors last:border-r-0 hover:bg-bg-raised",
                       !inMonth && "bg-bg-surface/50",
                     )}
                   >
                     <span
                       className={cn(
-                        "inline-flex h-5 w-5 items-center justify-center rounded-full text-xs",
+                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm",
                         isToday(d) ? "bg-accent font-semibold text-white" : inMonth ? "text-ink" : "text-ink-faint",
                       )}
                     >
@@ -178,7 +179,7 @@ export function MonthGrid({
             {/* Durchgezogene Mehrtages-Balken */}
             {laneCount > 0 && (
               <div
-                className="relative grid grid-cols-7 px-1.5"
+                className="relative grid grid-cols-7 px-1.5 pt-1"
                 style={{ height: laneCount * ROW_HEIGHT }}
                 onClick={() => onDayClick(weekStart)}
               >
@@ -194,7 +195,7 @@ export function MonthGrid({
                       }}
                       title={`${seg.entry.title} (${formatTime(seg.entry.start_at)})`}
                       className={cn(
-                        "flex h-[18px] items-center truncate px-1.5 text-[11px] font-medium text-white transition-opacity hover:opacity-90",
+                        "flex h-[20px] items-center truncate px-2 text-xs font-medium text-white transition-opacity hover:opacity-90",
                         seg.continuesFromPrev ? "rounded-l-none" : "rounded-l-[4px] ml-0.5",
                         seg.continuesToNext ? "rounded-r-none" : "rounded-r-[4px] mr-0.5",
                         isColliding && "ring-2 ring-status-defekt ring-inset",
@@ -228,11 +229,13 @@ export function MonthGrid({
             {/* Milestones (Unterevents) — schlichter Punkt + Label, keine durchgezogene Farbe */}
             <div className="grid grid-cols-7">
               {week.map((d) => {
-                const dayMilestones = milestonesForDay(d);
+                const dayMilestones = milestonesForDay(d).filter((m) => !!m.job);
                 if (dayMilestones.length === 0) return <div key={d.toISOString()} className="pb-1" />;
+                const visible = dayMilestones.slice(0, MAX_VISIBLE_MILESTONES_PER_DAY);
+                const hiddenCount = dayMilestones.length - visible.length;
                 return (
-                  <div key={d.toISOString()} className="space-y-0.5 px-1.5 pb-1.5 pt-0.5">
-                    {dayMilestones.map((m) => (
+                  <div key={d.toISOString()} className="space-y-1 px-1.5 pb-2 pt-1">
+                    {visible.map((m) => (
                       <button
                         key={m.id}
                         onClick={(e) => {
@@ -240,12 +243,16 @@ export function MonthGrid({
                           onMilestoneClick?.(m);
                         }}
                         title={`${m.job.title} · ${m.title} (${formatTime(m.at)})`}
-                        className="flex w-full items-center gap-1 truncate text-left text-[10px] text-ink-muted hover:text-ink"
+                        className="flex w-full items-center gap-1.5 truncate text-left text-xs text-ink-muted hover:text-ink"
                       >
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: m.job.color }} />
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: m.job.color || "#3B82F6" }}
+                        />
                         <span className="truncate">{m.title}</span>
                       </button>
                     ))}
+                    {hiddenCount > 0 && <p className="text-[11px] text-ink-faint">+{hiddenCount} weitere</p>}
                   </div>
                 );
               })}

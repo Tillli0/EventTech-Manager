@@ -27,8 +27,14 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
   useEffect(() => {
     if (existingEntry) return;
     if (prefillDate) {
-      setStartAt(toLocalDateTimeInput(prefillDate, 10));
-      setEndAt(toLocalDateTimeInput(prefillDate, 11));
+      // Wenn eine konkrete Uhrzeit übergeben wurde (Klick in Wochen-/Tagesansicht), diese
+      // übernehmen. Bei einem reinen Tagesklick (Monatsansicht, Uhrzeit 00:00) auf 10 Uhr
+      // vorbelegen, da ein Termin um Mitternacht selten gewollt ist.
+      const hasSpecificTime = prefillDate.getHours() !== 0 || prefillDate.getMinutes() !== 0;
+      const startHour = hasSpecificTime ? prefillDate.getHours() : 10;
+      const startMinute = hasSpecificTime ? prefillDate.getMinutes() : 0;
+      setStartAt(toLocalDateTimeInput(prefillDate, startHour, startMinute));
+      setEndAt(toLocalDateTimeInput(prefillDate, startHour + 1, startMinute));
     }
   }, [prefillDate, existingEntry]);
 
@@ -139,9 +145,9 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
   );
 }
 
-function toLocalDateTimeInput(date: Date, hour: number): string {
+function toLocalDateTimeInput(date: Date, hour: number, minute = 0): string {
   const d = new Date(date);
-  d.setHours(hour, 0, 0, 0);
+  d.setHours(hour, minute, 0, 0);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
