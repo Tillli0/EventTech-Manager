@@ -1,0 +1,14 @@
+{
+  "name": "eventtech-manager",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm --filter @eventtech/web dev",
+    "build": "pnpm --filter @eventtech/web build",
+    "lint": "pnpm --filter @eventtech/web lint",
+    "tauri": "pnpm --filter @eventtech/web tauri"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
