@@ -44,15 +44,34 @@ interface CreateJobInput {
   start_date: string;
   end_date: string;
   notes?: string | null;
+  /** Optional vorab geladener Kunde, um einen zweiten Request für den Kalendertitel zu sparen. */
+  customerLabel?: string | null;
 }
 
+/**
+ * Legt einen Job an und erzeugt automatisch einen passenden Kalendereintrag
+ * (1:1 zu Job-Start/Ende, Titel = Kundenname, Fallback Job-Titel).
+ */
 export function useCreateJob() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CreateJobInput) => {
-      const { data, error } = await supabase.from("jobs").insert(input).select().single();
+    mutationFn: async ({ customerLabel, ...input }: CreateJobInput) => {
+      const { data: job, error } = await supabase.from("jobs").insert(input).select().single();
       if (error) throw error;
-      return data as Job;
+
+      const { error: calendarError } = await supabase.from("calendar_entries").insert({
+        job_id: job.id,
+        title: customerLabel?.trim() || job.title,
+        start_at: job.start_date,
+        end_at: job.end_date,
+        all_day: false,
+        source: "intern",
+      });
+      // Der Job ist bereits angelegt; ein Kalenderfehler soll das nicht rückgängig machen,
+      // wird aber sichtbar gemacht statt verschluckt.
+      if (calendarError) throw calendarError;
+
+      return job as Job;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: JOBS_KEY });

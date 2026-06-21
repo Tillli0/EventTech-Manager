@@ -1,9 +1,9 @@
 import { NavLink } from "react-router-dom";
-import { NAV_ITEMS, SCAN_NAV_ITEM } from "@/lib/nav";
+import { BOTTOM_NAV_ITEMS, SCAN_NAV_ITEM } from "@/lib/nav";
 import { cn } from "@/lib/cn";
 
 export function BottomNav() {
-  const items = [...NAV_ITEMS.slice(0, 2), SCAN_NAV_ITEM, ...NAV_ITEMS.slice(2)];
+  const items = [...BOTTOM_NAV_ITEMS.slice(0, 2), SCAN_NAV_ITEM, ...BOTTOM_NAV_ITEMS.slice(2)];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-bg-surface md:hidden">
@@ -14,6 +14,7 @@ export function BottomNav() {
             <li key={item.to} className="flex-1">
               <NavLink
                 to={item.to}
+                end={item.to === "/"}
                 className={({ isActive }) =>
                   cn(
                     "flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors",

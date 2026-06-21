@@ -1,5 +1,6 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
+import { DashboardPage } from "@/pages/DashboardPage";
 import { InventoryPage } from "@/pages/InventoryPage";
 import { DeviceDetailPage } from "@/pages/DeviceDetailPage";
 import { JobsPage } from "@/pages/JobsPage";
@@ -15,7 +16,7 @@ export const router = createBrowserRouter([
     path: "/",
     element: <AppShell />,
     children: [
-      { index: true, element: <Navigate to="/inventar" replace /> },
+      { index: true, element: <DashboardPage /> },
       { path: "inventar", element: <InventoryPage /> },
       { path: "inventar/:id", element: <DeviceDetailPage /> },
       { path: "jobs", element: <JobsPage /> },

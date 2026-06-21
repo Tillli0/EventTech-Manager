@@ -31,12 +31,15 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
     e.preventDefault();
     if (!title.trim() || !startDate || !endDate) return;
 
+    const selectedCustomer = customers?.find((c) => c.id === customerId);
+
     await createJob.mutateAsync({
       title: title.trim(),
       customer_id: customerId || null,
       location: location.trim() || null,
       start_date: new Date(startDate).toISOString(),
       end_date: new Date(endDate).toISOString(),
+      customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
     });
 
     reset();

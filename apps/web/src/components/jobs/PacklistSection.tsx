@@ -10,6 +10,7 @@ import {
   useMarkPacklistItemReturned,
 } from "@/hooks/useJobs";
 import { useUsbScannerInput } from "@/components/barcode/BarcodeScanner";
+import { DeviceAvailabilityWarning } from "@/components/jobs/DeviceAvailabilityWarning";
 import type { Job, PacklistItem } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
@@ -17,7 +18,7 @@ import { formatDateTime } from "@/lib/format";
 export function PacklistSection({ job }: { job: Job }) {
   const [scanInput, setScanInput] = useState("");
   const [scanError, setScanError] = useState<string | null>(null);
-  const [scanFeedback, setScanFeedback] = useState<string | null>(null);
+  const [scanFeedback, setScanFeedback] = useState<{ message: string; hasConflict: boolean } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addItem = useAddPacklistItem();
@@ -52,8 +53,25 @@ export function PacklistSection({ job }: { job: Job }) {
     }
 
     await addItem.mutateAsync({ jobId: job.id, deviceId: barcode.device_id });
-    setScanFeedback(`„${deviceName}" hinzugefügt.`);
-    setTimeout(() => setScanFeedback(null), 2500);
+
+    const { data: conflicts } = await supabase
+      .from("packlist_items")
+      .select("job_id, jobs!inner(id, title, status, start_date, end_date)")
+      .eq("device_id", barcode.device_id)
+      .neq("job_id", job.id)
+      .in("jobs.status", ["anfrage", "bestaetigt", "laeuft"])
+      .lt("jobs.start_date", job.end_date)
+      .gt("jobs.end_date", job.start_date);
+
+    if (conflicts && conflicts.length > 0) {
+      setScanFeedback({
+        message: `„${deviceName}" hinzugefügt — Achtung, im Zeitraum bereits für einen anderen Job verplant (siehe unten).`,
+        hasConflict: true,
+      });
+    } else {
+      setScanFeedback({ message: `„${deviceName}" hinzugefügt.`, hasConflict: false });
+    }
+    setTimeout(() => setScanFeedback(null), 4000);
   }
 
   useUsbScannerInput((code) => handleScan(code), true);
@@ -92,7 +110,17 @@ export function PacklistSection({ job }: { job: Job }) {
           {scanError}
         </p>
       )}
-      {scanFeedback && <p className="mb-3 text-sm text-status-verfuegbar">{scanFeedback}</p>}
+      {scanFeedback && (
+        <p
+          className={cn(
+            "mb-3 flex items-center gap-1.5 text-sm",
+            scanFeedback.hasConflict ? "text-status-wartung" : "text-status-verfuegbar",
+          )}
+        >
+          {scanFeedback.hasConflict && <AlertTriangle size={14} />}
+          {scanFeedback.message}
+        </p>
+      )}
 
       {items.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-ink-muted">
@@ -105,6 +133,9 @@ export function PacklistSection({ job }: { job: Job }) {
               key={item.id}
               item={item}
               canPick={canPick}
+              jobId={job.id}
+              jobStartDate={job.start_date}
+              jobEndDate={job.end_date}
               onRemove={() => removeItem.mutate({ id: item.id, jobId: job.id })}
               onPickUp={() => markPickedUp.mutate({ id: item.id, jobId: job.id })}
               onReturn={(isDamaged, damageNotes) =>
@@ -121,12 +152,18 @@ export function PacklistSection({ job }: { job: Job }) {
 function PacklistRow({
   item,
   canPick,
+  jobId,
+  jobStartDate,
+  jobEndDate,
   onRemove,
   onPickUp,
   onReturn,
 }: {
   item: PacklistItem;
   canPick: boolean;
+  jobId: string;
+  jobStartDate: string;
+  jobEndDate: string;
   onRemove: () => void;
   onPickUp: () => void;
   onReturn: (isDamaged: boolean, damageNotes?: string) => void;
@@ -154,6 +191,14 @@ function PacklistRow({
               <AlertTriangle size={12} />
               Defekt bei Rückgabe{item.damage_notes ? `: ${item.damage_notes}` : ""}
             </p>
+          )}
+          {!isReturned && (
+            <DeviceAvailabilityWarning
+              deviceId={item.device_id}
+              startDate={jobStartDate}
+              endDate={jobEndDate}
+              excludeJobId={jobId}
+            />
           )}
         </div>
 
