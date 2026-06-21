@@ -8,6 +8,8 @@ import { formatTime } from "@/lib/format";
 const HOUR_HEIGHT = 64;
 const START_HOUR = 6;
 const END_HOUR = 23;
+/** Feste Höhe jedes ganztägigen Balkens (px), damit alle Balken über die Woche hinweg gleich groß sind. */
+const ALL_DAY_BAR_HEIGHT = 22;
 
 type MilestoneWithJob = JobMilestone & { job: { id: string; title: string; color: string } };
 
@@ -142,7 +144,7 @@ export function WeekView({
         ))}
       </div>
 
-      {/* Ganztägige Events — Balken-Zeile */}
+      {/* Ganztägige Events — Balken-Zeile, alle Balken einheitlich hoch */}
       {maxAllDay > 0 && (
         <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border bg-bg-surface/60">
           <div className="flex items-start px-1 pt-1.5">
@@ -151,7 +153,7 @@ export function WeekView({
           {days.map((d) => {
             const dayEntries = allDayEntriesForDay(d, entries);
             return (
-              <div key={d.toISOString()} className="border-l border-border px-0.5 py-1 space-y-0.5" style={{ minHeight: maxAllDay * 22 + 8 }}>
+              <div key={d.toISOString()} className="border-l border-border px-0.5 py-1 space-y-0.5" style={{ minHeight: maxAllDay * ALL_DAY_BAR_HEIGHT + 8 }}>
                 {dayEntries.map((e) => {
                   const color = e.job?.color ?? "#6366f1";
                   const isFirst = isSameDay(new Date(e.start_at), d) || isSameDay(d, startOfWeek(currentDate, { weekStartsOn: 1 }));
@@ -162,12 +164,12 @@ export function WeekView({
                       onClick={() => onEntryClick(e)}
                       title={e.title}
                       className={cn(
-                        "block w-full px-2 py-0.5 text-left text-xs font-medium text-white truncate transition-opacity hover:opacity-90",
+                        "flex w-full items-center px-2 text-left text-xs font-medium text-white truncate transition-opacity hover:opacity-90",
                         isFirst ? "rounded-l-md" : "",
                         isLast ? "rounded-r-md" : "",
                         collidingIds.has(e.id) && "ring-2 ring-status-defekt ring-inset",
                       )}
-                      style={{ backgroundColor: color }}
+                      style={{ backgroundColor: color, height: ALL_DAY_BAR_HEIGHT - 2 }}
                     >
                       {isFirst ? e.title : ""}
                     </button>
