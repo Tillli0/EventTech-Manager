@@ -171,6 +171,22 @@ export interface CalendarEntry {
   job?: Job | null;
 }
 
+export type TaskStatus = "offen" | "in_bearbeitung" | "erledigt";
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assigned_to: string | null;
+  due_date: string | null;
+  job_id: string | null;
+  created_at: string;
+  updated_at: string;
+  job?: Job | null;
+}
+
 // ============================================================
 // UI-Hilfstypen
 // ============================================================
@@ -203,6 +219,19 @@ export const INQUIRY_PIPELINE_OPTIONS: StatusOption<InquiryPipelineStatus>[] = [
   { value: "angebot_gesendet", label: "Angebot gesendet", colorVar: "status-wartung" },
   { value: "gewonnen", label: "Gewonnen", colorVar: "status-verfuegbar" },
   { value: "verloren", label: "Verloren", colorVar: "status-defekt" },
+];
+
+export const TASK_STATUS_OPTIONS: StatusOption<TaskStatus>[] = [
+  { value: "offen", label: "Offen", colorVar: "ink-muted" },
+  { value: "in_bearbeitung", label: "In Bearbeitung", colorVar: "status-wartung" },
+  { value: "erledigt", label: "Erledigt", colorVar: "status-verfuegbar" },
+];
+
+export const TASK_PRIORITY_OPTIONS: StatusOption<TaskPriority>[] = [
+  { value: "niedrig", label: "Niedrig", colorVar: "ink-faint" },
+  { value: "normal", label: "Normal", colorVar: "ink-muted" },
+  { value: "hoch", label: "Hoch", colorVar: "status-wartung" },
+  { value: "dringend", label: "Dringend", colorVar: "status-defekt" },
 ];
 
 export const CUSTOMER_SOURCE_LABELS: Record<CustomerSource, string> = {

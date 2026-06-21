@@ -7,6 +7,7 @@ import { useJob, useUpdateJobStatus } from "@/hooks/useJobs";
 import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
 import { formatDateTime } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";
+import { JobTasksSection } from "@/components/tasks/JobTasksSection";
 import { cn } from "@/lib/cn";
 
 export function JobDetailPage() {
@@ -57,6 +58,15 @@ export function JobDetailPage() {
             </CardHeader>
             <CardBody>
               <PacklistSection job={job} />
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold text-ink">Aufgaben</h2>
+            </CardHeader>
+            <CardBody>
+              <JobTasksSection jobId={job.id} jobTitle={job.title} />
             </CardBody>
           </Card>
 

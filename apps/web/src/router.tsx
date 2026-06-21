@@ -8,6 +8,7 @@ import { CustomersPage } from "@/pages/CustomersPage";
 import { CustomerDetailPage } from "@/pages/CustomerDetailPage";
 import { CalendarPage } from "@/pages/CalendarPage";
 import { ScanPage } from "@/pages/ScanPage";
+import { TasksPage } from "@/pages/TasksPage";
 
 export const router = createBrowserRouter([
   {
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: "kunden/:id", element: <CustomerDetailPage /> },
       { path: "kalender", element: <CalendarPage /> },
       { path: "scan", element: <ScanPage /> },
+      { path: "aufgaben", element: <TasksPage /> },
     ],
   },
 ]);
