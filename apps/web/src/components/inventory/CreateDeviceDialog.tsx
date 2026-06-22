@@ -22,6 +22,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   const [stockQuantity, setStockQuantity] = useState("1");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (suggestedBarcode && !barcode) setBarcode(suggestedBarcode);
@@ -32,6 +33,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
     setLocation(""); setBarcode(suggestedBarcode ?? ""); setNotes("");
     setStockQuantity("1");
     setPhotoFile(null); setPhotoPreview(null);
+    setFormError(null);
   }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -51,26 +53,35 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(null);
     if (!name.trim() || !barcode.trim()) return;
 
-    const device = await createDevice.mutateAsync({
-      name: name.trim(),
-      category_id: categoryId || null,
-      manufacturer: manufacturer.trim() || null,
-      model: model.trim() || null,
-      location: location.trim() || null,
-      notes: notes.trim() || null,
-      barcode: barcode.trim(),
-      stock_quantity: Math.max(1, parseInt(stockQuantity, 10) || 1),
-    });
+    try {
+      const device = await createDevice.mutateAsync({
+        name: name.trim(),
+        category_id: categoryId || null,
+        manufacturer: manufacturer.trim() || null,
+        model: model.trim() || null,
+        location: location.trim() || null,
+        notes: notes.trim() || null,
+        barcode: barcode.trim(),
+        stock_quantity: Math.max(1, parseInt(stockQuantity, 10) || 1),
+      });
 
-    // Foto hochladen falls vorhanden
-    if (photoFile && device?.id) {
-      await uploadPhoto.mutateAsync({ deviceId: device.id, file: photoFile });
+      // Foto hochladen falls vorhanden
+      if (photoFile && device?.id) {
+        await uploadPhoto.mutateAsync({ deviceId: device.id, file: photoFile });
+      }
+
+      reset();
+      onClose();
+    } catch (err) {
+      // Ohne dieses Catch bleibt der Dialog bei einem Fehler (z.B. doppelter
+      // Barcode, fehlende DB-Spalte) einfach offen, ohne dass irgendetwas
+      // sichtbar passiert — daher hier explizit anzeigen.
+      const message = err instanceof Error ? err.message : "Unbekannter Fehler beim Speichern.";
+      setFormError(message);
     }
-
-    reset();
-    onClose();
   }
 
   const isPending = createDevice.isPending || uploadPhoto.isPending;
@@ -161,6 +172,12 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
         <FormField label="Notizen">
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
         </FormField>
+
+        {formError && (
+          <div className="rounded-md border border-status-defekt/40 bg-status-defekt/10 px-3 py-2 text-sm text-status-defekt">
+            {formError}
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Abbrechen</Button>

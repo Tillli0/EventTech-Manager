@@ -34,6 +34,7 @@ export function AddDevicesDialog({
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | "">("");
   const [selected, setSelected] = useState<Map<string, number>>(new Map());
+  const [addError, setAddError] = useState<string | null>(null);
 
   const excludeSet = useMemo(() => new Set(excludeDeviceIds), [excludeDeviceIds]);
 
@@ -80,18 +81,27 @@ export function AddDevicesDialog({
 
   async function handleAdd() {
     if (selected.size === 0) return;
-    await addItems.mutateAsync({
-      jobId,
-      items: Array.from(selected.entries()).map(([deviceId, quantity]) => ({ deviceId, quantity })),
-    });
-    setSelected(new Map());
-    setSearch("");
-    onClose();
+    setAddError(null);
+    try {
+      await addItems.mutateAsync({
+        jobId,
+        items: Array.from(selected.entries()).map(([deviceId, quantity]) => ({ deviceId, quantity })),
+      });
+      setSelected(new Map());
+      setSearch("");
+      onClose();
+    } catch (err) {
+      // Ohne dieses Catch bleibt der Dialog bei einem Fehler einfach offen,
+      // ohne dass irgendetwas sichtbar passiert.
+      const message = err instanceof Error ? err.message : "Unbekannter Fehler beim Hinzufügen.";
+      setAddError(message);
+    }
   }
 
   function handleClose() {
     setSelected(new Map());
     setSearch("");
+    setAddError(null);
     onClose();
   }
 
@@ -153,6 +163,12 @@ export function AddDevicesDialog({
                 otherQuantity={sumBookedQuantity(conflictMap?.get(device.id))}
               />
             ))}
+          </div>
+        )}
+
+        {addError && (
+          <div className="rounded-md border border-status-defekt/40 bg-status-defekt/10 px-3 py-2 text-sm text-status-defekt">
+            {addError}
           </div>
         )}
 
