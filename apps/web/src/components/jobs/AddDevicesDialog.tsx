@@ -36,6 +36,25 @@ export function AddDevicesDialog({
   const [selected, setSelected] = useState<Map<string, number>>(new Map());
   const [addError, setAddError] = useState<string | null>(null);
 
+  function extractErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    if (typeof err === "object" && err !== null) {
+      const e = err as Record<string, unknown>;
+      const parts = [e.message, e.details, e.hint].filter(
+        (v): v is string => typeof v === "string" && v.length > 0,
+      );
+      if (parts.length > 0) {
+        return e.code ? `[${String(e.code)}] ${parts.join(" — ")}` : parts.join(" — ");
+      }
+      try {
+        return JSON.stringify(err);
+      } catch {
+        // fällt durch zum generischen Fallback unten
+      }
+    }
+    return "Unbekannter Fehler beim Hinzufügen.";
+  }
+
   const excludeSet = useMemo(() => new Set(excludeDeviceIds), [excludeDeviceIds]);
 
   const categories = useMemo(() => {
@@ -93,8 +112,8 @@ export function AddDevicesDialog({
     } catch (err) {
       // Ohne dieses Catch bleibt der Dialog bei einem Fehler einfach offen,
       // ohne dass irgendetwas sichtbar passiert.
-      const message = err instanceof Error ? err.message : "Unbekannter Fehler beim Hinzufügen.";
-      setAddError(message);
+      console.error("Fehler beim Hinzufügen zur Packliste:", err);
+      setAddError(extractErrorMessage(err));
     }
   }
 

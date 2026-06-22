@@ -24,6 +24,25 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
+  function extractErrorMessage(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    if (typeof err === "object" && err !== null) {
+      const e = err as Record<string, unknown>;
+      const parts = [e.message, e.details, e.hint].filter(
+        (v): v is string => typeof v === "string" && v.length > 0,
+      );
+      if (parts.length > 0) {
+        return e.code ? `[${String(e.code)}] ${parts.join(" — ")}` : parts.join(" — ");
+      }
+      try {
+        return JSON.stringify(err);
+      } catch {
+        // fällt durch zum generischen Fallback unten
+      }
+    }
+    return "Unbekannter Fehler beim Speichern.";
+  }
+
   useEffect(() => {
     if (suggestedBarcode && !barcode) setBarcode(suggestedBarcode);
   }, [suggestedBarcode, barcode]);
@@ -79,8 +98,8 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
       // Ohne dieses Catch bleibt der Dialog bei einem Fehler (z.B. doppelter
       // Barcode, fehlende DB-Spalte) einfach offen, ohne dass irgendetwas
       // sichtbar passiert — daher hier explizit anzeigen.
-      const message = err instanceof Error ? err.message : "Unbekannter Fehler beim Speichern.";
-      setFormError(message);
+      console.error("Fehler beim Anlegen des Geräts:", err);
+      setFormError(extractErrorMessage(err));
     }
   }
 
