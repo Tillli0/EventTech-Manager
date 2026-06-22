@@ -71,6 +71,9 @@ export function ScanPage() {
             <ScanLine size={28} className="text-accent" />
             <p className="text-lg font-semibold text-ink">{foundDevice.name}</p>
             <p className="font-mono text-xs text-ink-faint">{foundDevice.barcodes?.[0]?.code}</p>
+            {foundDevice.stock_quantity > 1 && (
+              <p className="text-xs text-ink-muted">Bestand: {foundDevice.stock_quantity} Stück</p>
+            )}
             <DeviceStatusBadge status={foundDevice.status} />
             <div className="mt-4 flex gap-2">
               <Button variant="secondary" onClick={reset}>

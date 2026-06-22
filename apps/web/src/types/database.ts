@@ -51,11 +51,36 @@ export interface Device {
   set_parent_id: string | null;
   weight_kg: number | null;
   power_watts: number | null;
+  /** Gesamtbestand. 1 = Einzelstück (Normalfall), >1 = Mengen-Gerät (z.B. 20 Kabel unter einem Barcode). */
+  stock_quantity: number;
   created_at: string;
   updated_at: string;
   // Joins (optional, je nach Query)
   category?: Category | null;
   barcodes?: Barcode[];
+}
+
+/** Ist dieses Gerät ein Mengen-Gerät (Stückzahl > 1)? */
+export function isQuantityDevice(device: Pick<Device, "stock_quantity">): boolean {
+  return device.stock_quantity > 1;
+}
+
+export interface DeviceSet {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  items?: DeviceSetItem[];
+}
+
+export interface DeviceSetItem {
+  id: string;
+  set_id: string;
+  device_id: string;
+  quantity: number;
+  created_at: string;
+  device?: Device;
 }
 
 export interface Barcode {
@@ -157,13 +182,32 @@ export interface PacklistItem {
   id: string;
   job_id: string;
   device_id: string;
+  /** Gebuchte/gewünschte Menge für diesen Job. */
   quantity: number;
+  /** Tatsächlich ausgegebene Menge (kann in Schritten erfolgen, max. = quantity). */
+  quantity_picked_up: number;
+  /** Davon intakt zurückgegeben. */
+  quantity_returned_ok: number;
+  /** Davon defekt zurückgegeben. */
+  quantity_damaged: number;
+  /** Davon fehlend/nicht zurückgekommen. */
+  quantity_missing: number;
   picked_up_at: string | null;
   returned_at: string | null;
   is_damaged_on_return: boolean;
   damage_notes: string | null;
   created_at: string;
   device?: Device;
+}
+
+/** Wie viele Stück sind noch ausgegeben und noch nicht (vollständig) zurückgemeldet? */
+export function quantityStillOut(item: Pick<PacklistItem, "quantity_picked_up" | "quantity_returned_ok" | "quantity_damaged" | "quantity_missing">): number {
+  return item.quantity_picked_up - item.quantity_returned_ok - item.quantity_damaged - item.quantity_missing;
+}
+
+/** Wie viele Stück sind noch gar nicht ausgegeben? */
+export function quantityNotYetPickedUp(item: Pick<PacklistItem, "quantity" | "quantity_picked_up">): number {
+  return item.quantity - item.quantity_picked_up;
 }
 
 export interface CalendarEntry {

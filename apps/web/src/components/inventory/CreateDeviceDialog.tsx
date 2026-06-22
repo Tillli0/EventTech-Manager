@@ -19,6 +19,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   const [location, setLocation] = useState("");
   const [barcode, setBarcode] = useState("");
   const [notes, setNotes] = useState("");
+  const [stockQuantity, setStockQuantity] = useState("1");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
@@ -29,6 +30,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   function reset() {
     setName(""); setCategoryId(""); setManufacturer(""); setModel("");
     setLocation(""); setBarcode(suggestedBarcode ?? ""); setNotes("");
+    setStockQuantity("1");
     setPhotoFile(null); setPhotoPreview(null);
   }
 
@@ -59,6 +61,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
       location: location.trim() || null,
       notes: notes.trim() || null,
       barcode: barcode.trim(),
+      stock_quantity: Math.max(1, parseInt(stockQuantity, 10) || 1),
     });
 
     // Foto hochladen falls vorhanden
@@ -99,6 +102,19 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
 
         <FormField label="Lagerort">
           <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="z.B. Lager A, Regal 1" />
+        </FormField>
+
+        <FormField
+          label="Stückzahl"
+          hint='Bei mehreren gleichen Geräten (z.B. 20 XLR-Kabel) hier die Gesamtzahl eintragen — alle teilen sich den einen Barcode unten. Bei Einzelgeräten einfach bei 1 lassen.'
+        >
+          <Input
+            type="number"
+            min={1}
+            value={stockQuantity}
+            onChange={(e) => setStockQuantity(e.target.value)}
+            className="w-28"
+          />
         </FormField>
 
         <FormField label="Barcode *" hint="Wird automatisch vorgeschlagen, kann aber überschrieben werden.">

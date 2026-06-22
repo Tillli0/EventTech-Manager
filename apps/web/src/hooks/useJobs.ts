@@ -195,15 +195,92 @@ export function useAddPacklistItem() {
   });
 }
 
-/** Fügt mehrere Geräte gleichzeitig zur Packliste hinzu (z.B. aus der Inventar-Übersicht). */
+/**
+ * Fügt ein Gerät per Scan zur Packliste hinzu. Steht es schon auf der Liste
+ * (und ist noch nicht ausgegeben), wird die Menge um 1 erhöht statt einen
+ * zweiten Posten anzulegen — so kann man ein Mengen-Gerät (z.B. Kabel) einfach
+ * mehrfach scannen, um die Stückzahl hochzuzählen.
+ */
+export function useScanPacklistItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      jobId,
+      deviceId,
+      existingItem,
+    }: {
+      jobId: string;
+      deviceId: string;
+      /** Bereits vorhandener Packlist-Posten für dieses Gerät auf diesem Job, falls schon vorhanden. */
+      existingItem?: Pick<PacklistItem, "id" | "quantity"> | null;
+    }) => {
+      if (existingItem) {
+        const { data, error } = await supabase
+          .from("packlist_items")
+          .update({ quantity: existingItem.quantity + 1 })
+          .eq("id", existingItem.id)
+          .select("*, device:devices(*, barcodes(*))")
+          .single();
+        if (error) throw error;
+        return { item: data as PacklistItem, wasNew: false };
+      }
+
+      const { data, error } = await supabase
+        .from("packlist_items")
+        .insert({ job_id: jobId, device_id: deviceId, quantity: 1 })
+        .select("*, device:devices(*, barcodes(*))")
+        .single();
+      if (error) throw error;
+      return { item: data as PacklistItem, wasNew: true };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, variables.jobId] });
+    },
+  });
+}
+
+/** Ändert die gewünschte Menge eines Packlist-Postens (z.B. manuelle Eingabe statt Scan). */
+export function useUpdatePacklistItemQuantity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, quantity }: { id: string; jobId: string; quantity: number }) => {
+      const { data, error } = await supabase
+        .from("packlist_items")
+        .update({ quantity })
+        .eq("id", id)
+        .select("*, device:devices(*, barcodes(*))")
+        .single();
+      if (error) throw error;
+      return data as PacklistItem;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, variables.jobId] });
+    },
+  });
+}
+
+/** Fügt mehrere Geräte gleichzeitig zur Packliste hinzu (z.B. aus der Inventar-Übersicht), je mit eigener Menge. */
 export function useAddPacklistItems() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ jobId, deviceIds }: { jobId: string; deviceIds: string[] }) => {
-      if (deviceIds.length === 0) return [];
+    mutationFn: async ({
+      jobId,
+      items,
+    }: {
+      jobId: string;
+      /** Geräte-IDs mit jeweiliger gewünschter Menge (Default 1). */
+      items: { deviceId: string; quantity?: number }[];
+    }) => {
+      if (items.length === 0) return [];
       const { data, error } = await supabase
         .from("packlist_items")
-        .insert(deviceIds.map((deviceId) => ({ job_id: jobId, device_id: deviceId, quantity: 1 })))
+        .insert(
+          items.map(({ deviceId, quantity }) => ({
+            job_id: jobId,
+            device_id: deviceId,
+            quantity: quantity ?? 1,
+          })),
+        )
         .select("*, device:devices(*, barcodes(*))");
       if (error) throw error;
       return data as PacklistItem[];
@@ -228,28 +305,61 @@ export function useRemovePacklistItem() {
   });
 }
 
+/**
+ * Gibt eine bestimmte Menge eines Packlist-Postens aus (Standard: den vollen Rest,
+ * der noch nicht ausgegeben wurde — passend für Einzelstücke per Klick).
+ * quantity_picked_up wird dabei erhöht, nicht ersetzt, damit Ausgabe in mehreren
+ * Schritten möglich bleibt.
+ */
 export function useMarkPacklistItemPickedUp() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, jobId }: { id: string; jobId: string }) => {
+    mutationFn: async ({
+      id,
+      jobId,
+      additionalQuantity,
+    }: {
+      id: string;
+      jobId: string;
+      /** Wie viele Stück zusätzlich ausgegeben werden. Default: gesamter offener Rest. */
+      additionalQuantity?: number;
+    }) => {
+      const { data: current, error: fetchError } = await supabase
+        .from("packlist_items")
+        .select("device_id, quantity, quantity_picked_up")
+        .eq("id", id)
+        .single();
+      if (fetchError) throw fetchError;
+
+      const remaining = current.quantity - current.quantity_picked_up;
+      const amount = additionalQuantity ?? remaining;
+      if (amount <= 0) {
+        return { data: current, jobId, deviceId: current.device_id };
+      }
+
       const { data, error } = await supabase
         .from("packlist_items")
-        .update({ picked_up_at: new Date().toISOString() })
+        .update({
+          quantity_picked_up: current.quantity_picked_up + amount,
+          picked_up_at: new Date().toISOString(),
+        })
         .eq("id", id)
         .select()
         .single();
       if (error) throw error;
-      return { data, jobId };
+      return { data, jobId, deviceId: current.device_id };
     },
-    onSuccess: async ({ jobId }, variables) => {
-      // Gerätestatus auf "ausgeliehen" setzen
-      const { data: item } = await supabase
-        .from("packlist_items")
-        .select("device_id")
-        .eq("id", variables.id)
+    onSuccess: async ({ jobId, deviceId }) => {
+      // Gerätestatus nur bei Einzelstücken auf "ausgeliehen" setzen — bei
+      // Mengen-Geräten ist der binäre Status nicht aussagekräftig (es kann
+      // gleichzeitig verfügbarer und ausgeliehener Bestand existieren).
+      const { data: device } = await supabase
+        .from("devices")
+        .select("stock_quantity")
+        .eq("id", deviceId)
         .single();
-      if (item) {
-        await supabase.from("devices").update({ status: "ausgeliehen" }).eq("id", item.device_id);
+      if (device && device.stock_quantity === 1) {
+        await supabase.from("devices").update({ status: "ausgeliehen" }).eq("id", deviceId);
       }
       queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, jobId] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
@@ -257,36 +367,69 @@ export function useMarkPacklistItemPickedUp() {
   });
 }
 
-export function useMarkPacklistItemReturned() {
+/**
+ * Erfasst eine Rückgabe in einem Schritt, aufgeteilt nach Stückzahl: intakt
+ * zurück / defekt / fehlend. Teilrückgaben sind möglich — der Rest bleibt als
+ * "noch ausgegeben" auf dem Posten stehen und kann später nachgemeldet werden.
+ */
+export function useReturnPacklistItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       id,
       jobId,
-      isDamaged = false,
+      returnedOk,
+      damaged,
+      missing,
       damageNotes,
     }: {
       id: string;
       jobId: string;
-      isDamaged?: boolean;
+      returnedOk: number;
+      damaged: number;
+      missing: number;
       damageNotes?: string;
     }) => {
+      const { data: current, error: fetchError } = await supabase
+        .from("packlist_items")
+        .select("device_id, quantity_returned_ok, quantity_damaged, quantity_missing, damage_notes")
+        .eq("id", id)
+        .single();
+      if (fetchError) throw fetchError;
+
+      const update: Record<string, unknown> = {
+        quantity_returned_ok: current.quantity_returned_ok + returnedOk,
+        quantity_damaged: current.quantity_damaged + damaged,
+        quantity_missing: current.quantity_missing + missing,
+        returned_at: new Date().toISOString(),
+      };
+      if (damaged > 0) {
+        update.is_damaged_on_return = true;
+        update.damage_notes = damageNotes?.trim()
+          ? [current.damage_notes, damageNotes.trim()].filter(Boolean).join(" · ")
+          : current.damage_notes;
+      }
+
       const { data: item, error } = await supabase
         .from("packlist_items")
-        .update({
-          returned_at: new Date().toISOString(),
-          is_damaged_on_return: isDamaged,
-          damage_notes: damageNotes ?? null,
-        })
+        .update(update)
         .eq("id", id)
         .select()
         .single();
       if (error) throw error;
 
-      await supabase
+      // Gerätestatus nur bei Einzelstücken anpassen (siehe useMarkPacklistItemPickedUp).
+      const { data: device } = await supabase
         .from("devices")
-        .update({ status: isDamaged ? "defekt" : "verfuegbar" })
-        .eq("id", item.device_id);
+        .select("stock_quantity")
+        .eq("id", current.device_id)
+        .single();
+      if (device && device.stock_quantity === 1) {
+        await supabase
+          .from("devices")
+          .update({ status: damaged > 0 ? "defekt" : "verfuegbar" })
+          .eq("id", current.device_id);
+      }
 
       return { item, jobId };
     },
@@ -298,9 +441,11 @@ export function useMarkPacklistItemReturned() {
 }
 
 /**
- * Lädt für den angegebenen Zeitraum alle Geräte, die bereits in einem anderen
- * aktiven Job verplant sind — als Map deviceId -> Liste der kollidierenden Jobs.
- * Effizienter als useDeviceAvailability für die Auswahl-Übersicht mit vielen Geräten.
+ * Lädt für den angegebenen Zeitraum alle Geräte, die im Zeitraum bereits (teilweise)
+ * über andere aktive Jobs verplant sind — als Map deviceId -> Liste der Buchungen
+ * (inkl. jeweiliger Menge). Ein Konflikt liegt erst vor, wenn die Summe der fremden
+ * Mengen den Lagerbestand (stock_quantity) übersteigt; das wird hier nicht entschieden
+ * (das Gerät kennt der Aufrufer ja meist schon), sondern nur die rohen Buchungen geliefert.
  */
 export function useDevicesAvailabilityMap(
   startDate: string | undefined,
@@ -313,7 +458,7 @@ export function useDevicesAvailabilityMap(
     queryFn: async () => {
       let query = supabase
         .from("packlist_items")
-        .select("device_id, job_id, jobs!inner(id, title, status, start_date, end_date)")
+        .select("device_id, job_id, quantity, jobs!inner(id, title, status, start_date, end_date)")
         .in("jobs.status", ["anfrage", "bestaetigt", "laeuft"])
         .lt("jobs.start_date", endDate)
         .gt("jobs.end_date", startDate);
@@ -325,14 +470,18 @@ export function useDevicesAvailabilityMap(
       const { data, error } = await query;
       if (error) throw error;
 
-      const map = new Map<string, { id: string; title: string; start_date: string; end_date: string }[]>();
+      const map = new Map<
+        string,
+        { id: string; title: string; start_date: string; end_date: string; quantity: number }[]
+      >();
       for (const row of data as unknown as {
         device_id: string;
+        quantity: number;
         jobs: { id: string; title: string; start_date: string; end_date: string };
       }[]) {
         if (!row.jobs) continue;
         const existing = map.get(row.device_id) ?? [];
-        existing.push(row.jobs);
+        existing.push({ ...row.jobs, quantity: row.quantity });
         map.set(row.device_id, existing);
       }
       return map;
@@ -340,9 +489,17 @@ export function useDevicesAvailabilityMap(
   });
 }
 
+/** Summe der gebuchten Mengen aus einer Liste von Buchungen (siehe useDevicesAvailabilityMap). */
+export function sumBookedQuantity(bookings: { quantity: number }[] | undefined): number {
+  return bookings?.reduce((sum, b) => sum + b.quantity, 0) ?? 0;
+}
+
 /**
- * Prüft, ob ein Gerät im angegebenen Zeitraum bereits in einem anderen
- * aktiven Job (Anfrage/Bestätigt/Läuft) verplant ist.
+ * Prüft, ob ein Gerät im angegebenen Zeitraum bereits (teilweise) über andere
+ * aktive Jobs (Anfrage/Bestätigt/Läuft) verplant ist — inkl. jeweiliger Menge.
+ * Bei Mengen-Geräten (stock_quantity > 1) entscheidet erst der Aufrufer anhand
+ * von stock_quantity, ob die Summe tatsächlich einen Konflikt darstellt
+ * (Summe fremder Buchungen + eigene gewünschte Menge > stock_quantity).
  */
 export function useDeviceAvailability(
   deviceId: string | undefined,
@@ -356,7 +513,7 @@ export function useDeviceAvailability(
     queryFn: async () => {
       let query = supabase
         .from("packlist_items")
-        .select("job_id, jobs!inner(id, title, status, start_date, end_date)")
+        .select("job_id, quantity, jobs!inner(id, title, status, start_date, end_date)")
         .eq("device_id", deviceId)
         .in("jobs.status", ["anfrage", "bestaetigt", "laeuft"])
         .lt("jobs.start_date", endDate)
@@ -368,7 +525,11 @@ export function useDeviceAvailability(
 
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+      return data as unknown as {
+        job_id: string;
+        quantity: number;
+        jobs: { id: string; title: string; start_date: string; end_date: string };
+      }[];
     },
   });
 }

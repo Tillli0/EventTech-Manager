@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, Printer, Trash2, Pencil, Check } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { DeviceStatusBadge } from "@/components/ui/StatusBadge";
 import { LoadingState, ErrorState } from "@/components/ui/States";
-import { useDevice, useUpdateDeviceStatus, useDeleteDevice } from "@/hooks/useDevices";
+import { useDevice, useUpdateDevice, useUpdateDeviceStatus, useDeleteDevice } from "@/hooks/useDevices";
 import { DEVICE_STATUS_OPTIONS, type DeviceStatus } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { BarcodeLabel, printBarcodeLabels } from "@/components/barcode/BarcodeLabel";
@@ -16,7 +18,10 @@ export function DeviceDetailPage() {
   const navigate = useNavigate();
   const { data: device, isLoading, error } = useDevice(id);
   const updateStatus = useUpdateDeviceStatus();
+  const updateDevice = useUpdateDevice();
   const deleteDevice = useDeleteDevice();
+  const [editingStock, setEditingStock] = useState(false);
+  const [stockInput, setStockInput] = useState("1");
 
   if (isLoading) return <LoadingState label="Gerät wird geladen …" />;
   if (error) return <ErrorState message={error.message} />;
@@ -67,6 +72,13 @@ export function DeviceDetailPage() {
               <h2 className="text-sm font-semibold text-ink">Status</h2>
             </CardHeader>
             <CardBody>
+              {device.stock_quantity > 1 && (
+                <p className="mb-3 text-xs text-ink-muted">
+                  Mengen-Gerät ({device.stock_quantity} Stück) — der Status hier ist nur ein grober Hinweis
+                  (z.B. „defekt“ für den ganzen Posten). Welche Menge gerade ausgeliehen ist, ergibt sich aus
+                  den aktiven Jobs, nicht aus diesem Schalter.
+                </p>
+              )}
               <div className="flex flex-wrap gap-2">
                 {DEVICE_STATUS_OPTIONS.map((opt) => (
                   <button
@@ -91,6 +103,43 @@ export function DeviceDetailPage() {
               <h2 className="text-sm font-semibold text-ink">Stammdaten</h2>
             </CardHeader>
             <CardBody className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-ink-faint">Stückzahl</p>
+                {editingStock ? (
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={stockInput}
+                      onChange={(e) => setStockInput(e.target.value)}
+                      className="h-8 w-20"
+                      autoFocus
+                    />
+                    <button
+                      onClick={async () => {
+                        const parsed = Math.max(1, parseInt(stockInput, 10) || 1);
+                        await updateDevice.mutateAsync({ id: device.id, stock_quantity: parsed });
+                        setEditingStock(false);
+                      }}
+                      className="rounded p-1 text-accent hover:bg-accent-soft"
+                    >
+                      <Check size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setStockInput(String(device.stock_quantity));
+                      setEditingStock(true);
+                    }}
+                    className="mt-0.5 flex items-center gap-1.5 text-ink hover:text-accent"
+                  >
+                    {device.stock_quantity}
+                    {device.stock_quantity > 1 && " Stück"}
+                    <Pencil size={11} className="text-ink-faint" />
+                  </button>
+                )}
+              </div>
               <DataField label="Seriennummer" value={device.serial_number} mono />
               <DataField label="Lagerort" value={device.location} />
               <DataField label="Kategorie" value={device.category?.name} />

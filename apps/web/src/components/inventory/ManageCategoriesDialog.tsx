@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Input, FormField } from "@/components/ui/Input";
-import { useCategories, useCreateCategory, useDeleteCategory } from "@/hooks/useDevices";
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@/hooks/useDevices";
+import type { Category } from "@/types/database";
 
 const PRESET_COLORS = [
   "#6366f1", "#0ea5e9", "#10b981", "#f59e0b",
@@ -18,6 +19,7 @@ export function ManageCategoriesDialog({ open, onClose }: { open: boolean; onClo
 
   const [name, setName] = useState("");
   const [color, setColor] = useState(PRESET_COLORS[0]);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   async function handleCreate() {
     if (!name.trim()) return;
@@ -79,25 +81,36 @@ export function ManageCategoriesDialog({ open, onClose }: { open: boolean; onClo
           <div>
             <p className="mb-2 text-sm font-medium text-ink">Bestehende Kategorien</p>
             <div className="space-y-1.5">
-              {rootCategories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className="flex items-center gap-3 rounded-md border border-border px-3 py-2"
-                >
-                  <span
-                    className="h-3 w-3 shrink-0 rounded-full"
-                    style={{ backgroundColor: cat.color ?? "#6366f1" }}
-                  />
-                  <span className="flex-1 text-sm text-ink">{cat.name}</span>
-                  <button
-                    onClick={() => handleDelete(cat.id, cat.name)}
-                    className="text-ink-faint transition-colors hover:text-status-defekt"
-                    title="Löschen"
+              {rootCategories.map((cat) =>
+                editingId === cat.id ? (
+                  <EditCategoryRow key={cat.id} category={cat} onDone={() => setEditingId(null)} />
+                ) : (
+                  <div
+                    key={cat.id}
+                    className="flex items-center gap-3 rounded-md border border-border px-3 py-2"
                   >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: cat.color ?? "#6366f1" }}
+                    />
+                    <span className="flex-1 text-sm text-ink">{cat.name}</span>
+                    <button
+                      onClick={() => setEditingId(cat.id)}
+                      className="text-ink-faint transition-colors hover:text-accent"
+                      title="Bearbeiten"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(cat.id, cat.name)}
+                      className="text-ink-faint transition-colors hover:text-status-defekt"
+                      title="Löschen"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ),
+              )}
             </div>
           </div>
         )}
@@ -111,5 +124,53 @@ export function ManageCategoriesDialog({ open, onClose }: { open: boolean; onClo
         </div>
       </div>
     </Dialog>
+  );
+}
+
+function EditCategoryRow({ category, onDone }: { category: Category; onDone: () => void }) {
+  const updateCategory = useUpdateCategory();
+  const [name, setName] = useState(category.name);
+  const [color, setColor] = useState(category.color ?? PRESET_COLORS[0]);
+
+  async function handleSave() {
+    if (!name.trim()) return;
+    await updateCategory.mutateAsync({ id: category.id, name: name.trim(), color });
+    onDone();
+  }
+
+  return (
+    <div className="space-y-2.5 rounded-md border border-accent bg-accent-soft px-3 py-2.5">
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSave()}
+        autoFocus
+      />
+      <div className="flex flex-wrap gap-2">
+        {PRESET_COLORS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setColor(c)}
+            className="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
+            style={{
+              backgroundColor: c,
+              borderColor: color === c ? "white" : "transparent",
+              boxShadow: color === c ? `0 0 0 2px ${c}` : undefined,
+            }}
+          />
+        ))}
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="ghost" onClick={onDone}>
+          <X size={13} />
+          Abbrechen
+        </Button>
+        <Button size="sm" onClick={handleSave} disabled={!name.trim() || updateCategory.isPending}>
+          <Check size={13} />
+          Speichern
+        </Button>
+      </div>
+    </div>
   );
 }

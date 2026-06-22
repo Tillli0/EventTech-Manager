@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Tag, Settings2 } from "lucide-react";
+import { Plus, Search, Tag, Settings2, Boxes } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
@@ -12,6 +12,7 @@ import { DEVICE_STATUS_OPTIONS, type DeviceStatus } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 import { CreateDeviceDialog } from "@/components/inventory/CreateDeviceDialog";
 import { ManageCategoriesDialog } from "@/components/inventory/ManageCategoriesDialog";
+import { ManageSetsDialog } from "@/components/inventory/ManageSetsDialog";
 
 export function InventoryPage() {
   const { data: devices, isLoading, error } = useDevices();
@@ -21,6 +22,7 @@ export function InventoryPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
   const [createOpen, setCreateOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [setsOpen, setSetsOpen] = useState(false);
 
   const filteredDevices = useMemo(() => {
     if (!devices) return [];
@@ -57,6 +59,10 @@ export function InventoryPage() {
             <Button variant="secondary" onClick={() => setCategoriesOpen(true)}>
               <Settings2 size={16} />
               Kategorien
+            </Button>
+            <Button variant="secondary" onClick={() => setSetsOpen(true)}>
+              <Boxes size={16} />
+              Sets
             </Button>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus size={16} />
@@ -140,6 +146,7 @@ export function InventoryPage() {
                 <th className="px-4 py-3 font-medium">Gerät</th>
                 <th className="hidden px-4 py-3 font-medium sm:table-cell">Barcode</th>
                 <th className="hidden px-4 py-3 font-medium md:table-cell">Lagerort</th>
+                <th className="hidden px-4 py-3 text-right font-medium sm:table-cell">Bestand</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Wiederbeschaffungswert</th>
               </tr>
@@ -159,6 +166,13 @@ export function InventoryPage() {
                     {device.barcodes?.[0]?.code ?? "—"}
                   </td>
                   <td className="hidden px-4 py-3 text-ink-muted md:table-cell">{device.location ?? "—"}</td>
+                  <td className="hidden px-4 py-3 text-right sm:table-cell">
+                    {device.stock_quantity > 1 ? (
+                      <span className="font-mono text-xs font-medium text-accent">{device.stock_quantity}×</span>
+                    ) : (
+                      <span className="text-ink-faint">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <DeviceStatusBadge status={device.status} />
                   </td>
@@ -174,6 +188,7 @@ export function InventoryPage() {
 
       <CreateDeviceDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <ManageCategoriesDialog open={categoriesOpen} onClose={() => setCategoriesOpen(false)} />
+      <ManageSetsDialog open={setsOpen} onClose={() => setSetsOpen(false)} />
     </div>
   );
 }

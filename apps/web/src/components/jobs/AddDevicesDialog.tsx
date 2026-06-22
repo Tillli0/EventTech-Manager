@@ -5,11 +5,10 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { LoadingState, ErrorState } from "@/components/ui/States";
 import { useDevices } from "@/hooks/useDevices";
-import { useAddPacklistItems, useDevicesAvailabilityMap } from "@/hooks/useJobs";
+import { useAddPacklistItems, useDevicesAvailabilityMap, sumBookedQuantity } from "@/hooks/useJobs";
 import { DEVICE_STATUS_OPTIONS } from "@/types/database";
 import type { Device, DeviceStatus } from "@/types/database";
 import { cn } from "@/lib/cn";
-import { formatDate } from "@/lib/format";
 
 export function AddDevicesDialog({
   open,
@@ -24,7 +23,7 @@ export function AddDevicesDialog({
   jobId: string;
   jobStartDate: string;
   jobEndDate: string;
-  /** Geräte, die schon auf der Packliste stehen — werden ausgeblendet. */
+  /** Geräte, die schon (noch nicht ausgegeben) auf der Packliste stehen — werden ausgeblendet. */
   excludeDeviceIds: string[];
 }) {
   const { data: devices, isLoading, error } = useDevices();
@@ -34,7 +33,7 @@ export function AddDevicesDialog({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | "">("");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Map<string, number>>(new Map());
 
   const excludeSet = useMemo(() => new Set(excludeDeviceIds), [excludeDeviceIds]);
 
@@ -64,23 +63,34 @@ export function AddDevicesDialog({
 
   function toggle(deviceId: string) {
     setSelected((prev) => {
-      const next = new Set(prev);
+      const next = new Map(prev);
       if (next.has(deviceId)) next.delete(deviceId);
-      else next.add(deviceId);
+      else next.set(deviceId, 1);
+      return next;
+    });
+  }
+
+  function setQuantity(deviceId: string, quantity: number) {
+    setSelected((prev) => {
+      const next = new Map(prev);
+      next.set(deviceId, Math.max(1, quantity));
       return next;
     });
   }
 
   async function handleAdd() {
     if (selected.size === 0) return;
-    await addItems.mutateAsync({ jobId, deviceIds: Array.from(selected) });
-    setSelected(new Set());
+    await addItems.mutateAsync({
+      jobId,
+      items: Array.from(selected.entries()).map(([deviceId, quantity]) => ({ deviceId, quantity })),
+    });
+    setSelected(new Map());
     setSearch("");
     onClose();
   }
 
   function handleClose() {
-    setSelected(new Set());
+    setSelected(new Map());
     setSearch("");
     onClose();
   }
@@ -137,8 +147,10 @@ export function AddDevicesDialog({
                 key={device.id}
                 device={device}
                 isSelected={selected.has(device.id)}
+                quantity={selected.get(device.id) ?? 1}
                 onToggle={() => toggle(device.id)}
-                conflicts={conflictMap?.get(device.id)}
+                onQuantityChange={(q) => setQuantity(device.id, q)}
+                otherQuantity={sumBookedQuantity(conflictMap?.get(device.id))}
               />
             ))}
           </div>
@@ -165,37 +177,47 @@ export function AddDevicesDialog({
 function DeviceRow({
   device,
   isSelected,
+  quantity,
   onToggle,
-  conflicts,
+  onQuantityChange,
+  otherQuantity,
 }: {
   device: Device;
   isSelected: boolean;
+  quantity: number;
   onToggle: () => void;
-  conflicts: { id: string; title: string; start_date: string; end_date: string }[] | undefined;
+  onQuantityChange: (quantity: number) => void;
+  otherQuantity: number;
 }) {
-  const hasConflict = !!conflicts && conflicts.length > 0;
+  const isQuantityDevice = device.stock_quantity > 1;
+  const hasConflict = otherQuantity + quantity > device.stock_quantity;
 
   return (
-    <button
-      type="button"
-      onClick={onToggle}
+    <div
       className={cn(
         "flex w-full items-start gap-3 rounded-md border px-3 py-2.5 text-left transition-colors",
         isSelected ? "border-accent bg-accent-soft" : "border-border bg-bg-raised hover:border-accent/40",
       )}
     >
-      <div
+      <button
+        type="button"
+        onClick={onToggle}
         className={cn(
           "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
           isSelected ? "border-accent bg-accent" : "border-border",
         )}
       >
         {isSelected && <Check size={13} className="text-white" strokeWidth={3} />}
-      </div>
+      </button>
 
-      <div className="min-w-0 flex-1">
+      <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left">
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-sm font-medium text-ink">{device.name}</p>
+          <p className="truncate text-sm font-medium text-ink">
+            {device.name}
+            {isQuantityDevice && (
+              <span className="ml-1.5 font-mono text-xs text-ink-faint">({device.stock_quantity} im Bestand)</span>
+            )}
+          </p>
           <span className="shrink-0 text-xs text-ink-faint">{device.category?.name}</span>
         </div>
         <p className="truncate text-xs text-ink-muted">
@@ -204,15 +226,30 @@ function DeviceRow({
             <span className="ml-2 font-mono text-ink-faint">{device.barcodes[0].code}</span>
           )}
         </p>
-        {hasConflict && (
-          <p className="mt-1 flex items-center gap-1.5 text-xs text-status-wartung">
+        {otherQuantity > 0 && (
+          <p
+            className={cn(
+              "mt-1 flex items-center gap-1.5 text-xs",
+              hasConflict ? "text-status-defekt" : "text-ink-faint",
+            )}
+          >
             <AlertTriangle size={12} />
-            Bereits verplant für „{conflicts[0].title}" ({formatDate(conflicts[0].start_date)} –{" "}
-            {formatDate(conflicts[0].end_date)})
-            {conflicts.length > 1 && ` · +${conflicts.length - 1} weitere`}
+            {otherQuantity}× bereits in anderen Jobs im Zeitraum verplant
+            {hasConflict && ` — reicht nicht für ${quantity}× zusätzlich (Bestand: ${device.stock_quantity})`}
           </p>
         )}
-      </div>
-    </button>
+      </button>
+
+      {isSelected && isQuantityDevice && (
+        <Input
+          type="number"
+          min={1}
+          value={quantity}
+          onChange={(e) => onQuantityChange(parseInt(e.target.value, 10) || 1)}
+          onClick={(e) => e.stopPropagation()}
+          className="w-20 shrink-0"
+        />
+      )}
+    </div>
   );
 }

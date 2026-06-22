@@ -100,6 +100,29 @@ export function useCreateCategory() {
   });
 }
 
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name, color }: { id: string; name?: string; color?: string | null }) => {
+      const fields: Record<string, unknown> = {};
+      if (name !== undefined) fields.name = name;
+      if (color !== undefined) fields.color = color;
+      const { data, error } = await supabase
+        .from("categories")
+        .update(fields)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.invalidateQueries({ queryKey: DEVICES_KEY });
+    },
+  });
+}
+
 export function useDeleteCategory() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -125,6 +148,8 @@ interface CreateDeviceInput {
   power_watts?: number | null;
   notes?: string | null;
   barcode: string;
+  /** Gesamtbestand. Default 1 (Einzelstück). >1 = Mengen-Gerät, z.B. 20 Kabel. */
+  stock_quantity?: number;
 }
 
 export function useCreateDevice() {
