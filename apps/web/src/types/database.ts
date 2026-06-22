@@ -53,11 +53,14 @@ export interface Device {
   power_watts: number | null;
   /** Gesamtbestand. 1 = Einzelstück (Normalfall), >1 = Mengen-Gerät (z.B. 20 Kabel unter einem Barcode). */
   stock_quantity: number;
+  /** Netto-Tagesmietpreis in EUR. Vorbelegung für Angebotspositionen. Null = nicht gepflegt. */
+  daily_rental_price: number | null;
   created_at: string;
   updated_at: string;
   // Joins (optional, je nach Query)
   category?: Category | null;
   barcodes?: Barcode[];
+  device_photos?: DevicePhoto[];
 }
 
 /** Ist dieses Gerät ein Mengen-Gerät (Stückzahl > 1)? */
@@ -124,8 +127,21 @@ export interface Customer {
   address_country: string | null;
   source: CustomerSource;
   notes: string | null;
+  /** Stammkunden-Override: null = automatisch (>=2 Jobs), true = immer, false = nie. */
+  is_stammkunde: boolean | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Gilt der Kunde als Stammkunde? Manueller Override (is_stammkunde true/false) hat
+ * Vorrang; ohne Override automatisch ab 2 nicht-stornierten Jobs.
+ */
+export function isStammkunde(
+  customer: Pick<Customer, "is_stammkunde">,
+  jobCount: number,
+): boolean {
+  return customer.is_stammkunde ?? jobCount >= 2;
 }
 
 export interface CustomerInquiry {
@@ -254,6 +270,57 @@ export interface Task {
 }
 
 // ============================================================
+// Angebote
+// ============================================================
+
+export type OfferStatus = "entwurf" | "gesendet" | "angenommen" | "abgelehnt";
+
+export interface Offer {
+  id: string;
+  offer_number: string;
+  customer_id: string | null;
+  inquiry_id: string | null;
+  title: string;
+  status: OfferStatus;
+  event_date: string | null;
+  valid_until: string | null;
+  tax_rate: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joins (optional, je nach Query)
+  customer?: Customer | null;
+  items?: OfferItem[];
+}
+
+export interface OfferItem {
+  id: string;
+  offer_id: string;
+  device_id: string | null;
+  description: string;
+  quantity: number;
+  rental_days: number;
+  unit_price: number;
+  sort_order: number;
+  created_at: string;
+}
+
+/** Positionssumme (netto) = Einzelpreis · Menge · Miettage. */
+export function offerItemTotal(item: Pick<OfferItem, "quantity" | "rental_days" | "unit_price">): number {
+  return item.unit_price * item.quantity * item.rental_days;
+}
+
+/** Netto-/MwSt-/Brutto-Summen eines Angebots aus seinen Positionen + Steuersatz. */
+export function offerTotals(
+  items: Pick<OfferItem, "quantity" | "rental_days" | "unit_price">[],
+  taxRate: number,
+): { net: number; tax: number; gross: number } {
+  const net = items.reduce((sum, item) => sum + offerItemTotal(item), 0);
+  const tax = net * (taxRate / 100);
+  return { net, tax, gross: net + tax };
+}
+
+// ============================================================
 // UI-Hilfstypen
 // ============================================================
 
@@ -285,6 +352,13 @@ export const INQUIRY_PIPELINE_OPTIONS: StatusOption<InquiryPipelineStatus>[] = [
   { value: "angebot_gesendet", label: "Angebot gesendet", colorVar: "status-wartung" },
   { value: "gewonnen", label: "Gewonnen", colorVar: "status-verfuegbar" },
   { value: "verloren", label: "Verloren", colorVar: "status-defekt" },
+];
+
+export const OFFER_STATUS_OPTIONS: StatusOption<OfferStatus>[] = [
+  { value: "entwurf", label: "Entwurf", colorVar: "ink-muted" },
+  { value: "gesendet", label: "Gesendet", colorVar: "status-wartung" },
+  { value: "angenommen", label: "Angenommen", colorVar: "status-verfuegbar" },
+  { value: "abgelehnt", label: "Abgelehnt", colorVar: "status-defekt" },
 ];
 
 export const TASK_STATUS_OPTIONS: StatusOption<TaskStatus>[] = [

@@ -1,18 +1,19 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Tag, Settings2, Boxes } from "lucide-react";
+import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { DeviceStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
-import { useDevices, useCategories } from "@/hooks/useDevices";
-import { DEVICE_STATUS_OPTIONS, type DeviceStatus } from "@/types/database";
+import { useDevices, useCategories, devicePhotoUrl } from "@/hooks/useDevices";
+import { DEVICE_STATUS_OPTIONS, type DeviceStatus, type Device } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 import { CreateDeviceDialog } from "@/components/inventory/CreateDeviceDialog";
 import { ManageCategoriesDialog } from "@/components/inventory/ManageCategoriesDialog";
 import { ManageSetsDialog } from "@/components/inventory/ManageSetsDialog";
+import { exportToCsv } from "@/lib/csv";
 
 export function InventoryPage() {
   const { data: devices, isLoading, error } = useDevices();
@@ -41,6 +42,26 @@ export function InventoryPage() {
     });
   }, [devices, search, statusFilter, categoryFilter]);
 
+  function handleExport() {
+    const statusLabel = (s: DeviceStatus) =>
+      DEVICE_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
+    exportToCsv(
+      `inventar-${new Date().toISOString().slice(0, 10)}`,
+      [
+        { label: "Name", value: (d: Device) => d.name },
+        { label: "Hersteller", value: (d: Device) => d.manufacturer },
+        { label: "Modell", value: (d: Device) => d.model },
+        { label: "Barcode", value: (d: Device) => d.barcodes?.[0]?.code ?? "" },
+        { label: "Lagerort", value: (d: Device) => d.location },
+        { label: "Bestand", value: (d: Device) => d.stock_quantity },
+        { label: "Status", value: (d: Device) => statusLabel(d.status) },
+        { label: "Tagesmietpreis", value: (d: Device) => d.daily_rental_price ?? "" },
+        { label: "Wiederbeschaffungswert", value: (d: Device) => d.replacement_value ?? "" },
+      ],
+      filteredDevices,
+    );
+  }
+
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     devices?.forEach((d) => {
@@ -56,6 +77,10 @@ export function InventoryPage() {
         description={devices ? `${devices.length} Geräte im Bestand` : undefined}
         actions={
           <>
+            <Button variant="secondary" onClick={handleExport} disabled={filteredDevices.length === 0}>
+              <Download size={16} />
+              CSV
+            </Button>
             <Button variant="secondary" onClick={() => setCategoriesOpen(true)}>
               <Settings2 size={16} />
               Kategorien
@@ -155,11 +180,14 @@ export function InventoryPage() {
               {filteredDevices.map((device) => (
                 <tr key={device.id} className="border-b border-border last:border-0 hover:bg-bg-raised">
                   <td className="px-4 py-3">
-                    <Link to={`/inventar/${device.id}`} className="block">
-                      <p className="font-medium text-ink">{device.name}</p>
-                      <p className="text-xs text-ink-muted">
-                        {[device.manufacturer, device.model].filter(Boolean).join(" · ") || "—"}
-                      </p>
+                    <Link to={`/inventar/${device.id}`} className="flex items-center gap-3">
+                      <DeviceThumbnail device={device} />
+                      <span className="block">
+                        <span className="block font-medium text-ink">{device.name}</span>
+                        <span className="block text-xs text-ink-muted">
+                          {[device.manufacturer, device.model].filter(Boolean).join(" · ") || "—"}
+                        </span>
+                      </span>
                     </Link>
                   </td>
                   <td className="hidden px-4 py-3 font-mono text-xs text-ink-muted sm:table-cell">
@@ -190,5 +218,23 @@ export function InventoryPage() {
       <ManageCategoriesDialog open={categoriesOpen} onClose={() => setCategoriesOpen(false)} />
       <ManageSetsDialog open={setsOpen} onClose={() => setSetsOpen(false)} />
     </div>
+  );
+}
+
+function DeviceThumbnail({ device }: { device: Device }) {
+  const cover = device.device_photos?.find((p) => p.is_cover) ?? device.device_photos?.[0];
+  if (!cover) {
+    return (
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-bg-raised text-ink-faint">
+        <ImageIcon size={16} />
+      </span>
+    );
+  }
+  return (
+    <img
+      src={devicePhotoUrl(cover.storage_path)}
+      alt=""
+      className="h-10 w-10 shrink-0 rounded-md border border-border object-cover"
+    />
   );
 }

@@ -1,13 +1,23 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Printer, Trash2, Pencil, Check } from "lucide-react";
+import { ArrowLeft, Printer, Trash2, Pencil, Check, ImagePlus, Star, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { DeviceStatusBadge } from "@/components/ui/StatusBadge";
 import { LoadingState, ErrorState } from "@/components/ui/States";
-import { useDevice, useUpdateDevice, useUpdateDeviceStatus, useDeleteDevice } from "@/hooks/useDevices";
+import {
+  useDevice,
+  useUpdateDevice,
+  useUpdateDeviceStatus,
+  useDeleteDevice,
+  useDevicePhotos,
+  useUploadDevicePhoto,
+  useDeleteDevicePhoto,
+  useSetCoverPhoto,
+  devicePhotoUrl,
+} from "@/hooks/useDevices";
 import { DEVICE_STATUS_OPTIONS, type DeviceStatus } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { BarcodeLabel, printBarcodeLabels } from "@/components/barcode/BarcodeLabel";
@@ -22,6 +32,8 @@ export function DeviceDetailPage() {
   const deleteDevice = useDeleteDevice();
   const [editingStock, setEditingStock] = useState(false);
   const [stockInput, setStockInput] = useState("1");
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceInput, setPriceInput] = useState("");
 
   if (isLoading) return <LoadingState label="Gerät wird geladen …" />;
   if (error) return <ErrorState message={error.message} />;
@@ -140,6 +152,44 @@ export function DeviceDetailPage() {
                   </button>
                 )}
               </div>
+              <div>
+                <p className="text-xs text-ink-faint">Tagesmietpreis</p>
+                {editingPrice ? (
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={priceInput}
+                      onChange={(e) => setPriceInput(e.target.value)}
+                      className="h-8 w-24"
+                      autoFocus
+                    />
+                    <button
+                      onClick={async () => {
+                        const raw = priceInput.trim().replace(",", ".");
+                        const parsed = raw === "" ? null : Math.max(0, parseFloat(raw) || 0);
+                        await updateDevice.mutateAsync({ id: device.id, daily_rental_price: parsed });
+                        setEditingPrice(false);
+                      }}
+                      className="rounded p-1 text-accent hover:bg-accent-soft"
+                    >
+                      <Check size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setPriceInput(device.daily_rental_price != null ? String(device.daily_rental_price) : "");
+                      setEditingPrice(true);
+                    }}
+                    className="mt-0.5 flex items-center gap-1.5 text-ink hover:text-accent"
+                  >
+                    {formatCurrency(device.daily_rental_price)}
+                    <Pencil size={11} className="text-ink-faint" />
+                  </button>
+                )}
+              </div>
               <DataField label="Seriennummer" value={device.serial_number} mono />
               <DataField label="Lagerort" value={device.location} />
               <DataField label="Kategorie" value={device.category?.name} />
@@ -164,6 +214,8 @@ export function DeviceDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <DevicePhotosCard deviceId={device.id} />
+
           <Card>
             <CardHeader>
               <h2 className="text-sm font-semibold text-ink">Aktueller Status</h2>
@@ -196,5 +248,114 @@ function DataField({ label, value, mono }: { label: string; value: string | null
       <p className="text-xs text-ink-faint">{label}</p>
       <p className={cn("mt-0.5 text-ink", mono && "font-mono text-sm")}>{value || "—"}</p>
     </div>
+  );
+}
+
+function DevicePhotosCard({ deviceId }: { deviceId: string }) {
+  const { data: photos, isLoading } = useDevicePhotos(deviceId);
+  const uploadPhoto = useUploadDevicePhoto();
+  const deletePhoto = useDeleteDevicePhoto();
+  const setCover = useSetCoverPhoto();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cover zuerst anzeigen, danach nach sort_order.
+  const sorted = [...(photos ?? [])].sort((a, b) => {
+    if (a.is_cover !== b.is_cover) return a.is_cover ? -1 : 1;
+    return a.sort_order - b.sort_order;
+  });
+
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    for (const file of files) {
+      await uploadPhoto.mutateAsync({ deviceId, file });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  const isBusy = uploadPhoto.isPending || deletePhoto.isPending || setCover.isPending;
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-ink">Fotos</h2>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isBusy}
+          className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline disabled:opacity-50"
+        >
+          <ImagePlus size={14} />
+          Hinzufügen
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleFiles}
+        />
+      </CardHeader>
+      <CardBody>
+        {isLoading ? (
+          <p className="text-sm text-ink-faint">Wird geladen …</p>
+        ) : sorted.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-28 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border text-ink-faint transition-colors hover:border-accent hover:text-accent"
+          >
+            <ImagePlus size={22} />
+            <span className="text-xs">Erstes Bild hinzufügen</span>
+          </button>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {sorted.map((photo) => (
+              <div key={photo.id} className="group relative">
+                <img
+                  src={devicePhotoUrl(photo.storage_path)}
+                  alt="Gerätefoto"
+                  className={cn(
+                    "aspect-square w-full rounded-lg object-cover",
+                    photo.is_cover ? "ring-2 ring-accent" : "border border-border",
+                  )}
+                />
+                {photo.is_cover && (
+                  <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    <Star size={9} className="fill-current" />
+                    Cover
+                  </span>
+                )}
+                <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  {!photo.is_cover && (
+                    <button
+                      type="button"
+                      title="Als Cover festlegen"
+                      disabled={isBusy}
+                      onClick={() => setCover.mutate({ id: photo.id, deviceId })}
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-bg-surface/90 text-ink-muted shadow hover:text-accent"
+                    >
+                      <Star size={12} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    title="Foto löschen"
+                    disabled={isBusy}
+                    onClick={() => {
+                      if (!confirm("Foto wirklich löschen?")) return;
+                      deletePhoto.mutate({ id: photo.id, storagePath: photo.storage_path, deviceId });
+                    }}
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-bg-surface/90 text-ink-muted shadow hover:text-status-defekt"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardBody>
+    </Card>
   );
 }

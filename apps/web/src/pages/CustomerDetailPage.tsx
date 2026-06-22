@@ -1,27 +1,59 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, MapPin, Send } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Send, Plus, Download, FileText } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
 import { LoadingState, ErrorState } from "@/components/ui/States";
-import { useCustomer, useCustomerNotes, useCustomerJobs, useAddCustomerNote } from "@/hooks/useCustomers";
-import { CUSTOMER_SOURCE_LABELS } from "@/types/database";
-import { formatDate, formatDateTime } from "@/lib/format";
-import { JobStatusBadge } from "@/components/ui/StatusBadge";
+import {
+  useCustomer,
+  useCustomerNotes,
+  useCustomerJobs,
+  useAddCustomerNote,
+  useCustomerJobCounts,
+  useUpdateCustomer,
+} from "@/hooks/useCustomers";
+import { useOffersForCustomer, fetchOfferWithItems } from "@/hooks/useOffers";
+import { CUSTOMER_SOURCE_LABELS, isStammkunde, offerTotals } from "@/types/database";
+import { formatDate, formatDateTime, formatCurrency } from "@/lib/format";
+import { JobStatusBadge, OfferStatusBadge, StammkundeBadge } from "@/components/ui/StatusBadge";
+import { downloadOfferPdf } from "@/components/offers/OfferPdfDocument";
+import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
+import { cn } from "@/lib/cn";
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: customer, isLoading, error } = useCustomer(id);
   const { data: notes } = useCustomerNotes(id);
   const { data: jobs } = useCustomerJobs(id);
+  const { data: jobCounts } = useCustomerJobCounts();
+  const { data: offers } = useOffersForCustomer(id);
   const addNote = useAddCustomerNote();
+  const updateCustomer = useUpdateCustomer();
   const [noteContent, setNoteContent] = useState("");
+  const [createOfferOpen, setCreateOfferOpen] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   if (isLoading) return <LoadingState label="Kunde wird geladen …" />;
   if (error) return <ErrorState message={error.message} />;
   if (!customer) return <ErrorState message="Kunde nicht gefunden." />;
+
+  const jobCount = (id && jobCounts?.get(id)) || 0;
+  const stammkunde = isStammkunde(customer, jobCount);
+
+  async function handleDownloadOffer(offerId: string) {
+    setDownloadingId(offerId);
+    try {
+      const offer = await fetchOfferWithItems(offerId);
+      await downloadOfferPdf(offer);
+    } catch (err) {
+      console.error("PDF konnte nicht erzeugt werden:", err);
+      alert("Das PDF konnte nicht erzeugt werden.");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   const displayName =
     customer.company_name || [customer.first_name, customer.last_name].filter(Boolean).join(" ");
@@ -44,7 +76,15 @@ export function CustomerDetailPage() {
         Zurück zu Kunden
       </Link>
 
-      <PageHeader title={displayName} description={subName} />
+      <PageHeader
+        title={displayName}
+        description={
+          <span className="flex flex-wrap items-center gap-2">
+            {subName && <span>{subName}</span>}
+            {stammkunde && <StammkundeBadge />}
+          </span>
+        }
+      />
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="space-y-6 md:col-span-2">
@@ -107,6 +147,55 @@ export function CustomerDetailPage() {
               )}
             </CardBody>
           </Card>
+
+          <Card>
+            <CardHeader className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink">Angebote</h2>
+              <Button size="sm" variant="secondary" onClick={() => setCreateOfferOpen(true)}>
+                <Plus size={14} />
+                Neues Angebot
+              </Button>
+            </CardHeader>
+            <CardBody>
+              {offers && offers.length > 0 ? (
+                <div className="space-y-2">
+                  {offers.map((offer) => {
+                    const { gross } = offerTotals(offer.items ?? [], offer.tax_rate);
+                    return (
+                      <div
+                        key={offer.id}
+                        className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-ink">{offer.title}</p>
+                          <p className="font-mono text-xs text-ink-muted">
+                            {offer.offer_number} · {formatCurrency(gross)}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <OfferStatusBadge status={offer.status} />
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleDownloadOffer(offer.id)}
+                            disabled={downloadingId === offer.id}
+                          >
+                            <Download size={14} />
+                            {downloadingId === offer.id ? "…" : "PDF"}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-ink-faint">
+                  <FileText size={14} />
+                  Noch keine Angebote für diesen Kunden.
+                </p>
+              )}
+            </CardBody>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -145,10 +234,50 @@ export function CustomerDetailPage() {
                 <p className="text-xs text-ink-faint">Herkunft</p>
                 <p className="mt-0.5 text-ink">{CUSTOMER_SOURCE_LABELS[customer.source]}</p>
               </div>
+              <div className="border-t border-border pt-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-ink-faint">Stammkunde</p>
+                  {stammkunde && <StammkundeBadge />}
+                </div>
+                <div className="mt-2 flex gap-1 rounded-md bg-bg-raised p-1">
+                  {(
+                    [
+                      { value: null, label: "Automatisch" },
+                      { value: true, label: "Immer" },
+                      { value: false, label: "Nie" },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => updateCustomer.mutate({ id: customer.id, is_stammkunde: opt.value })}
+                      className={cn(
+                        "flex-1 rounded px-2 py-1 text-xs font-medium transition-colors",
+                        customer.is_stammkunde === opt.value
+                          ? "bg-bg-surface text-ink shadow-sm"
+                          : "text-ink-muted hover:text-ink",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {customer.is_stammkunde === null && (
+                  <p className="mt-1.5 text-xs text-ink-faint">
+                    Automatisch ab 2 nicht-stornierten Jobs ({jobCount} vorhanden).
+                  </p>
+                )}
+              </div>
             </CardBody>
           </Card>
         </div>
       </div>
+
+      <CreateOfferDialog
+        open={createOfferOpen}
+        onClose={() => setCreateOfferOpen(false)}
+        presetCustomerId={customer.id}
+      />
     </div>
   );
 }

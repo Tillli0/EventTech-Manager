@@ -49,6 +49,26 @@ export function useCustomerNotes(customerId: string | undefined) {
   });
 }
 
+/**
+ * Liefert die Anzahl nicht-stornierter Jobs je Kunde als Map (customerId -> Anzahl).
+ * Basis für die automatische Stammkunden-Erkennung (siehe isStammkunde / View
+ * customer_job_counts). Eine Query für alle Kunden statt pro Kunde einzeln.
+ */
+export function useCustomerJobCounts() {
+  return useQuery({
+    queryKey: ["customer-job-counts"],
+    queryFn: async (): Promise<Map<string, number>> => {
+      const { data, error } = await supabase.from("customer_job_counts").select("customer_id, job_count");
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const row of (data ?? []) as { customer_id: string; job_count: number }[]) {
+        map.set(row.customer_id, row.job_count);
+      }
+      return map;
+    },
+  });
+}
+
 export function useCustomerJobs(customerId: string | undefined) {
   return useQuery({
     queryKey: ["customer-jobs", customerId],

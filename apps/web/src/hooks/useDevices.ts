@@ -10,7 +10,7 @@ export function useDevices() {
     queryFn: async (): Promise<Device[]> => {
       const { data, error } = await supabase
         .from("devices")
-        .select("*, category:categories(*), barcodes(*)")
+        .select("*, category:categories(*), barcodes(*), device_photos(*)")
         .order("name", { ascending: true });
 
       if (error) throw error;
@@ -27,7 +27,7 @@ export function useDevice(id: string | undefined) {
       if (!id) return null;
       const { data, error } = await supabase
         .from("devices")
-        .select("*, category:categories(*), barcodes(*)")
+        .select("*, category:categories(*), barcodes(*), device_photos(*)")
         .eq("id", id)
         .single();
 
@@ -146,17 +146,29 @@ interface CreateDeviceInput {
   replacement_value?: number | null;
   weight_kg?: number | null;
   power_watts?: number | null;
+  daily_rental_price?: number | null;
   notes?: string | null;
   barcode: string;
+  /**
+   * true = Code stammt aus dem System-Vorschlag. Bei einer Kollision (z.B. weil
+   * parallel angelegt wurde) wird automatisch der nächste freie Code genommen.
+   * false = manuell eingegeben → bei Kollision wird ein klarer Fehler gemeldet,
+   * der Code wird nicht stillschweigend verändert.
+   */
+  autoBarcode?: boolean;
   /** Gesamtbestand. Default 1 (Einzelstück). >1 = Mengen-Gerät, z.B. 20 Kabel. */
   stock_quantity?: number;
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
 }
 
 export function useCreateDevice() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateDeviceInput) => {
-      const { barcode, ...deviceFields } = input;
+      const { barcode, autoBarcode, ...deviceFields } = input;
 
       const { data: device, error: deviceError } = await supabase
         .from("devices")
@@ -166,16 +178,37 @@ export function useCreateDevice() {
 
       if (deviceError) throw deviceError;
 
-      const { error: barcodeError } = await supabase
-        .from("barcodes")
-        .insert({ device_id: device.id, code: barcode });
+      // Barcode anlegen. Bei automatischem Code und Kollision den nächsten freien
+      // nehmen und erneut versuchen; bei manuellem Code bewusst nicht ändern.
+      let code = barcode.trim();
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const { error: barcodeError } = await supabase
+          .from("barcodes")
+          .insert({ device_id: device.id, code });
 
-      if (barcodeError) throw barcodeError;
+        if (!barcodeError) return device as Device;
 
-      return device as Device;
+        lastError = barcodeError;
+        if (isUniqueViolation(barcodeError) && autoBarcode) {
+          code = await nextFreeEtmCode();
+          continue;
+        }
+        break;
+      }
+
+      // Barcode endgültig fehlgeschlagen → kein Gerät ohne Barcode zurücklassen.
+      await supabase.from("devices").delete().eq("id", device.id);
+      if (isUniqueViolation(lastError)) {
+        throw new Error(`Barcode „${code}" ist bereits vergeben. Bitte einen anderen wählen.`);
+      }
+      throw lastError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DEVICES_KEY });
+      // Barcode-Vorschlag und Verfügbarkeitsprüfungen neu berechnen, damit der
+      // nächste Dialog nicht denselben (jetzt vergebenen) Code anbietet.
+      queryClient.invalidateQueries({ queryKey: ["barcodes"] });
     },
   });
 }
@@ -214,6 +247,9 @@ export function useUpdateDeviceStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DEVICES_KEY });
+      // Auch Jobs/Packlisten zeigen den Gerätestatus an (z.B. Status-Wechsel direkt
+      // am Job-Posten) — daher mit auffrischen.
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
   });
 }
@@ -231,24 +267,104 @@ export function useDeleteDevice() {
   });
 }
 
+// ============================================================
+// INTERNE BARCODES (Format ETM-00001)
+// ============================================================
+
+const ETM_PREFIX = "ETM-";
+const ETM_PAD = 5;
+
+function formatEtm(n: number): string {
+  return `${ETM_PREFIX}${String(n).padStart(ETM_PAD, "0")}`;
+}
+
+/** Ist dieser Code bereits in der barcodes-Tabelle vergeben? */
+async function isBarcodeTaken(code: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("barcodes")
+    .select("id")
+    .eq("code", code)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+/**
+ * Liefert den nächsten freien ETM-Code. Startet bei (höchste vergebene Nummer + 1)
+ * und zählt hoch, bis ein garantiert freier Code gefunden ist — fängt damit auch
+ * Lücken/manuell vergebene Codes ab. Damit ist der Vorschlag immer wirklich frei.
+ */
+async function nextFreeEtmCode(): Promise<string> {
+  const { data, error } = await supabase
+    .from("barcodes")
+    .select("code")
+    .like("code", `${ETM_PREFIX}%`)
+    .order("code", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+
+  const lastCode = data?.[0]?.code;
+  let n = (lastCode ? parseInt(lastCode.replace(ETM_PREFIX, ""), 10) || 0 : 0) + 1;
+
+  for (let i = 0; i < 1000; i++) {
+    const candidate = formatEtm(n);
+    if (!(await isBarcodeTaken(candidate))) return candidate;
+    n++;
+  }
+  throw new Error("Kein freier Barcode gefunden.");
+}
+
 /** Nächste freie interne Barcode-Nummer im Format ETM-00001 vorschlagen */
 export function useNextBarcodeSuggestion() {
   return useQuery({
     queryKey: ["barcodes", "next-suggestion"],
-    queryFn: async (): Promise<string> => {
-      const { data, error } = await supabase
-        .from("barcodes")
-        .select("code")
-        .like("code", "ETM-%")
-        .order("code", { ascending: false })
-        .limit(1);
+    // Beim erneuten Öffnen des Dialogs immer neu rechnen, damit nie ein bereits
+    // vergebener Code vorgeschlagen wird.
+    staleTime: 0,
+    queryFn: nextFreeEtmCode,
+  });
+}
 
+/**
+ * Prüft live, ob ein eingegebener Barcode noch frei ist. Liefert `true` = frei.
+ * Wird im Anlegen-Dialog für die Sofort-Rückmeldung genutzt.
+ */
+export function useBarcodeAvailability(code: string | undefined) {
+  const trimmed = code?.trim() ?? "";
+  return useQuery({
+    queryKey: ["barcodes", "available", trimmed],
+    enabled: trimmed.length > 0,
+    queryFn: async (): Promise<boolean> => !(await isBarcodeTaken(trimmed)),
+  });
+}
+
+/** Öffentliche URL für ein im device-photos-Bucket gespeichertes Bild. */
+export function devicePhotoUrl(storagePath: string): string {
+  return supabase.storage.from("device-photos").getPublicUrl(storagePath).data.publicUrl;
+}
+
+/** Cover-Bild eines Geräts bestimmt (alle anderen werden auf is_cover=false gesetzt). */
+export function useSetCoverPhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, deviceId }: { id: string; deviceId: string }) => {
+      const { error: clearError } = await supabase
+        .from("device_photos")
+        .update({ is_cover: false })
+        .eq("device_id", deviceId);
+      if (clearError) throw clearError;
+
+      const { error } = await supabase
+        .from("device_photos")
+        .update({ is_cover: true })
+        .eq("id", id);
       if (error) throw error;
-
-      const lastCode = data?.[0]?.code;
-      const lastNumber = lastCode ? parseInt(lastCode.replace("ETM-", ""), 10) : 0;
-      const nextNumber = lastNumber + 1;
-      return `ETM-${String(nextNumber).padStart(5, "0")}`;
+      return deviceId;
+    },
+    onSuccess: (deviceId) => {
+      queryClient.invalidateQueries({ queryKey: ["device-photos", deviceId] });
+      queryClient.invalidateQueries({ queryKey: [...DEVICES_KEY, deviceId] });
+      queryClient.invalidateQueries({ queryKey: DEVICES_KEY });
     },
   });
 }
@@ -284,6 +400,7 @@ export function useUploadDevicePhoto() {
       return data;
     },
     onSuccess: (_, { deviceId }) => {
+      queryClient.invalidateQueries({ queryKey: ["device-photos", deviceId] });
       queryClient.invalidateQueries({ queryKey: [...DEVICES_KEY, deviceId] });
       queryClient.invalidateQueries({ queryKey: DEVICES_KEY });
     },

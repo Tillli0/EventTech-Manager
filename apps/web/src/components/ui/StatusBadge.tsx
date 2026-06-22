@@ -1,6 +1,12 @@
+import { Star } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { DeviceStatus, JobStatus, InquiryPipelineStatus } from "@/types/database";
-import { DEVICE_STATUS_OPTIONS, JOB_STATUS_OPTIONS, INQUIRY_PIPELINE_OPTIONS } from "@/types/database";
+import type { DeviceStatus, JobStatus, InquiryPipelineStatus, OfferStatus } from "@/types/database";
+import {
+  DEVICE_STATUS_OPTIONS,
+  JOB_STATUS_OPTIONS,
+  INQUIRY_PIPELINE_OPTIONS,
+  OFFER_STATUS_OPTIONS,
+} from "@/types/database";
 
 const deviceDotClasses: Record<DeviceStatus, string> = {
   verfuegbar: "bg-status-verfuegbar",
@@ -68,6 +74,52 @@ export function InquiryStatusBadge({ status }: { status: InquiryPipelineStatus }
   return (
     <span className="inline-flex items-center rounded-full bg-bg-raised px-2.5 py-1 text-xs font-medium text-ink-muted">
       {option?.label ?? status}
+    </span>
+  );
+}
+
+const offerTextClasses: Record<OfferStatus, string> = {
+  entwurf: "text-ink-muted",
+  gesendet: "text-status-wartung",
+  angenommen: "text-status-verfuegbar",
+  abgelehnt: "text-status-defekt",
+};
+
+const offerDotClasses: Record<OfferStatus, string> = {
+  entwurf: "bg-ink-muted",
+  gesendet: "bg-status-wartung",
+  angenommen: "bg-status-verfuegbar",
+  abgelehnt: "bg-status-defekt",
+};
+
+export function OfferStatusBadge({ status }: { status: OfferStatus }) {
+  const option = OFFER_STATUS_OPTIONS.find((o) => o.value === status);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+        "border-current/20",
+        offerTextClasses[status],
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", offerDotClasses[status])} />
+      {option?.label ?? status}
+    </span>
+  );
+}
+
+/** Kleines Stamm­kunden-Abzeichen (Stern). Wird neben dem Kundennamen angezeigt. */
+export function StammkundeBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full bg-status-wartung-bg px-2 py-0.5 text-xs font-medium text-status-wartung",
+        className,
+      )}
+      title="Stammkunde"
+    >
+      <Star size={11} className="fill-current" />
+      Stammkunde
     </span>
   );
 }

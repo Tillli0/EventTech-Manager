@@ -1,12 +1,14 @@
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Printer } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LoadingState, ErrorState } from "@/components/ui/States";
 import { useJob, useUpdateJobStatus, useUpdateJob } from "@/hooks/useJobs";
 import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
 import { formatDateTime } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";
+import { printPacklist } from "@/lib/printPacklist";
 import { JobTasksSection } from "@/components/tasks/JobTasksSection";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
@@ -55,6 +57,12 @@ export function JobDetailPage() {
             )}
             {customerLabel && <span>{customerLabel}</span>}
           </span>
+        }
+        actions={
+          <Button variant="secondary" onClick={() => printPacklist(job)}>
+            <Printer size={16} />
+            Packliste drucken
+          </Button>
         }
       />
 

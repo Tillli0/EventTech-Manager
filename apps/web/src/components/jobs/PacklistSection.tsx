@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
-import { ScanLine, Trash2, PackageCheck, PackageX, AlertTriangle, ListPlus, Boxes } from "lucide-react";
+import { ScanLine, Trash2, PackageCheck, PackageX, AlertTriangle, ListPlus, Boxes, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Dialog } from "@/components/ui/Dialog";
+import { DeviceStatusBadge } from "@/components/ui/StatusBadge";
 import {
   useScanPacklistItem,
   useUpdatePacklistItemQuantity,
@@ -11,12 +12,13 @@ import {
   useMarkPacklistItemPickedUp,
   useReturnPacklistItem,
 } from "@/hooks/useJobs";
+import { useUpdateDeviceStatus } from "@/hooks/useDevices";
 import { useUsbScannerInput } from "@/components/barcode/BarcodeScanner";
 import { DeviceAvailabilityWarning } from "@/components/jobs/DeviceAvailabilityWarning";
 import { AddDevicesDialog } from "@/components/jobs/AddDevicesDialog";
 import { AddSetDialog } from "@/components/jobs/AddSetDialog";
-import type { Job, PacklistItem } from "@/types/database";
-import { quantityStillOut, quantityNotYetPickedUp } from "@/types/database";
+import type { Job, PacklistItem, DeviceStatus } from "@/types/database";
+import { quantityStillOut, quantityNotYetPickedUp, DEVICE_STATUS_OPTIONS } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 
@@ -279,7 +281,10 @@ function PacklistRow({
               )
             )}
           </div>
-          <p className="font-mono text-xs text-ink-faint">{item.device?.barcodes?.[0]?.code}</p>
+          <div className="mt-0.5 flex items-center gap-2">
+            <p className="font-mono text-xs text-ink-faint">{item.device?.barcodes?.[0]?.code}</p>
+            {item.device && <DeviceStatusControl deviceId={item.device_id} device={item.device} />}
+          </div>
 
           {item.quantity_picked_up > 0 && (
             <p className="mt-0.5 text-xs text-ink-muted">
@@ -369,6 +374,67 @@ function PacklistRow({
             setShowReturnDialog(false);
           }}
         />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Kleines Status-Control direkt am Packlist-Posten. Für Einzelstücke (stock_quantity = 1)
+ * lässt sich der Gerätestatus hier per Dropdown ändern (z.B. „defekt“ markieren, ohne
+ * erst auf die Geräteseite zu wechseln). Für Mengen-Geräte ist der binäre Status nicht
+ * aussagekräftig — dort nur Anzeige.
+ */
+function DeviceStatusControl({
+  deviceId,
+  device,
+}: {
+  deviceId: string;
+  device: NonNullable<PacklistItem["device"]>;
+}) {
+  const [open, setOpen] = useState(false);
+  const updateStatus = useUpdateDeviceStatus();
+  const isSingleUnit = device.stock_quantity === 1;
+
+  if (!isSingleUnit) {
+    return <DeviceStatusBadge status={device.status} />;
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 rounded-full hover:opacity-80"
+        title="Gerätestatus ändern"
+      >
+        <DeviceStatusBadge status={device.status} />
+        <ChevronDown size={12} className="text-ink-faint" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} role="presentation" />
+          <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-md border border-border bg-bg-surface py-1 shadow-lg">
+            {DEVICE_STATUS_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  if (opt.value !== device.status) {
+                    updateStatus.mutate({ id: deviceId, status: opt.value as DeviceStatus });
+                  }
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-bg-raised",
+                  opt.value === device.status ? "font-medium text-ink" : "text-ink-muted",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

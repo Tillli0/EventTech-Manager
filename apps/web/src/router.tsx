@@ -7,6 +7,7 @@ import { JobsPage } from "@/pages/JobsPage";
 import { JobDetailPage } from "@/pages/JobDetailPage";
 import { CustomersPage } from "@/pages/CustomersPage";
 import { CustomerDetailPage } from "@/pages/CustomerDetailPage";
+import { OffersPage } from "@/pages/OffersPage";
 import { CalendarPage } from "@/pages/CalendarPage";
 import { ScanPage } from "@/pages/ScanPage";
 import { TasksPage } from "@/pages/TasksPage";
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: "jobs/:id", element: <JobDetailPage /> },
       { path: "kunden", element: <CustomersPage /> },
       { path: "kunden/:id", element: <CustomerDetailPage /> },
+      { path: "angebote", element: <OffersPage /> },
       { path: "kalender", element: <CalendarPage /> },
       { path: "scan", element: <ScanPage /> },
       { path: "aufgaben", element: <TasksPage /> },

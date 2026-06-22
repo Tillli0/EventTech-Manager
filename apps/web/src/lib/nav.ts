@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Briefcase, Users, Calendar, ScanLine, CheckSquare } from "lucide-react";
+import { LayoutDashboard, Package, Briefcase, Users, Calendar, ScanLine, CheckSquare, FileText } from "lucide-react";
 
 export interface NavItem {
   to: string;
@@ -11,6 +11,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/inventar", label: "Inventar", icon: Package },
   { to: "/jobs", label: "Jobs", icon: Briefcase },
   { to: "/kunden", label: "Kunden", icon: Users },
+  { to: "/angebote", label: "Angebote", icon: FileText },
   { to: "/kalender", label: "Kalender", icon: Calendar },
   { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
 ];

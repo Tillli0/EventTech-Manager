@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Briefcase, MapPin } from "lucide-react";
+import { Plus, Briefcase, MapPin, Download } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
@@ -11,6 +11,7 @@ import { useJobs } from "@/hooks/useJobs";
 import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
 import { formatDate } from "@/lib/format";
 import { CreateJobDialog } from "@/components/jobs/CreateJobDialog";
+import { exportToCsv } from "@/lib/csv";
 import type { Job } from "@/types/database";
 
 export function JobsPage() {
@@ -30,16 +31,38 @@ export function JobsPage() {
     return c.company_name || [c.first_name, c.last_name].filter(Boolean).join(" ");
   }
 
+  function handleExport() {
+    const statusLabel = (s: JobStatus) => JOB_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
+    exportToCsv(
+      `jobs-${new Date().toISOString().slice(0, 10)}`,
+      [
+        { label: "Titel", value: (j: Job) => j.title },
+        { label: "Kunde", value: (j: Job) => customerLabel(j) ?? "" },
+        { label: "Start", value: (j: Job) => formatDate(j.start_date) },
+        { label: "Ende", value: (j: Job) => formatDate(j.end_date) },
+        { label: "Ort", value: (j: Job) => j.location },
+        { label: "Status", value: (j: Job) => statusLabel(j.status) },
+      ],
+      filteredJobs,
+    );
+  }
+
   return (
     <div>
       <PageHeader
         title="Jobs"
         description={jobs ? `${jobs.length} Jobs insgesamt` : undefined}
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={16} />
-            Job anlegen
-          </Button>
+          <>
+            <Button variant="secondary" onClick={handleExport} disabled={filteredJobs.length === 0}>
+              <Download size={16} />
+              CSV
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus size={16} />
+              Job anlegen
+            </Button>
+          </>
         }
       />
 

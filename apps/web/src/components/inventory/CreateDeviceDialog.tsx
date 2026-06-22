@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, X, RefreshCw, Check, AlertCircle } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
-import { useCreateDevice, useNextBarcodeSuggestion, useCategories, useUploadDevicePhoto } from "@/hooks/useDevices";
+import {
+  useCreateDevice,
+  useNextBarcodeSuggestion,
+  useBarcodeAvailability,
+  useCategories,
+  useUploadDevicePhoto,
+} from "@/hooks/useDevices";
 
 export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createDevice = useCreateDevice();
   const uploadPhoto = useUploadDevicePhoto();
-  const { data: suggestedBarcode } = useNextBarcodeSuggestion();
+  const { data: suggestedBarcode, refetch: refetchSuggestion, isFetching: suggestionLoading } =
+    useNextBarcodeSuggestion();
   const { data: categories } = useCategories();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -18,8 +25,12 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   const [model, setModel] = useState("");
   const [location, setLocation] = useState("");
   const [barcode, setBarcode] = useState("");
+  // Wurde der Barcode manuell verändert? Steuert, ob bei einer Kollision
+  // automatisch der nächste freie Code genommen werden darf.
+  const [barcodeTouched, setBarcodeTouched] = useState(false);
   const [notes, setNotes] = useState("");
   const [stockQuantity, setStockQuantity] = useState("1");
+  const [dailyRentalPrice, setDailyRentalPrice] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -44,13 +55,27 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   }
 
   useEffect(() => {
-    if (suggestedBarcode && !barcode) setBarcode(suggestedBarcode);
-  }, [suggestedBarcode, barcode]);
+    if (suggestedBarcode && !barcode && !barcodeTouched) setBarcode(suggestedBarcode);
+  }, [suggestedBarcode, barcode, barcodeTouched]);
+
+  const trimmedBarcode = barcode.trim();
+  const { data: barcodeFree, isFetching: checkingBarcode } = useBarcodeAvailability(trimmedBarcode);
+  const barcodeTaken = barcodeFree === false;
+
+  async function regenerateBarcode() {
+    const { data } = await refetchSuggestion();
+    if (data) {
+      setBarcode(data);
+      setBarcodeTouched(false);
+    }
+  }
 
   function reset() {
     setName(""); setCategoryId(""); setManufacturer(""); setModel("");
     setLocation(""); setBarcode(suggestedBarcode ?? ""); setNotes("");
+    setBarcodeTouched(false);
     setStockQuantity("1");
+    setDailyRentalPrice("");
     setPhotoFile(null); setPhotoPreview(null);
     setFormError(null);
   }
@@ -73,7 +98,11 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    if (!name.trim() || !barcode.trim()) return;
+    if (!name.trim() || !trimmedBarcode) return;
+    if (barcodeTaken) {
+      setFormError(`Barcode „${trimmedBarcode}" ist bereits vergeben. Bitte einen anderen wählen.`);
+      return;
+    }
 
     try {
       const device = await createDevice.mutateAsync({
@@ -83,8 +112,10 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
         model: model.trim() || null,
         location: location.trim() || null,
         notes: notes.trim() || null,
-        barcode: barcode.trim(),
+        barcode: trimmedBarcode,
+        autoBarcode: !barcodeTouched,
         stock_quantity: Math.max(1, parseInt(stockQuantity, 10) || 1),
+        daily_rental_price: dailyRentalPrice.trim() ? Math.max(0, parseFloat(dailyRentalPrice.replace(",", "."))) || null : null,
       });
 
       // Foto hochladen falls vorhanden
@@ -134,21 +165,76 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
           <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="z.B. Lager A, Regal 1" />
         </FormField>
 
-        <FormField
-          label="Stückzahl"
-          hint='Bei mehreren gleichen Geräten (z.B. 20 XLR-Kabel) hier die Gesamtzahl eintragen — alle teilen sich den einen Barcode unten. Bei Einzelgeräten einfach bei 1 lassen.'
-        >
-          <Input
-            type="number"
-            min={1}
-            value={stockQuantity}
-            onChange={(e) => setStockQuantity(e.target.value)}
-            className="w-28"
-          />
-        </FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField
+            label="Stückzahl"
+            hint='Bei mehreren gleichen Geräten (z.B. 20 XLR-Kabel) die Gesamtzahl eintragen — alle teilen sich den Barcode. Bei Einzelgeräten bei 1 lassen.'
+          >
+            <Input
+              type="number"
+              min={1}
+              value={stockQuantity}
+              onChange={(e) => setStockQuantity(e.target.value)}
+              className="w-28"
+            />
+          </FormField>
+          <FormField label="Tagesmietpreis (€)" hint="Netto pro Tag. Wird in Angeboten vorbelegt.">
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={dailyRentalPrice}
+              onChange={(e) => setDailyRentalPrice(e.target.value)}
+              placeholder="z.B. 25"
+              className="w-32"
+            />
+          </FormField>
+        </div>
 
-        <FormField label="Barcode *" hint="Wird automatisch vorgeschlagen, kann aber überschrieben werden.">
-          <Input value={barcode} onChange={(e) => setBarcode(e.target.value)} className="font-mono" required />
+        <FormField label="Barcode *" hint="Wird automatisch als nächster freier Code vorgeschlagen, kann aber überschrieben werden.">
+          <div className="flex items-center gap-2">
+            <Input
+              value={barcode}
+              onChange={(e) => {
+                setBarcode(e.target.value);
+                setBarcodeTouched(true);
+              }}
+              className="font-mono"
+              required
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={regenerateBarcode}
+              disabled={suggestionLoading}
+              title="Nächsten freien Barcode vorschlagen"
+              className="shrink-0"
+            >
+              <RefreshCw size={15} className={suggestionLoading ? "animate-spin" : undefined} />
+            </Button>
+          </div>
+          {trimmedBarcode && (
+            <p
+              className={
+                "mt-1.5 flex items-center gap-1 text-xs " +
+                (barcodeTaken ? "text-status-defekt" : "text-status-verfuegbar")
+              }
+            >
+              {checkingBarcode ? (
+                <span className="text-ink-faint">Prüfe Verfügbarkeit …</span>
+              ) : barcodeTaken ? (
+                <>
+                  <AlertCircle size={12} />
+                  Bereits vergeben
+                </>
+              ) : (
+                <>
+                  <Check size={12} />
+                  Frei
+                </>
+              )}
+            </p>
+          )}
         </FormField>
 
         {/* Foto-Upload */}
@@ -200,7 +286,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Abbrechen</Button>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || barcodeTaken}>
             {isPending ? "Wird gespeichert …" : "Gerät anlegen"}
           </Button>
         </div>
