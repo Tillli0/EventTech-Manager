@@ -42,3 +42,85 @@ function escapeCsv(value: string): string {
   }
   return value;
 }
+
+/**
+ * Liest eine CSV-Datei (Gegenstück zu exportToCsv): Semikolon-getrennt, BOM wird
+ * entfernt, Anführungszeichen werden entsprechend RFC4180 aufgelöst. Gibt pro Zeile
+ * ein Objekt { Spaltenname: Wert } zurück, basierend auf der Kopfzeile.
+ */
+export function parseCsv(text: string): Record<string, string>[] {
+  const clean = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  const rows = parseCsvRows(clean);
+  if (rows.length === 0) return [];
+  const headers = rows[0];
+  return rows
+    .slice(1)
+    .filter((row) => row.some((cell) => cell.trim() !== ""))
+    .map((row) => {
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => {
+        obj[h] = row[i] ?? "";
+      });
+      return obj;
+    });
+}
+
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < text.length) {
+    const char = text[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = false;
+        i += 1;
+        continue;
+      }
+      field += char;
+      i += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = true;
+      i += 1;
+      continue;
+    }
+    if (char === ";") {
+      row.push(field);
+      field = "";
+      i += 1;
+      continue;
+    }
+    if (char === "\r") {
+      i += 1;
+      continue;
+    }
+    if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+      i += 1;
+      continue;
+    }
+    field += char;
+    i += 1;
+  }
+
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}

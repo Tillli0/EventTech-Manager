@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download } from "lucide-react";
+import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
@@ -13,6 +13,7 @@ import { formatCurrency } from "@/lib/format";
 import { CreateDeviceDialog } from "@/components/inventory/CreateDeviceDialog";
 import { ManageCategoriesDialog } from "@/components/inventory/ManageCategoriesDialog";
 import { ManageSetsDialog } from "@/components/inventory/ManageSetsDialog";
+import { ImportDevicesDialog } from "@/components/inventory/ImportDevicesDialog";
 import { exportToCsv } from "@/lib/csv";
 import { useAuth } from "@/auth/AuthProvider";
 
@@ -27,6 +28,7 @@ export function InventoryPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const filteredDevices = useMemo(() => {
     if (!devices) return [];
@@ -52,6 +54,7 @@ export function InventoryPage() {
       `inventar-${new Date().toISOString().slice(0, 10)}`,
       [
         { label: "Name", value: (d: Device) => d.name },
+        { label: "Kategorie", value: (d: Device) => d.category?.name ?? "" },
         { label: "Hersteller", value: (d: Device) => d.manufacturer },
         { label: "Modell", value: (d: Device) => d.model },
         { label: "Barcode", value: (d: Device) => d.barcodes?.[0]?.code ?? "" },
@@ -86,6 +89,10 @@ export function InventoryPage() {
             </Button>
             {mayEdit && (
               <>
+                <Button variant="secondary" onClick={() => setImportOpen(true)}>
+                  <Upload size={16} />
+                  Import
+                </Button>
                 <Button variant="secondary" onClick={() => setCategoriesOpen(true)}>
                   <Settings2 size={16} />
                   Kategorien
@@ -226,6 +233,7 @@ export function InventoryPage() {
       <CreateDeviceDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <ManageCategoriesDialog open={categoriesOpen} onClose={() => setCategoriesOpen(false)} />
       <ManageSetsDialog open={setsOpen} onClose={() => setSetsOpen(false)} />
+      <ImportDevicesDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }

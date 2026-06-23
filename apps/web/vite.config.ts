@@ -15,6 +15,9 @@ export default defineConfig({
   },
   clearScreen: false,
   server: {
+    // host: true bindet an 0.0.0.0, damit der Dev-Server im lokalen Netz (WLAN)
+    // auch von anderen Geräten (Handy, Tablet, zweiter Rechner) erreichbar ist.
+    host: true,
     port: 5173,
     strictPort: true,
     watch: {

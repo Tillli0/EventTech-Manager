@@ -254,6 +254,143 @@ export function useUpdateDeviceStatus() {
   });
 }
 
+export interface ImportDeviceRow {
+  name: string;
+  category?: string | null;
+  manufacturer?: string | null;
+  model?: string | null;
+  barcode?: string | null;
+  location?: string | null;
+  stock_quantity?: number | null;
+  status?: DeviceStatus | null;
+  daily_rental_price?: number | null;
+  replacement_value?: number | null;
+}
+
+export interface ImportDevicesResult {
+  created: number;
+  updated: number;
+  errors: { row: number; name: string; message: string }[];
+}
+
+/**
+ * Import per CSV (Gegenstück zum CSV-Export der Inventarliste). Geräte werden über
+ * den Barcode abgeglichen: vorhandener Barcode → Update des Geräts, sonst Neuanlage
+ * (mit automatischem ETM-Code, falls kein Barcode angegeben ist). Kategorien werden
+ * per Name nachgeschlagen und bei Bedarf neu angelegt.
+ */
+export function useImportDevices() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: ImportDeviceRow[]): Promise<ImportDevicesResult> => {
+      const result: ImportDevicesResult = { created: 0, updated: 0, errors: [] };
+      const categoryCache = new Map<string, string>();
+
+      async function resolveCategoryId(name: string | null | undefined): Promise<string | null> {
+        const trimmed = name?.trim();
+        if (!trimmed) return null;
+        const key = trimmed.toLowerCase();
+        if (categoryCache.has(key)) return categoryCache.get(key)!;
+
+        const { data: existing } = await supabase
+          .from("categories")
+          .select("id")
+          .ilike("name", trimmed)
+          .is("parent_id", null)
+          .maybeSingle();
+        if (existing) {
+          categoryCache.set(key, existing.id);
+          return existing.id;
+        }
+
+        const { data: maxSort } = await supabase
+          .from("categories")
+          .select("sort_order")
+          .order("sort_order", { ascending: false })
+          .limit(1);
+        const { data: created, error } = await supabase
+          .from("categories")
+          .insert({ name: trimmed, sort_order: (maxSort?.[0]?.sort_order ?? 0) + 1, parent_id: null })
+          .select("id")
+          .single();
+        if (error) throw error;
+        categoryCache.set(key, created.id);
+        return created.id;
+      }
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        try {
+          if (!row.name?.trim()) {
+            result.errors.push({ row: i + 2, name: row.name ?? "", message: "Name fehlt." });
+            continue;
+          }
+
+          const categoryId = await resolveCategoryId(row.category);
+          const fields = {
+            name: row.name.trim(),
+            category_id: categoryId,
+            manufacturer: row.manufacturer?.trim() || null,
+            model: row.model?.trim() || null,
+            location: row.location?.trim() || null,
+            stock_quantity: row.stock_quantity && row.stock_quantity > 0 ? row.stock_quantity : 1,
+            status: row.status ?? "verfuegbar",
+            daily_rental_price: row.daily_rental_price ?? null,
+            replacement_value: row.replacement_value ?? null,
+          };
+
+          const code = row.barcode?.trim();
+          let existingDeviceId: string | null = null;
+          if (code) {
+            const { data: existingBarcode } = await supabase
+              .from("barcodes")
+              .select("device_id")
+              .eq("code", code)
+              .maybeSingle();
+            existingDeviceId = existingBarcode?.device_id ?? null;
+          }
+
+          if (existingDeviceId) {
+            const { error } = await supabase.from("devices").update(fields).eq("id", existingDeviceId);
+            if (error) throw error;
+            result.updated += 1;
+          } else {
+            const { data: device, error: deviceError } = await supabase
+              .from("devices")
+              .insert(fields)
+              .select("id")
+              .single();
+            if (deviceError) throw deviceError;
+
+            const finalCode = code || (await nextFreeEtmCode());
+            const { error: barcodeError } = await supabase
+              .from("barcodes")
+              .insert({ device_id: device.id, code: finalCode });
+            if (barcodeError) {
+              await supabase.from("devices").delete().eq("id", device.id);
+              throw barcodeError;
+            }
+            result.created += 1;
+          }
+        } catch (err) {
+          result.errors.push({
+            row: i + 2,
+            name: row.name ?? "",
+            message: err instanceof Error ? err.message : "Unbekannter Fehler.",
+          });
+        }
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: DEVICES_KEY });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.invalidateQueries({ queryKey: ["barcodes"] });
+    },
+  });
+}
+
 export function useDeleteDevice() {
   const queryClient = useQueryClient();
   return useMutation({
