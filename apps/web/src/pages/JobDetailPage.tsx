@@ -8,6 +8,7 @@ import { useJob, useUpdateJobStatus, useUpdateJob } from "@/hooks/useJobs";
 import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
 import { formatDateTime } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";
+import { PacklistProgress } from "@/components/jobs/PacklistProgress";
 import { printPacklist } from "@/lib/printPacklist";
 import { JobTasksSection } from "@/components/tasks/JobTasksSection";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
@@ -81,6 +82,7 @@ export function JobDetailPage() {
               <h2 className="text-sm font-semibold text-ink">Packliste</h2>
             </CardHeader>
             <CardBody>
+              <PacklistProgress items={job.packlist_items ?? []} />
               <PacklistSection job={job} canEdit={mayEdit} />
             </CardBody>
           </Card>

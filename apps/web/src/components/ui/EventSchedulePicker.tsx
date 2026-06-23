@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { DateField } from "@/components/ui/DateField";
 import { TimeField } from "@/components/ui/TimeField";
 import { Label } from "@/components/ui/Input";
@@ -50,7 +50,7 @@ export function EventSchedulePicker({
   const [dayOpen, setDayOpen] = useState(false);
   const [startOpen, setStartOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
-  const startTimeRef = useRef<HTMLInputElement>(null);
+  const [startTimeOpen, setStartTimeOpen] = useState(false);
 
   // Beim Einblenden direkt den ersten Kalender öffnen.
   useEffect(() => {
@@ -79,7 +79,7 @@ export function EventSchedulePicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [multiDay, day, startDay, endDay, startTime, endTime, allDay]);
 
-  const focusStartTime = () => setTimeout(() => startTimeRef.current?.focus(), 0);
+  const focusStartTime = () => setStartTimeOpen(true);
 
   return (
     <div className="space-y-3">
@@ -148,7 +148,14 @@ export function EventSchedulePicker({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Beginn *</Label>
-            <TimeField ref={startTimeRef} aria-label="Startzeit" value={startTime} onChange={setStartTime} className="w-full" />
+            <TimeField
+              aria-label="Startzeit"
+              value={startTime}
+              open={startTimeOpen}
+              onOpenChange={setStartTimeOpen}
+              onChange={setStartTime}
+              className="w-full"
+            />
           </div>
           <div>
             <Label>Ende *</Label>

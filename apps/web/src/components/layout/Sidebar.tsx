@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { ScanLine, Zap, LogOut } from "lucide-react";
+import { ScanLine, Zap, LogOut, Settings } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav";
 import { useAuth } from "@/auth/AuthProvider";
+import { AccountDialog } from "@/components/account/AccountDialog";
 import { cn } from "@/lib/cn";
 
 export function Sidebar() {
   const { profile, user, isAdmin, isManager, hasArea, signOut } = useAuth();
+  const [accountOpen, setAccountOpen] = useState(false);
   const visibleItems = NAV_ITEMS.filter(
     (item) => (!item.managerOnly || isManager) && (!item.area || hasArea(item.area)),
   );
@@ -76,12 +79,24 @@ export function Sidebar() {
         )}
 
         <div className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5">
-          <div className="min-w-0">
+          <button
+            onClick={() => setAccountOpen(true)}
+            className="min-w-0 flex-1 rounded-md text-left transition-colors hover:opacity-80"
+            title="Mein Konto (Name & Passwort)"
+          >
             <p className="truncate text-sm font-medium text-ink">{displayName}</p>
             <p className="text-xs text-ink-faint">
               {isAdmin ? "Administrator" : profile?.role === "verwaltung" ? "Verwaltung" : "Mitarbeiter"}
             </p>
-          </div>
+          </button>
+          <button
+            onClick={() => setAccountOpen(true)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-bg-raised hover:text-ink"
+            title="Mein Konto"
+            aria-label="Mein Konto"
+          >
+            <Settings size={16} />
+          </button>
           <button
             onClick={() => signOut()}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-bg-raised hover:text-ink"
@@ -92,6 +107,8 @@ export function Sidebar() {
           </button>
         </div>
       </div>
+
+      <AccountDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
     </aside>
   );
 }

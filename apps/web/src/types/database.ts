@@ -123,10 +123,15 @@ export function isQuantityDevice(device: Pick<Device, "stock_quantity">): boolea
   return device.stock_quantity > 1;
 }
 
+/** Standardfarbe für neue Sets (entspricht dem DB-Default). */
+export const DEFAULT_SET_COLOR = "#6366f1";
+
 export interface DeviceSet {
   id: string;
   name: string;
   description: string | null;
+  color: string;
+  image_path: string | null;
   created_at: string;
   updated_at: string;
   items?: DeviceSetItem[];

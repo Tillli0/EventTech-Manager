@@ -5,8 +5,9 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { DeviceStatusBadge } from "@/components/ui/StatusBadge";
+import { DeviceStatusBadge, JobStatusBadge } from "@/components/ui/StatusBadge";
 import { LoadingState, ErrorState } from "@/components/ui/States";
+import { useDeviceBookings } from "@/hooks/useJobs";
 import {
   useDevice,
   useUpdateDevice,
@@ -84,6 +85,8 @@ export function DeviceDetailPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="space-y-6 md:col-span-2">
+          <DeviceBookingsCard deviceId={device.id} />
+
           {mayEdit && (
           <Card>
             <CardHeader>
@@ -253,6 +256,40 @@ export function DeviceDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Zeigt, in welchen laufenden/anstehenden Jobs dieses Gerät gerade verplant ist. */
+function DeviceBookingsCard({ deviceId }: { deviceId: string }) {
+  const { data: bookings, isLoading } = useDeviceBookings(deviceId);
+  if (isLoading || !bookings || bookings.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="text-sm font-semibold text-ink">Aktuell verplant</h2>
+      </CardHeader>
+      <CardBody>
+        <div className="space-y-2">
+          {bookings.map((b) => (
+            <Link
+              key={b.id}
+              to={`/jobs/${b.id}`}
+              className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-raised px-3 py-2 transition-colors hover:border-accent/40"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-ink">{b.title}</p>
+                <p className="text-xs text-ink-muted">
+                  {formatDate(b.start_date)} – {formatDate(b.end_date)}
+                  {b.quantity > 1 && <span className="ml-2 font-mono text-accent">{b.quantity}×</span>}
+                </p>
+              </div>
+              <JobStatusBadge status={b.status} />
+            </Link>
+          ))}
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 

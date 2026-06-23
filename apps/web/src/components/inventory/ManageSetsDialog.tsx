@@ -1,12 +1,20 @@
-import { useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, Check, X, Search, Boxes } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Plus, Trash2, Pencil, Check, X, Search, Boxes, Image as ImageIcon, Upload } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { Input, FormField, Textarea } from "@/components/ui/Input";
+import { Input, FormField, Textarea, Label } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/States";
+import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { useDevices } from "@/hooks/useDevices";
-import { useDeviceSets, useCreateDeviceSet, useUpdateDeviceSet, useDeleteDeviceSet } from "@/hooks/useDeviceSets";
-import type { DeviceSet } from "@/types/database";
+import {
+  useDeviceSets,
+  useCreateDeviceSet,
+  useUpdateDeviceSet,
+  useDeleteDeviceSet,
+  useUploadSetImage,
+  setImageUrl,
+} from "@/hooks/useDeviceSets";
+import { DEFAULT_SET_COLOR, type DeviceSet } from "@/types/database";
 
 export function ManageSetsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: sets } = useDeviceSets();
@@ -45,7 +53,7 @@ export function ManageSetsDialog({ open, onClose }: { open: boolean; onClose: ()
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} title="Sets verwalten" maxWidth="max-w-xl">
+    <Dialog open={open} onClose={handleClose} title="Sets verwalten" maxWidth="max-w-2xl">
       <div className="space-y-4">
         <p className="text-sm text-ink-muted">
           Ein Set ist eine feste Zusammenstellung mehrerer Geräte (z.B. „Standard-DJ-Setup“) — nur eine
@@ -58,36 +66,24 @@ export function ManageSetsDialog({ open, onClose }: { open: boolean; onClose: ()
           Neues Set anlegen
         </Button>
 
-        {(!sets || sets.length === 0) && (
-          <EmptyState icon={Boxes} title="Noch keine Sets angelegt" />
-        )}
+        {(!sets || sets.length === 0) && <EmptyState icon={Boxes} title="Noch keine Sets angelegt" />}
 
         {sets && sets.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {sets.map((set) => (
-              <div key={set.id} className="flex items-center gap-3 rounded-md border border-border px-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink">{set.name}</p>
-                  <p className="text-xs text-ink-muted">{set.items?.length ?? 0} Geräte</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setEditingSet(set);
-                    setMode("edit");
-                  }}
-                  className="text-ink-faint transition-colors hover:text-accent"
-                  title="Bearbeiten"
-                >
-                  <Pencil size={14} />
-                </button>
-                <button
-                  onClick={() => handleDelete(set)}
-                  className="text-ink-faint transition-colors hover:text-status-defekt"
-                  title="Löschen"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
+              <SetCard
+                key={set.id}
+                set={set}
+                onClick={() => {
+                  setEditingSet(set);
+                  setMode("edit");
+                }}
+                onEdit={() => {
+                  setEditingSet(set);
+                  setMode("edit");
+                }}
+                onDelete={() => handleDelete(set)}
+              />
             ))}
           </div>
         )}
@@ -97,6 +93,68 @@ export function ManageSetsDialog({ open, onClose }: { open: boolean; onClose: ()
         </div>
       </div>
     </Dialog>
+  );
+}
+
+/** Eine Set-Karte: Bild (oder farbige Fläche), farbiger Rand, Name + Geräteanzahl. */
+export function SetCard({
+  set,
+  onClick,
+  onEdit,
+  onDelete,
+  selected = false,
+}: {
+  set: DeviceSet;
+  /** Klick auf die Karte selbst (z.B. Auswählen oder Bearbeiten öffnen). */
+  onClick?: () => void;
+  /** Overlay-Aktion „Bearbeiten" (oben rechts). */
+  onEdit?: () => void;
+  /** Overlay-Aktion „Löschen" (oben rechts). */
+  onDelete?: () => void;
+  selected?: boolean;
+}) {
+  return (
+    <div
+      className="group relative overflow-hidden rounded-lg border-2 bg-bg-raised transition-shadow hover:shadow-md"
+      style={{ borderColor: set.color, boxShadow: selected ? `0 0 0 2px ${set.color}` : undefined }}
+    >
+      <button type="button" onClick={onClick} className="block w-full text-left">
+        {set.image_path ? (
+          <img src={setImageUrl(set.image_path)} alt="" className="h-24 w-full object-cover" />
+        ) : (
+          <div className="flex h-24 w-full items-center justify-center" style={{ backgroundColor: `${set.color}22` }}>
+            <Boxes size={28} style={{ color: set.color }} />
+          </div>
+        )}
+        <div className="p-2.5">
+          <p className="truncate text-sm font-medium text-ink">{set.name}</p>
+          <p className="text-xs text-ink-muted">{set.items?.length ?? 0} Geräte</p>
+        </div>
+      </button>
+
+      {(onEdit || onDelete) && (
+        <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="flex h-7 w-7 items-center justify-center rounded-md bg-bg-surface/90 text-ink-muted shadow-sm hover:text-accent"
+              title="Bearbeiten"
+            >
+              <Pencil size={13} />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="flex h-7 w-7 items-center justify-center rounded-md bg-bg-surface/90 text-ink-muted shadow-sm hover:text-status-defekt"
+              title="Löschen"
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -112,9 +170,13 @@ function SetEditor({
   const { data: devices } = useDevices();
   const createSet = useCreateDeviceSet();
   const updateSet = useUpdateDeviceSet();
+  const uploadImage = useUploadSetImage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(existingSet?.name ?? "");
   const [description, setDescription] = useState(existingSet?.description ?? "");
+  const [color, setColor] = useState(existingSet?.color ?? DEFAULT_SET_COLOR);
+  const [imagePath, setImagePath] = useState<string | null>(existingSet?.image_path ?? null);
   const [items, setItems] = useState<Map<string, number>>(
     new Map(existingSet?.items?.map((i) => [i.device_id, i.quantity]) ?? []),
   );
@@ -146,6 +208,15 @@ function SetEditor({
     });
   }
 
+  async function handleFile(file: File) {
+    try {
+      const path = await uploadImage.mutateAsync(file);
+      setImagePath(path);
+    } catch (e) {
+      alert(`Bild konnte nicht hochgeladen werden: ${e instanceof Error ? e.message : "Fehler"}`);
+    }
+  }
+
   const isPending = createSet.isPending || updateSet.isPending;
 
   async function handleSave() {
@@ -153,6 +224,8 @@ function SetEditor({
     const payload = {
       name: name.trim(),
       description: description.trim() || null,
+      color,
+      image_path: imagePath,
       items: Array.from(items.entries()).map(([deviceId, quantity]) => ({ deviceId, quantity })),
     };
     if (existingSet) {
@@ -171,6 +244,49 @@ function SetEditor({
       <FormField label="Beschreibung">
         <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
       </FormField>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Farbe</Label>
+          <JobColorPicker value={color} onChange={setColor} />
+        </div>
+        <div>
+          <Label>Bild</Label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFile(file);
+            }}
+          />
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border-2"
+              style={{ borderColor: color, backgroundColor: `${color}22` }}
+            >
+              {imagePath ? (
+                <img src={setImageUrl(imagePath)} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <ImageIcon size={18} style={{ color }} />
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <Button type="button" size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={uploadImage.isPending}>
+                <Upload size={13} />
+                {uploadImage.isPending ? "Lädt …" : imagePath ? "Ändern" : "Bild wählen"}
+              </Button>
+              {imagePath && (
+                <button type="button" onClick={() => setImagePath(null)} className="text-left text-xs text-ink-faint hover:text-status-defekt">
+                  Entfernen
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div>
         <p className="mb-2 text-sm font-medium text-ink">Enthaltene Geräte</p>

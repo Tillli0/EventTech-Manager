@@ -108,6 +108,7 @@ export function AdminPage() {
                     Sicht
                     <Select
                       value={user.job_view_mode}
+                      disabled={!isAdmin && !isMe}
                       onChange={(e) =>
                         setViewMode.mutate(
                           { userId: user.id, mode: e.target.value as JobViewMode },
@@ -115,7 +116,11 @@ export function AdminPage() {
                         )
                       }
                       className="h-9 w-36"
-                      title="Welche Jobs dieser Nutzer sieht"
+                      title={
+                        !isAdmin && !isMe
+                          ? "Nur der Admin kann den Sichtmodus anderer ändern"
+                          : "Welche Jobs dieser Nutzer sieht"
+                      }
                     >
                       {JOB_VIEW_MODE_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>

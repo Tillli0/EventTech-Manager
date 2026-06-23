@@ -1,12 +1,12 @@
-import { useRef } from "react";
+import { useState } from "react";
 import { DateField } from "@/components/ui/DateField";
 import { TimeField } from "@/components/ui/TimeField";
 import { combineDateAndTime, timeToInput } from "@/lib/datetime";
 import { cn } from "@/lib/cn";
 
 /**
- * Datum + Uhrzeit in einem Feld. Nach der Tagesauswahl springt der Fokus
- * automatisch in die Uhrzeit (gewünschtes Verhalten für einzelne Zeitpunkte).
+ * Datum + Uhrzeit in einem Feld. Nach der Tagesauswahl öffnet sich automatisch
+ * das Uhrzeit-Panel (gewünschtes Verhalten für einzelne Zeitpunkte).
  */
 export function DateTimeField({
   value,
@@ -21,7 +21,7 @@ export function DateTimeField({
   min?: Date | null;
   className?: string;
 }) {
-  const timeRef = useRef<HTMLInputElement>(null);
+  const [timeOpen, setTimeOpen] = useState(false);
   const time = value ? timeToInput(value) : defaultTime;
 
   return (
@@ -31,15 +31,13 @@ export function DateTimeField({
         value={value}
         min={min}
         onChange={(day) => onChange(combineDateAndTime(day, time))}
-        onComplete={() => {
-          // kurz warten, bis das Panel zu ist, dann in die Uhrzeit springen
-          setTimeout(() => timeRef.current?.focus(), 0);
-        }}
+        onComplete={() => setTimeOpen(true)}
       />
       <TimeField
-        ref={timeRef}
         aria-label="Uhrzeit"
         value={time}
+        open={timeOpen}
+        onOpenChange={setTimeOpen}
         onChange={(t) => onChange(combineDateAndTime(value ?? new Date(), t))}
         className="w-28"
       />

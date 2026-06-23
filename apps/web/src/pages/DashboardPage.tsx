@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, MapPin, Package, ListChecks, ArrowRight, AlertCircle } from "lucide-react";
+import { CalendarClock, MapPin, Package, ListChecks, ArrowRight, AlertCircle, Settings } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
+import { AccountDialog } from "@/components/account/AccountDialog";
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
@@ -21,6 +24,7 @@ export function DashboardPage() {
   const { isLoading, error, todayJobs, upcomingJobs, deviceStatusCounts, overdueTasks, otherOpenTasks } =
     useDashboard();
   const { user, profile, isAdmin } = useAuth();
+  const [accountOpen, setAccountOpen] = useState(false);
 
   if (isLoading) return <LoadingState label="Überblick wird geladen …" />;
   if (error) return <ErrorState message={error.message} />;
@@ -30,7 +34,17 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title={greeting} description="Was heute und in den nächsten Tagen ansteht." />
+      <PageHeader
+        title={greeting}
+        description="Was heute und in den nächsten Tagen ansteht."
+        actions={
+          <Button variant="secondary" onClick={() => setAccountOpen(true)} className="md:hidden">
+            <Settings size={16} />
+            Konto
+          </Button>
+        }
+      />
+      <AccountDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
 
       {!isAdmin && (
         <Card className="mb-6">

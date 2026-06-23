@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload } from "lucide-react";
+import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
@@ -15,7 +15,48 @@ import { ManageCategoriesDialog } from "@/components/inventory/ManageCategoriesD
 import { ManageSetsDialog } from "@/components/inventory/ManageSetsDialog";
 import { ImportDevicesDialog } from "@/components/inventory/ImportDevicesDialog";
 import { exportToCsv } from "@/lib/csv";
+import { cn } from "@/lib/cn";
 import { useAuth } from "@/auth/AuthProvider";
+
+type SortKey = "name" | "stock" | "status" | "value";
+
+function SortHead({
+  label,
+  k,
+  sort,
+  onSort,
+  className,
+  align = "left",
+}: {
+  label: string;
+  k: SortKey;
+  sort: { key: SortKey; dir: "asc" | "desc" };
+  onSort: (k: SortKey) => void;
+  className?: string;
+  align?: "left" | "right";
+}) {
+  const active = sort.key === k;
+  return (
+    <th className={cn("font-medium", className)}>
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        className={cn(
+          "inline-flex items-center gap-1 transition-colors hover:text-ink",
+          align === "right" && "flex-row-reverse",
+          active && "text-ink",
+        )}
+      >
+        {label}
+        {active ? (
+          sort.dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+        ) : (
+          <ChevronDown size={12} className="opacity-0" />
+        )}
+      </button>
+    </th>
+  );
+}
 
 export function InventoryPage() {
   const { canEdit } = useAuth();
@@ -29,23 +70,71 @@ export function InventoryPage() {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+
+  // Suche entprellen, damit das Tippen bei vielen Geräten flüssig bleibt.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 200);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // "/" fokussiert die Suche (wenn man nicht gerade in einem Feld tippt).
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (e.key === "/" && tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  function toggleSort(key: SortKey) {
+    setSort((prev) => (prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  }
 
   const filteredDevices = useMemo(() => {
     if (!devices) return [];
-    return devices.filter((device) => {
+    const q = debouncedSearch.trim().toLowerCase();
+    const filtered = devices.filter((device) => {
       const matchesSearch =
-        search.trim() === "" ||
-        device.name.toLowerCase().includes(search.toLowerCase()) ||
-        device.manufacturer?.toLowerCase().includes(search.toLowerCase()) ||
-        device.model?.toLowerCase().includes(search.toLowerCase()) ||
-        device.barcodes?.some((b) => b.code.toLowerCase().includes(search.toLowerCase()));
+        q === "" ||
+        device.name.toLowerCase().includes(q) ||
+        device.manufacturer?.toLowerCase().includes(q) ||
+        device.model?.toLowerCase().includes(q) ||
+        device.barcodes?.some((b) => b.code.toLowerCase().includes(q));
 
       const matchesStatus = statusFilter === "alle" || device.status === statusFilter;
       const matchesCategory = categoryFilter === "alle" || device.category_id === categoryFilter;
 
       return matchesSearch && matchesStatus && matchesCategory;
     });
-  }, [devices, search, statusFilter, categoryFilter]);
+
+    const statusOrder = (s: DeviceStatus) => DEVICE_STATUS_OPTIONS.findIndex((o) => o.value === s);
+    const dir = sort.dir === "asc" ? 1 : -1;
+    return filtered.sort((a, b) => {
+      let cmp = 0;
+      switch (sort.key) {
+        case "name":
+          cmp = a.name.localeCompare(b.name, "de");
+          break;
+        case "stock":
+          cmp = a.stock_quantity - b.stock_quantity;
+          break;
+        case "status":
+          cmp = statusOrder(a.status) - statusOrder(b.status);
+          break;
+        case "value":
+          cmp = (a.replacement_value ?? -1) - (b.replacement_value ?? -1);
+          break;
+      }
+      return cmp * dir;
+    });
+  }, [devices, debouncedSearch, statusFilter, categoryFilter, sort]);
 
   function handleExport() {
     const statusLabel = (s: DeviceStatus) =>
@@ -126,9 +215,10 @@ export function InventoryPage() {
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
           <Input
+            ref={searchRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Suche nach Name, Hersteller, Modell oder Barcode …"
+            placeholder="Suche nach Name, Hersteller, Modell oder Barcode …  (/ zum Fokussieren)"
             className="pl-9"
           />
         </div>
@@ -184,12 +274,12 @@ export function InventoryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-ink-muted">
-                <th className="px-4 py-3 font-medium">Gerät</th>
+                <SortHead label="Gerät" k="name" sort={sort} onSort={toggleSort} className="px-4 py-3" />
                 <th className="hidden px-4 py-3 font-medium sm:table-cell">Barcode</th>
                 <th className="hidden px-4 py-3 font-medium md:table-cell">Lagerort</th>
-                <th className="hidden px-4 py-3 text-right font-medium sm:table-cell">Bestand</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Wiederbeschaffungswert</th>
+                <SortHead label="Bestand" k="stock" sort={sort} onSort={toggleSort} className="hidden px-4 py-3 text-right sm:table-cell" align="right" />
+                <SortHead label="Status" k="status" sort={sort} onSort={toggleSort} className="px-4 py-3" />
+                <SortHead label="Wiederbeschaffungswert" k="value" sort={sort} onSort={toggleSort} className="hidden px-4 py-3 text-right lg:table-cell" align="right" />
               </tr>
             </thead>
             <tbody>

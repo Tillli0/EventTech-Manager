@@ -4,6 +4,24 @@ import type { DeviceSet, PacklistItem } from "@/types/database";
 
 const SETS_KEY = ["device-sets"] as const;
 
+/** Öffentliche URL für ein im device-photos-Bucket gespeichertes Set-Bild. */
+export function setImageUrl(storagePath: string): string {
+  return supabase.storage.from("device-photos").getPublicUrl(storagePath).data.publicUrl;
+}
+
+/** Lädt ein Set-Bild in den device-photos-Bucket (Unterordner sets/) und liefert den Pfad. */
+export function useUploadSetImage() {
+  return useMutation({
+    mutationFn: async (file: File): Promise<string> => {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `sets/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("device-photos").upload(path, file, { upsert: false });
+      if (error) throw error;
+      return path;
+    },
+  });
+}
+
 export function useDeviceSets() {
   return useQuery({
     queryKey: SETS_KEY,
@@ -46,15 +64,24 @@ export function useCreateDeviceSet() {
     mutationFn: async ({
       name,
       description,
+      color,
+      image_path,
       items,
     }: {
       name: string;
       description?: string | null;
+      color?: string;
+      image_path?: string | null;
       items: SetItemInput[];
     }) => {
       const { data: set, error } = await supabase
         .from("device_sets")
-        .insert({ name, description: description ?? null })
+        .insert({
+          name,
+          description: description ?? null,
+          ...(color ? { color } : {}),
+          image_path: image_path ?? null,
+        })
         .select()
         .single();
       if (error) throw error;
@@ -80,16 +107,25 @@ export function useUpdateDeviceSet() {
       id,
       name,
       description,
+      color,
+      image_path,
       items,
     }: {
       id: string;
       name: string;
       description?: string | null;
+      color?: string;
+      image_path?: string | null;
       items: SetItemInput[];
     }) => {
       const { error: setError } = await supabase
         .from("device_sets")
-        .update({ name, description: description ?? null })
+        .update({
+          name,
+          description: description ?? null,
+          ...(color ? { color } : {}),
+          image_path: image_path ?? null,
+        })
         .eq("id", id);
       if (setError) throw setError;
 

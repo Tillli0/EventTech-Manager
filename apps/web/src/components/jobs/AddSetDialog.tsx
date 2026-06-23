@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Boxes } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
+import { SetCard } from "@/components/inventory/ManageSetsDialog";
 import { useDeviceSets } from "@/hooks/useDeviceSets";
 import { useAddDeviceSetToJob } from "@/hooks/useDeviceSets";
 
@@ -72,17 +73,20 @@ export function AddSetDialog({
 
         {!isLoading && sets && sets.length > 0 && (
           <>
-            <Select value={selectedSetId} onChange={(e) => setSelectedSetId(e.target.value)}>
-              <option value="">Set auswählen …</option>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {sets.map((set) => (
-                <option key={set.id} value={set.id}>
-                  {set.name} ({set.items?.length ?? 0} Geräte)
-                </option>
+                <SetCard
+                  key={set.id}
+                  set={set}
+                  selected={set.id === selectedSetId}
+                  onClick={() => setSelectedSetId(set.id === selectedSetId ? "" : set.id)}
+                />
               ))}
-            </Select>
+            </div>
 
             {selectedSet && (
               <div className="space-y-1.5 rounded-lg border border-border p-3">
+                <p className="mb-1 text-sm font-medium text-ink">{selectedSet.name}</p>
                 {selectedSet.description && (
                   <p className="mb-2 text-xs text-ink-muted">{selectedSet.description}</p>
                 )}

@@ -489,6 +489,37 @@ export function useDevicesAvailabilityMap(
   });
 }
 
+/**
+ * Aktive/anstehende Buchungen eines Geräts: in welchen laufenden oder kommenden
+ * Jobs (Anfrage/Bestätigt/Läuft, Ende ≥ heute) ist es verplant — für die Anzeige
+ * „aktuell verplant in …" auf der Geräte-Detailseite.
+ */
+export function useDeviceBookings(deviceId: string | undefined) {
+  return useQuery({
+    queryKey: ["device-bookings", deviceId],
+    enabled: !!deviceId,
+    queryFn: async () => {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const { data, error } = await supabase
+        .from("packlist_items")
+        .select("job_id, quantity, jobs!inner(id, title, status, start_date, end_date)")
+        .eq("device_id", deviceId)
+        .in("jobs.status", ["anfrage", "bestaetigt", "laeuft"])
+        .gte("jobs.end_date", todayStart.toISOString());
+      if (error) throw error;
+      const rows = data as unknown as {
+        quantity: number;
+        jobs: { id: string; title: string; status: JobStatus; start_date: string; end_date: string };
+      }[];
+      return rows
+        .filter((r) => r.jobs)
+        .map((r) => ({ ...r.jobs, quantity: r.quantity }))
+        .sort((a, b) => a.start_date.localeCompare(b.start_date));
+    },
+  });
+}
+
 /** Summe der gebuchten Mengen aus einer Liste von Buchungen (siehe useDevicesAvailabilityMap). */
 export function sumBookedQuantity(bookings: { quantity: number }[] | undefined): number {
   return bookings?.reduce((sum, b) => sum + b.quantity, 0) ?? 0;
