@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Label } from "@/components/ui/Input";
+import { EventSchedulePicker } from "@/components/ui/EventSchedulePicker";
 import { useCreateJob } from "@/hooks/useJobs";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
 import { useProfiles, profileLabel } from "@/hooks/useProfiles";
@@ -18,8 +19,8 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
   const [title, setTitle] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [location, setLocation] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [color, setColor] = useState(() => randomJobColor());
 
@@ -32,8 +33,8 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
     setTitle("");
     setCustomerId("");
     setLocation("");
-    setStartDate("");
-    setEndDate("");
+    setStartDate(null);
+    setEndDate(null);
     setAssigneeIds([]);
     setColor(randomJobColor());
   }
@@ -58,8 +59,8 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
       title: title.trim(),
       customer_id: customerId || null,
       location: location.trim() || null,
-      start_date: new Date(startDate).toISOString(),
-      end_date: new Date(endDate).toISOString(),
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString(),
       color,
       customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
     });
@@ -99,18 +100,9 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
           <JobColorPicker value={color} onChange={setColor} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <FormField label="Start *">
-            <Input
-              type="datetime-local"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-            />
-          </FormField>
-          <FormField label="Ende *">
-            <Input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
-          </FormField>
+        <div>
+          <Label>Zeitraum *</Label>
+          <EventSchedulePicker onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
         </div>
 
         {profiles && profiles.length > 0 && (

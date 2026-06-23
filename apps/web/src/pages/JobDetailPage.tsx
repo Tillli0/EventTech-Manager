@@ -96,9 +96,9 @@ export function JobDetailPage() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-sm font-semibold text-ink">Unterevents</h2>
+              <h2 className="text-sm font-semibold text-ink">Zeitplan</h2>
               <p className="mt-0.5 text-xs text-ink-faint">
-                Optionale Zwischentermine wie Aufbau, Abbau oder Eventstart — werden im Kalender als Punkt unter dem Job angezeigt.
+                Programmablauf des Jobs — z.B. Aufbau, Soundcheck, Eventstart, Abbau. Wird zeitlich sortiert und im Kalender unter dem Job angezeigt.
               </p>
             </CardHeader>
             <CardBody>
