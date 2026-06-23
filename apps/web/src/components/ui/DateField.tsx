@@ -3,6 +3,7 @@ import { CalendarDays } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar } from "@/components/ui/Calendar";
+import { dateToInput } from "@/lib/datetime";
 import { cn } from "@/lib/cn";
 
 /**
@@ -14,6 +15,7 @@ export function DateField({
   onChange,
   onComplete,
   min,
+  rangeStart,
   placeholder = "Datum wählen",
   open: openProp,
   onOpenChange,
@@ -24,6 +26,8 @@ export function DateField({
   /** Wird nach der Auswahl gerufen (z.B. um zum nächsten Feld zu springen). */
   onComplete?: () => void;
   min?: Date | null;
+  /** Anderer Endpunkt eines Zeitraums — im Kalender markiert. */
+  rangeStart?: Date | null;
   placeholder?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -68,6 +72,7 @@ export function DateField({
           <Calendar
             value={value}
             min={min}
+            rangeStart={rangeStart}
             onSelect={(day) => {
               onChange(day);
               setOpen(false);
@@ -77,5 +82,27 @@ export function DateField({
         </div>
       )}
     </div>
+  );
+}
+
+/** String-Variante (reines Datum "yyyy-MM-dd") als Ersatz für <input type="date">. */
+export function DateInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <DateField
+      value={value ? new Date(value + "T00:00:00") : null}
+      onChange={(d) => onChange(dateToInput(d))}
+      placeholder={placeholder}
+      className={className}
+    />
   );
 }

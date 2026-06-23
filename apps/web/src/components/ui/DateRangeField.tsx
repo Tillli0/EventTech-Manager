@@ -5,9 +5,14 @@ import { de } from "date-fns/locale";
 import { EventSchedulePicker } from "@/components/ui/EventSchedulePicker";
 import { cn } from "@/lib/cn";
 
-function summarize(start: Date | null, end: Date | null): string | null {
+function summarize(start: Date | null, end: Date | null, allDay: boolean): string | null {
   if (!start || !end) return null;
   const sameDay = start.toDateString() === end.toDateString();
+  if (allDay) {
+    return sameDay
+      ? format(start, "EEE, d. MMM yyyy", { locale: de })
+      : `${format(start, "d. MMM", { locale: de })} – ${format(end, "d. MMM yyyy", { locale: de })}`;
+  }
   if (sameDay) {
     return `${format(start, "EEE, d. MMM yyyy", { locale: de })} · ${format(start, "HH:mm")}–${format(end, "HH:mm")}`;
   }
@@ -22,11 +27,13 @@ export function DateRangeField({
   onChange,
   initialStart,
   initialEnd,
+  allDay = false,
   placeholder = "Zeitraum festlegen",
 }: {
   onChange: (start: Date | null, end: Date | null) => void;
   initialStart?: Date | null;
   initialEnd?: Date | null;
+  allDay?: boolean;
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -43,7 +50,7 @@ export function DateRangeField({
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  const summary = summarize(start, end);
+  const summary = summarize(start, end, allDay);
 
   return (
     <div ref={ref} className="relative">
@@ -64,6 +71,7 @@ export function DateRangeField({
         <div className="mt-2 w-full rounded-lg border border-border bg-bg-surface p-4 shadow-lg">
           <EventSchedulePicker
             autoOpen
+            allDay={allDay}
             initialStart={start}
             initialEnd={end}
             onChange={(s, e) => {

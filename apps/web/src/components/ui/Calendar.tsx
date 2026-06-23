@@ -26,11 +26,14 @@ export function Calendar({
   value,
   onSelect,
   min,
+  rangeStart,
 }: {
   value: Date | null;
   onSelect: (day: Date) => void;
   /** Tage vor diesem Datum sind nicht wählbar (z.B. Ende ≥ Start). */
   min?: Date | null;
+  /** Anderer Endpunkt eines Zeitraums — wird markiert, die Spanne dazwischen hervorgehoben. */
+  rangeStart?: Date | null;
 }) {
   const [month, setMonth] = useState(() => startOfMonth(value ?? new Date()));
 
@@ -74,7 +77,12 @@ export function Calendar({
 
       <div className="grid grid-cols-7 gap-0.5">
         {days.map((day) => {
+          const d0 = startOfDay(day);
           const selected = value && isSameDay(day, value);
+          const isRangeStart = rangeStart && isSameDay(day, rangeStart);
+          const lo = rangeStart && value ? (rangeStart < value ? startOfDay(rangeStart) : startOfDay(value)) : null;
+          const hi = rangeStart && value ? (rangeStart < value ? startOfDay(value) : startOfDay(rangeStart)) : null;
+          const inRange = lo && hi && d0 > lo && d0 < hi;
           const disabled = minDay && day < minDay;
           const outside = !isSameMonth(day, month);
           return (
@@ -87,11 +95,15 @@ export function Calendar({
                 "flex h-8 items-center justify-center rounded-md text-sm transition-colors",
                 selected
                   ? "bg-accent font-semibold text-white"
-                  : disabled
-                    ? "cursor-not-allowed text-ink-faint/40"
-                    : "text-ink hover:bg-bg-raised",
-                !selected && outside && "text-ink-faint",
-                !selected && !disabled && isToday(day) && "ring-1 ring-inset ring-accent/40",
+                  : isRangeStart
+                    ? "bg-accent/15 font-semibold text-accent ring-1 ring-inset ring-accent"
+                    : inRange
+                      ? "bg-accent/10 text-ink"
+                      : disabled
+                        ? "cursor-not-allowed text-ink-faint/40"
+                        : "text-ink hover:bg-bg-raised",
+                !selected && !isRangeStart && !inRange && outside && "text-ink-faint",
+                !selected && !isRangeStart && !inRange && !disabled && isToday(day) && "ring-1 ring-inset ring-accent/40",
               )}
             >
               {day.getDate()}

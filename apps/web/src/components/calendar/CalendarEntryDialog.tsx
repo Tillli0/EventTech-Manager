@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Trash2 } from "lucide-react";
+import { startOfDay, endOfDay } from "date-fns";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { FormField, Input, Textarea } from "@/components/ui/Input";
+import { FormField, Input, Textarea, Label } from "@/components/ui/Input";
+import { DateRangeField } from "@/components/ui/DateRangeField";
 import { useCreateCalendarEntry, useDeleteCalendarEntry } from "@/hooks/useCalendar";
 import type { CalendarEntry } from "@/types/database";
 import { formatDateTime, formatDate } from "@/lib/format";
@@ -22,52 +24,41 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
 
   const [title, setTitle] = useState("");
   const [allDay, setAllDay] = useState(false);
-  const [startAt, setStartAt] = useState("");
-  const [endAt, setEndAt] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [start, setStart] = useState<Date | null>(null);
+  const [end, setEnd] = useState<Date | null>(null);
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
     if (existingEntry || !prefillDate) return;
     const hasSpecificTime = prefillDate.getHours() !== 0 || prefillDate.getMinutes() !== 0;
-    const startHour = hasSpecificTime ? prefillDate.getHours() : 10;
-    const startMinute = hasSpecificTime ? prefillDate.getMinutes() : 0;
-    setStartAt(toLocalDateTimeInput(prefillDate, startHour, startMinute));
-    setEndAt(toLocalDateTimeInput(prefillDate, startHour + 1, startMinute));
-    setStartDate(toLocalDateInput(prefillDate));
-    setEndDate(toLocalDateInput(prefillDate));
+    const s = new Date(prefillDate);
+    if (!hasSpecificTime) s.setHours(10, 0, 0, 0);
+    const e = new Date(s);
+    e.setHours(s.getHours() + 1);
+    setStart(s);
+    setEnd(e);
     // Klick in Monatsansicht (00:00) → ganztägig vorschlagen
     if (!hasSpecificTime) setAllDay(true);
   }, [prefillDate, existingEntry]);
 
   function resetAndClose() {
     setTitle(""); setAllDay(false);
-    setStartAt(""); setEndAt("");
-    setStartDate(""); setEndDate("");
+    setStart(null); setEnd(null);
     setNotes("");
     onClose();
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !start || !end) return;
 
-    let start: string, end: string;
-    if (allDay) {
-      if (!startDate || !endDate) return;
-      start = new Date(startDate + "T00:00:00").toISOString();
-      end = new Date(endDate + "T23:59:59").toISOString();
-    } else {
-      if (!startAt || !endAt) return;
-      start = new Date(startAt).toISOString();
-      end = new Date(endAt).toISOString();
-    }
+    const startIso = (allDay ? startOfDay(start) : start).toISOString();
+    const endIso = (allDay ? endOfDay(end) : end).toISOString();
 
     await createEntry.mutateAsync({
       title: title.trim(),
-      start_at: start,
-      end_at: end,
+      start_at: startIso,
+      end_at: endIso,
       all_day: allDay,
       notes: notes.trim() || null,
     });
@@ -152,25 +143,16 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
           <span className="font-medium">Ganztägig</span>
         </button>
 
-        {allDay ? (
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Von *">
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-            </FormField>
-            <FormField label="Bis *">
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
-            </FormField>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Start *">
-              <Input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} required />
-            </FormField>
-            <FormField label="Ende *">
-              <Input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} required />
-            </FormField>
-          </div>
-        )}
+        <div>
+          <Label>Zeitraum *</Label>
+          <DateRangeField
+            key={`${prefillDate?.getTime() ?? "new"}-${allDay}`}
+            allDay={allDay}
+            initialStart={start}
+            initialEnd={end}
+            onChange={(s, e) => { setStart(s); setEnd(e); }}
+          />
+        </div>
 
         <FormField label="Notizen">
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
@@ -184,16 +166,4 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
       </form>
     </Dialog>
   );
-}
-
-function toLocalDateTimeInput(date: Date, hour: number, minute = 0): string {
-  const d = new Date(date);
-  d.setHours(hour, minute, 0, 0);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function toLocalDateInput(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }

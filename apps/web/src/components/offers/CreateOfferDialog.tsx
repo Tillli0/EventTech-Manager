@@ -3,6 +3,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
+import { DateInput } from "@/components/ui/DateField";
 import { useCustomers, useInquiries } from "@/hooks/useCustomers";
 import { useDevices } from "@/hooks/useDevices";
 import { useCreateOffer, type CreateOfferItemInput } from "@/hooks/useOffers";
@@ -177,7 +178,7 @@ export function CreateOfferDialog({
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Gültig bis">
-            <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
+            <DateInput value={validUntil} onChange={setValidUntil} placeholder="Datum wählen" />
           </FormField>
           <FormField label="MwSt-Satz (%)">
             <Input type="number" min={0} step="0.1" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />

@@ -18,6 +18,7 @@ export function EventSchedulePicker({
   defaultStartTime = "10:00",
   defaultEndTime = "18:00",
   autoOpen = false,
+  allDay = false,
 }: {
   onChange: (start: Date | null, end: Date | null) => void;
   initialStart?: Date | null;
@@ -26,6 +27,8 @@ export function EventSchedulePicker({
   defaultEndTime?: string;
   /** Beim Einblenden direkt den (Start-)Kalender öffnen. */
   autoOpen?: boolean;
+  /** Ganztägig: Uhrzeiten ausblenden (Start 00:00, Ende 23:59). */
+  allDay?: boolean;
 }) {
   const pad = (n: number) => String(n).padStart(2, "0");
   const asTime = (d?: Date | null, fallback?: string) =>
@@ -60,19 +63,21 @@ export function EventSchedulePicker({
 
   // Fertigen Zeitraum nach außen melden.
   useEffect(() => {
+    const sTime = allDay ? "00:00" : startTime;
+    const eTime = allDay ? "23:59" : endTime;
     let start: Date | null = null;
     let end: Date | null = null;
     if (multiDay) {
-      if (startDay) start = combineDateAndTime(startDay, startTime);
-      if (endDay) end = combineDateAndTime(endDay, endTime);
+      if (startDay) start = combineDateAndTime(startDay, sTime);
+      if (endDay) end = combineDateAndTime(endDay, eTime);
     } else if (day) {
-      start = combineDateAndTime(day, startTime);
-      end = combineDateAndTime(day, endTime);
+      start = combineDateAndTime(day, sTime);
+      end = combineDateAndTime(day, eTime);
     }
     onChange(start, end);
     // onChange bewusst nicht in deps — sonst Endlosschleife bei Inline-Funktionen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [multiDay, day, startDay, endDay, startTime, endTime]);
+  }, [multiDay, day, startDay, endDay, startTime, endTime, allDay]);
 
   const focusStartTime = () => setTimeout(() => startTimeRef.current?.focus(), 0);
 
@@ -118,10 +123,11 @@ export function EventSchedulePicker({
             <DateField
               value={endDay}
               min={startDay}
+              rangeStart={startDay}
               open={endOpen}
               onOpenChange={setEndOpen}
               onChange={setEndDay}
-              onComplete={focusStartTime} // dann zur Uhrzeit
+              onComplete={allDay ? undefined : focusStartTime} // dann zur Uhrzeit
             />
           </div>
         </div>
@@ -138,16 +144,18 @@ export function EventSchedulePicker({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Label>Beginn *</Label>
-          <TimeField ref={startTimeRef} aria-label="Startzeit" value={startTime} onChange={setStartTime} className="w-full" />
+      {!allDay && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Beginn *</Label>
+            <TimeField ref={startTimeRef} aria-label="Startzeit" value={startTime} onChange={setStartTime} className="w-full" />
+          </div>
+          <div>
+            <Label>Ende *</Label>
+            <TimeField aria-label="Endzeit" value={endTime} onChange={setEndTime} className="w-full" />
+          </div>
         </div>
-        <div>
-          <Label>Ende *</Label>
-          <TimeField aria-label="Endzeit" value={endTime} onChange={setEndTime} className="w-full" />
-        </div>
-      </div>
+      )}
     </div>
   );
 }

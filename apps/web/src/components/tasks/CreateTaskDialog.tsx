@@ -3,6 +3,7 @@ import { List, StickyNote } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea, FormField } from "@/components/ui/Input";
+import { DateInput } from "@/components/ui/DateField";
 import { useCreateTask } from "@/hooks/useTasks";
 import { useProfiles, profileLabel } from "@/hooks/useProfiles";
 import { TASK_PRIORITY_OPTIONS } from "@/types/database";
@@ -111,7 +112,7 @@ export function CreateTaskDialog({ open, onClose, prefillJobId, prefillJobTitle 
             </Select>
           </FormField>
           <FormField label="Fällig am">
-            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            <DateInput value={dueDate} onChange={setDueDate} placeholder="Datum wählen" />
           </FormField>
         </div>
 

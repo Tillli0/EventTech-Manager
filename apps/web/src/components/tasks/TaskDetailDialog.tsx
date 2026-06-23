@@ -7,6 +7,7 @@ import {
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
+import { DateInput } from "@/components/ui/DateField";
 import { TaskStatusBadge, TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import {
   useTask, useUpdateTask, useDeleteTask, useUpdateTaskStatus,
@@ -300,7 +301,7 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
                   </Select>
                 </FormField>
                 <FormField label="Fällig am">
-                  <Input type="date" value={dueDate} onChange={(e) => handleDueDateChange(e.target.value)} />
+                  <DateInput value={dueDate} onChange={handleDueDateChange} placeholder="Datum wählen" />
                 </FormField>
               </div>
 
