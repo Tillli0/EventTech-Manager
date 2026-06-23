@@ -13,8 +13,11 @@ import { formatDate } from "@/lib/format";
 import { CreateJobDialog } from "@/components/jobs/CreateJobDialog";
 import { exportToCsv } from "@/lib/csv";
 import type { Job } from "@/types/database";
+import { useAuth } from "@/auth/AuthProvider";
 
 export function JobsPage() {
+  const { canEdit } = useAuth();
+  const mayEdit = canEdit("jobs");
   const { data: jobs, isLoading, error } = useJobs();
   const [statusFilter, setStatusFilter] = useState<JobStatus | "alle">("alle");
   const [createOpen, setCreateOpen] = useState(false);
@@ -58,10 +61,12 @@ export function JobsPage() {
               <Download size={16} />
               CSV
             </Button>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus size={16} />
-              Job anlegen
-            </Button>
+            {mayEdit && (
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus size={16} />
+                Job anlegen
+              </Button>
+            )}
           </>
         }
       />
@@ -90,10 +95,12 @@ export function JobsPage() {
           title="Keine Jobs gefunden"
           description="Lege einen neuen Job an, um eine Packliste zu erstellen."
           action={
-            <Button variant="secondary" onClick={() => setCreateOpen(true)}>
-              <Plus size={16} />
-              Ersten Job anlegen
-            </Button>
+            mayEdit ? (
+              <Button variant="secondary" onClick={() => setCreateOpen(true)}>
+                <Plus size={16} />
+                Ersten Job anlegen
+              </Button>
+            ) : undefined
           }
         />
       )}

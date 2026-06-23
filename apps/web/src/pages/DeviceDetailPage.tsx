@@ -21,11 +21,14 @@ import {
 import { DEVICE_STATUS_OPTIONS, type DeviceStatus } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { BarcodeLabel, printBarcodeLabels } from "@/components/barcode/BarcodeLabel";
+import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
 
 export function DeviceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { canEdit } = useAuth();
+  const mayEdit = canEdit("inventar");
   const { data: device, isLoading, error } = useDevice(id);
   const updateStatus = useUpdateDeviceStatus();
   const updateDevice = useUpdateDevice();
@@ -70,15 +73,18 @@ export function DeviceDetailPage() {
               <Printer size={16} />
               Label drucken
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
-              <Trash2 size={16} />
-            </Button>
+            {mayEdit && (
+              <Button variant="danger" onClick={handleDelete}>
+                <Trash2 size={16} />
+              </Button>
+            )}
           </>
         }
       />
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="space-y-6 md:col-span-2">
+          {mayEdit && (
           <Card>
             <CardHeader>
               <h2 className="text-sm font-semibold text-ink">Status</h2>
@@ -109,6 +115,7 @@ export function DeviceDetailPage() {
               </div>
             </CardBody>
           </Card>
+          )}
 
           <Card>
             <CardHeader>
@@ -138,7 +145,7 @@ export function DeviceDetailPage() {
                       <Check size={14} />
                     </button>
                   </div>
-                ) : (
+                ) : mayEdit ? (
                   <button
                     onClick={() => {
                       setStockInput(String(device.stock_quantity));
@@ -150,6 +157,11 @@ export function DeviceDetailPage() {
                     {device.stock_quantity > 1 && " Stück"}
                     <Pencil size={11} className="text-ink-faint" />
                   </button>
+                ) : (
+                  <p className="mt-0.5 text-ink">
+                    {device.stock_quantity}
+                    {device.stock_quantity > 1 && " Stück"}
+                  </p>
                 )}
               </div>
               <div>
@@ -177,7 +189,7 @@ export function DeviceDetailPage() {
                       <Check size={14} />
                     </button>
                   </div>
-                ) : (
+                ) : mayEdit ? (
                   <button
                     onClick={() => {
                       setPriceInput(device.daily_rental_price != null ? String(device.daily_rental_price) : "");
@@ -188,6 +200,8 @@ export function DeviceDetailPage() {
                     {formatCurrency(device.daily_rental_price)}
                     <Pencil size={11} className="text-ink-faint" />
                   </button>
+                ) : (
+                  <p className="mt-0.5 text-ink">{formatCurrency(device.daily_rental_price)}</p>
                 )}
               </div>
               <DataField label="Seriennummer" value={device.serial_number} mono />
@@ -214,7 +228,7 @@ export function DeviceDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <DevicePhotosCard deviceId={device.id} />
+          <DevicePhotosCard deviceId={device.id} canEdit={mayEdit} />
 
           <Card>
             <CardHeader>
@@ -251,7 +265,7 @@ function DataField({ label, value, mono }: { label: string; value: string | null
   );
 }
 
-function DevicePhotosCard({ deviceId }: { deviceId: string }) {
+function DevicePhotosCard({ deviceId, canEdit }: { deviceId: string; canEdit: boolean }) {
   const { data: photos, isLoading } = useDevicePhotos(deviceId);
   const uploadPhoto = useUploadDevicePhoto();
   const deletePhoto = useDeleteDevicePhoto();
@@ -278,36 +292,44 @@ function DevicePhotosCard({ deviceId }: { deviceId: string }) {
     <Card>
       <CardHeader className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-ink">Fotos</h2>
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isBusy}
-          className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline disabled:opacity-50"
-        >
-          <ImagePlus size={14} />
-          Hinzufügen
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={handleFiles}
-        />
+        {canEdit && (
+          <>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isBusy}
+              className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline disabled:opacity-50"
+            >
+              <ImagePlus size={14} />
+              Hinzufügen
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFiles}
+            />
+          </>
+        )}
       </CardHeader>
       <CardBody>
         {isLoading ? (
           <p className="text-sm text-ink-faint">Wird geladen …</p>
         ) : sorted.length === 0 ? (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex h-28 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border text-ink-faint transition-colors hover:border-accent hover:text-accent"
-          >
-            <ImagePlus size={22} />
-            <span className="text-xs">Erstes Bild hinzufügen</span>
-          </button>
+          canEdit ? (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-28 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border text-ink-faint transition-colors hover:border-accent hover:text-accent"
+            >
+              <ImagePlus size={22} />
+              <span className="text-xs">Erstes Bild hinzufügen</span>
+            </button>
+          ) : (
+            <p className="text-sm text-ink-faint">Keine Fotos vorhanden.</p>
+          )
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {sorted.map((photo) => (
@@ -326,6 +348,7 @@ function DevicePhotosCard({ deviceId }: { deviceId: string }) {
                     Cover
                   </span>
                 )}
+                {canEdit && (
                 <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   {!photo.is_cover && (
                     <button
@@ -351,6 +374,7 @@ function DevicePhotosCard({ deviceId }: { deviceId: string }) {
                     <X size={12} />
                   </button>
                 </div>
+                )}
               </div>
             ))}
           </div>

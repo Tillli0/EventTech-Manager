@@ -3,19 +3,24 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Label } from "@/components/ui/Input";
 import { useCreateJob } from "@/hooks/useJobs";
+import { useSetJobAssignees } from "@/hooks/useJobAssignees";
+import { useProfiles, profileLabel } from "@/hooks/useProfiles";
 import { useCustomers } from "@/hooks/useCustomers";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { randomJobColor } from "@/types/database";
 
 export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createJob = useCreateJob();
+  const setAssignees = useSetJobAssignees();
   const { data: customers } = useCustomers();
+  const { data: profiles } = useProfiles();
 
   const [title, setTitle] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [location, setLocation] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [color, setColor] = useState(() => randomJobColor());
 
   // Bei jedem Öffnen des Dialogs eine neue zufällige Farbe vorschlagen.
@@ -29,7 +34,14 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
     setLocation("");
     setStartDate("");
     setEndDate("");
+    setAssigneeIds([]);
     setColor(randomJobColor());
+  }
+
+  function toggleAssignee(userId: string) {
+    setAssigneeIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+    );
   }
 
   function customerLabel(c: { company_name: string | null; first_name: string | null; last_name: string | null }) {
@@ -42,7 +54,7 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
 
     const selectedCustomer = customers?.find((c) => c.id === customerId);
 
-    await createJob.mutateAsync({
+    const job = await createJob.mutateAsync({
       title: title.trim(),
       customer_id: customerId || null,
       location: location.trim() || null,
@@ -51,6 +63,10 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
       color,
       customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
     });
+
+    if (assigneeIds.length > 0) {
+      await setAssignees.mutateAsync({ jobId: job.id, userIds: assigneeIds });
+    }
 
     reset();
     onClose();
@@ -96,6 +112,32 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
             <Input type="datetime-local" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
           </FormField>
         </div>
+
+        {profiles && profiles.length > 0 && (
+          <div>
+            <Label>Zugewiesene Nutzer</Label>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {profiles.map((p) => {
+                const active = assigneeIds.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => toggleAssignee(p.id)}
+                    className={
+                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors " +
+                      (active
+                        ? "border-accent bg-accent-soft text-ink"
+                        : "border-border text-ink-muted hover:border-accent/40 hover:text-ink")
+                    }
+                  >
+                    {profileLabel(p)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>

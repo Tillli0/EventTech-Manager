@@ -6,6 +6,7 @@ import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useAuth } from "@/auth/AuthProvider";
 import { DEVICE_STATUS_OPTIONS } from "@/types/database";
 import { formatDate } from "@/lib/format";
 import type { Job } from "@/types/database";
@@ -19,13 +20,45 @@ function customerLabel(job: Job): string | null {
 export function DashboardPage() {
   const { isLoading, error, todayJobs, upcomingJobs, deviceStatusCounts, overdueTasks, otherOpenTasks } =
     useDashboard();
+  const { user, profile, isAdmin } = useAuth();
 
   if (isLoading) return <LoadingState label="Überblick wird geladen …" />;
   if (error) return <ErrorState message={error.message} />;
 
+  const myTasks = [...overdueTasks, ...otherOpenTasks].filter((t) => t.assigned_user_id === user?.id);
+  const greeting = profile?.full_name ? `Hallo ${profile.full_name.split(" ")[0]}` : "Überblick";
+
   return (
     <div>
-      <PageHeader title="Überblick" description="Was heute und in den nächsten Tagen ansteht." />
+      <PageHeader title={greeting} description="Was heute und in den nächsten Tagen ansteht." />
+
+      {!isAdmin && (
+        <Card className="mb-6">
+          <CardHeader>
+            <h2 className="text-sm font-semibold text-ink">Mir zugewiesen</h2>
+          </CardHeader>
+          <CardBody>
+            {myTasks.length === 0 ? (
+              <p className="py-2 text-sm text-ink-faint">Dir sind aktuell keine offenen Aufgaben zugewiesen.</p>
+            ) : (
+              <div className="space-y-2">
+                {myTasks.slice(0, 6).map((task) => (
+                  <Link
+                    key={task.id}
+                    to="/aufgaben"
+                    className="flex items-center justify-between rounded-md border border-border bg-bg-raised px-3 py-2 transition-colors hover:border-accent/40"
+                  >
+                    <span className="truncate text-sm font-medium text-ink">{task.title}</span>
+                    <span className="ml-3 shrink-0 text-xs text-ink-muted">
+                      {task.due_date ? `Fällig: ${formatDate(task.due_date)}` : "Kein Termin"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
 
       {/* Gerätestatus */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

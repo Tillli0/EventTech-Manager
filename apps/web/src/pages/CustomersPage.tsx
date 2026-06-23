@@ -6,10 +6,13 @@ import { cn } from "@/lib/cn";
 import { CustomerListView } from "@/components/customers/CustomerListView";
 import { InquiryPipelineView } from "@/components/customers/InquiryPipelineView";
 import { CreateCustomerDialog } from "@/components/customers/CreateCustomerDialog";
+import { useAuth } from "@/auth/AuthProvider";
 
 type Tab = "kunden" | "pipeline";
 
 export function CustomersPage() {
+  const { canEdit } = useAuth();
+  const mayEdit = canEdit("kunden");
   const [tab, setTab] = useState<Tab>("pipeline");
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -18,10 +21,12 @@ export function CustomersPage() {
       <PageHeader
         title="Kunden"
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={16} />
-            Kunde anlegen
-          </Button>
+          mayEdit ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus size={16} />
+              Kunde anlegen
+            </Button>
+          ) : undefined
         }
       />
 

@@ -1,9 +1,16 @@
 import { NavLink } from "react-router-dom";
-import { ScanLine, Zap } from "lucide-react";
+import { ScanLine, Zap, LogOut } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav";
+import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
 
 export function Sidebar() {
+  const { profile, user, isAdmin, hasArea, signOut } = useAuth();
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => (!item.adminOnly || isAdmin) && (!item.area || hasArea(item.area)),
+  );
+  const displayName = profile?.full_name || user?.email || "Angemeldet";
+
   return (
     <aside className="hidden w-60 flex-col border-r border-border bg-bg-surface md:flex">
       <div className="flex items-center gap-2.5 border-b border-border px-5 py-5">
@@ -18,7 +25,7 @@ export function Sidebar() {
 
       <nav className="flex-1 px-3 py-4">
         <ul className="space-y-0.5">
-          {NAV_ITEMS.map((item) => (
+          {visibleItems.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}
@@ -50,21 +57,38 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-border p-3">
-        <NavLink
-          to="/scan"
-          className={({ isActive }) =>
-            cn(
-              "flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-colors",
-              isActive
-                ? "bg-accent text-white"
-                : "border border-border bg-bg-raised text-ink hover:border-accent/50",
-            )
-          }
-        >
-          <ScanLine size={16} />
-          Barcode scannen
-        </NavLink>
+      <div className="space-y-3 border-t border-border p-3">
+        {hasArea("inventar") && (
+          <NavLink
+            to="/scan"
+            className={({ isActive }) =>
+              cn(
+                "flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-accent text-white"
+                  : "border border-border bg-bg-raised text-ink hover:border-accent/50",
+              )
+            }
+          >
+            <ScanLine size={16} />
+            Barcode scannen
+          </NavLink>
+        )}
+
+        <div className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-ink">{displayName}</p>
+            <p className="text-xs text-ink-faint">{isAdmin ? "Administrator" : "Mitarbeiter"}</p>
+          </div>
+          <button
+            onClick={() => signOut()}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-bg-raised hover:text-ink"
+            title="Abmelden"
+            aria-label="Abmelden"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
       </div>
     </aside>
   );

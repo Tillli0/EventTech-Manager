@@ -10,7 +10,7 @@ export function useTasks(filters?: { status?: TaskStatus; jobId?: string }) {
     queryFn: async (): Promise<Task[]> => {
       let query = supabase
         .from("tasks")
-        .select("*, job:jobs(id, title), checklist_items:task_checklist_items(*)")
+        .select("*, job:jobs(id, title), assigned_user:profiles!assigned_user_id(id, full_name), checklist_items:task_checklist_items(*)")
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (filters?.status) query = query.eq("status", filters.status);
@@ -31,7 +31,7 @@ export function useTask(id: string | undefined) {
       if (!id) return null;
       const { data, error } = await supabase
         .from("tasks")
-        .select("*, job:jobs(id, title), checklist_items:task_checklist_items(*)")
+        .select("*, job:jobs(id, title), assigned_user:profiles!assigned_user_id(id, full_name), checklist_items:task_checklist_items(*)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -67,6 +67,7 @@ interface CreateTaskInput {
   content_type?: TaskContentType;
   priority?: TaskPriority;
   assigned_to?: string | null;
+  assigned_user_id?: string | null;
   due_date?: string | null;
   job_id?: string | null;
 }
@@ -91,8 +92,8 @@ export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...fields }: Partial<Task> & { id: string }) => {
-      // checklist_items nicht mitschicken — das ist ein Join-Feld, keine Spalte
-      const { checklist_items, job, ...updateFields } = fields as any;
+      // Join-Felder nicht mitschicken — das sind keine Spalten
+      const { checklist_items, job, assigned_user, ...updateFields } = fields as any;
       const { data, error } = await supabase
         .from("tasks")
         .update(updateFields)

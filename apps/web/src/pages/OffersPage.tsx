@@ -10,8 +10,11 @@ import { offerTotals } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadOfferPdf } from "@/components/offers/OfferPdfDocument";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
+import { useAuth } from "@/auth/AuthProvider";
 
 export function OffersPage() {
+  const { canEdit } = useAuth();
+  const mayEdit = canEdit("angebote");
   const { data: offers, isLoading, error } = useOffers();
   const deleteOffer = useDeleteOffer();
   const [createOpen, setCreateOpen] = useState(false);
@@ -42,10 +45,12 @@ export function OffersPage() {
         title="Angebote"
         description={offers ? `${offers.length} Angebote` : undefined}
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={16} />
-            Angebot erstellen
-          </Button>
+          mayEdit ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus size={16} />
+              Angebot erstellen
+            </Button>
+          ) : undefined
         }
       />
 
@@ -58,10 +63,12 @@ export function OffersPage() {
           title="Noch keine Angebote"
           description="Erstelle ein Angebot mit Positionen aus dem Inventar — der Preis wird aus dem Tagesmietpreis vorbelegt."
           action={
-            <Button variant="secondary" onClick={() => setCreateOpen(true)}>
-              <Plus size={16} />
-              Erstes Angebot erstellen
-            </Button>
+            mayEdit ? (
+              <Button variant="secondary" onClick={() => setCreateOpen(true)}>
+                <Plus size={16} />
+                Erstes Angebot erstellen
+              </Button>
+            ) : undefined
           }
         />
       )}
@@ -106,18 +113,20 @@ export function OffersPage() {
                           <Download size={14} />
                           {downloadingId === offer.id ? "…" : "PDF"}
                         </Button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Angebot ${offer.offer_number} wirklich löschen?`)) {
-                              deleteOffer.mutate({ id: offer.id, customerId: offer.customer_id });
-                            }
-                          }}
-                          className="flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:text-status-defekt"
-                          aria-label="Angebot löschen"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {mayEdit && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Angebot ${offer.offer_number} wirklich löschen?`)) {
+                                deleteOffer.mutate({ id: offer.id, customerId: offer.customer_id });
+                              }
+                            }}
+                            className="flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:text-status-defekt"
+                            aria-label="Angebot löschen"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

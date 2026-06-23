@@ -22,7 +22,7 @@ import { quantityStillOut, quantityNotYetPickedUp, DEVICE_STATUS_OPTIONS } from 
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 
-export function PacklistSection({ job }: { job: Job }) {
+export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: boolean }) {
   const [scanInput, setScanInput] = useState("");
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanFeedback, setScanFeedback] = useState<{ message: string; hasConflict: boolean } | null>(null);
@@ -99,7 +99,7 @@ export function PacklistSection({ job }: { job: Job }) {
     setTimeout(() => setScanFeedback(null), 4000);
   }
 
-  useUsbScannerInput((code) => handleScan(code), true);
+  useUsbScannerInput((code) => handleScan(code), canEdit);
 
   function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,32 +112,34 @@ export function PacklistSection({ job }: { job: Job }) {
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row">
-        <form onSubmit={handleManualSubmit} className="flex flex-1 gap-2">
-          <div className="relative flex-1">
-            <ScanLine size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-            <Input
-              ref={inputRef}
-              value={scanInput}
-              onChange={(e) => setScanInput(e.target.value)}
-              placeholder="Barcode scannen oder eintippen … (mehrfach scannen erhöht die Menge)"
-              className="pl-9 font-mono"
-              autoFocus
-            />
-          </div>
-          <Button type="submit" variant="secondary">
-            Hinzufügen
+      {canEdit && (
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+          <form onSubmit={handleManualSubmit} className="flex flex-1 gap-2">
+            <div className="relative flex-1">
+              <ScanLine size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
+              <Input
+                ref={inputRef}
+                value={scanInput}
+                onChange={(e) => setScanInput(e.target.value)}
+                placeholder="Barcode scannen oder eintippen … (mehrfach scannen erhöht die Menge)"
+                className="pl-9 font-mono"
+                autoFocus
+              />
+            </div>
+            <Button type="submit" variant="secondary">
+              Hinzufügen
+            </Button>
+          </form>
+          <Button type="button" variant="secondary" onClick={() => setShowAddDialog(true)}>
+            <ListPlus size={16} />
+            Aus Inventar
           </Button>
-        </form>
-        <Button type="button" variant="secondary" onClick={() => setShowAddDialog(true)}>
-          <ListPlus size={16} />
-          Aus Inventar
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => setShowSetDialog(true)}>
-          <Boxes size={16} />
-          Set hinzufügen
-        </Button>
-      </div>
+          <Button type="button" variant="secondary" onClick={() => setShowSetDialog(true)}>
+            <Boxes size={16} />
+            Set hinzufügen
+          </Button>
+        </div>
+      )}
 
       {scanError && (
         <p className="mb-3 flex items-center gap-1.5 text-sm text-status-defekt">
@@ -168,6 +170,7 @@ export function PacklistSection({ job }: { job: Job }) {
               key={item.id}
               item={item}
               canPick={canPick}
+              canEdit={canEdit}
               jobId={job.id}
               jobStartDate={job.start_date}
               jobEndDate={job.end_date}
@@ -201,6 +204,7 @@ export function PacklistSection({ job }: { job: Job }) {
 function PacklistRow({
   item,
   canPick,
+  canEdit,
   jobId,
   jobStartDate,
   jobEndDate,
@@ -211,6 +215,7 @@ function PacklistRow({
 }: {
   item: PacklistItem;
   canPick: boolean;
+  canEdit: boolean;
   jobId: string;
   jobStartDate: string;
   jobEndDate: string;
@@ -248,7 +253,7 @@ function PacklistRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate font-medium text-ink">{item.device?.name}</p>
-            {canRemove ? (
+            {canRemove && canEdit ? (
               editingQuantity ? (
                 <input
                   type="number"
@@ -283,7 +288,9 @@ function PacklistRow({
           </div>
           <div className="mt-0.5 flex items-center gap-2">
             <p className="font-mono text-xs text-ink-faint">{item.device?.barcodes?.[0]?.code}</p>
-            {item.device && <DeviceStatusControl deviceId={item.device_id} device={item.device} />}
+            {item.device && (
+              <DeviceStatusControl deviceId={item.device_id} device={item.device} canEdit={canEdit} />
+            )}
           </div>
 
           {item.quantity_picked_up > 0 && (
@@ -313,25 +320,27 @@ function PacklistRow({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          {!isFullyPickedUp && canPick && !showPickupInput && (
-            <Button size="sm" variant="secondary" onClick={() => (isQuantityDevice ? setShowPickupInput(true) : onPickUp())}>
-              <PackageCheck size={14} />
-              {isQuantityDevice ? `Ausgeben (${notYetPickedUp} offen)` : "Ausgeben"}
-            </Button>
-          )}
-          {item.quantity_picked_up > 0 && stillOut > 0 && (
-            <Button size="sm" variant="secondary" onClick={() => setShowReturnDialog(true)}>
-              <PackageX size={14} />
-              Rückgabe erfassen
-            </Button>
-          )}
-          {canRemove && (
-            <Button size="icon" variant="ghost" onClick={onRemove} aria-label="Entfernen">
-              <Trash2 size={14} />
-            </Button>
-          )}
-        </div>
+        {canEdit && (
+          <div className="flex shrink-0 items-center gap-2">
+            {!isFullyPickedUp && canPick && !showPickupInput && (
+              <Button size="sm" variant="secondary" onClick={() => (isQuantityDevice ? setShowPickupInput(true) : onPickUp())}>
+                <PackageCheck size={14} />
+                {isQuantityDevice ? `Ausgeben (${notYetPickedUp} offen)` : "Ausgeben"}
+              </Button>
+            )}
+            {item.quantity_picked_up > 0 && stillOut > 0 && (
+              <Button size="sm" variant="secondary" onClick={() => setShowReturnDialog(true)}>
+                <PackageX size={14} />
+                Rückgabe erfassen
+              </Button>
+            )}
+            {canRemove && (
+              <Button size="icon" variant="ghost" onClick={onRemove} aria-label="Entfernen">
+                <Trash2 size={14} />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {showPickupInput && (
@@ -388,15 +397,17 @@ function PacklistRow({
 function DeviceStatusControl({
   deviceId,
   device,
+  canEdit,
 }: {
   deviceId: string;
   device: NonNullable<PacklistItem["device"]>;
+  canEdit: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const updateStatus = useUpdateDeviceStatus();
   const isSingleUnit = device.stock_quantity === 1;
 
-  if (!isSingleUnit) {
+  if (!isSingleUnit || !canEdit) {
     return <DeviceStatusBadge status={device.status} />;
   }
 

@@ -24,6 +24,45 @@ export type TaskPriority = "niedrig" | "normal" | "hoch" | "dringend";
 
 export type CalendarSource = "intern" | "google" | "ical";
 
+// ============================================================
+// Auth / Rollen / Bereiche
+// ============================================================
+
+export type UserRole = "admin" | "mitarbeiter";
+
+/** Bereiche, für die der Admin pro Nutzer Lese-/Schreibrechte vergibt. */
+export type AppArea = "inventar" | "jobs" | "kunden" | "angebote" | "kalender" | "aufgaben";
+
+export const APP_AREAS: { value: AppArea; label: string }[] = [
+  { value: "inventar", label: "Inventar" },
+  { value: "jobs", label: "Jobs" },
+  { value: "kunden", label: "Kunden" },
+  { value: "angebote", label: "Angebote" },
+  { value: "kalender", label: "Kalender" },
+  { value: "aufgaben", label: "Aufgaben" },
+];
+
+export interface Profile {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: UserRole;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserAreaAccess {
+  user_id: string;
+  area: AppArea;
+  can_edit: boolean;
+}
+
+export interface JobAssignee {
+  job_id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -184,6 +223,7 @@ export interface Job {
   customer?: Customer | null;
   packlist_items?: PacklistItem[];
   milestones?: JobMilestone[];
+  assignees?: JobAssignee[];
 }
 
 export interface JobMilestone {
@@ -261,11 +301,16 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   assigned_to: string | null;
+  /** Echte Nutzer-Zuweisung (Profil-ID). Löst das alte Freitext-assigned_to ab. */
+  assigned_user_id: string | null;
+  /** Ersteller (Profil-ID). Jeder darf eigene Tasks anlegen/sehen. */
+  created_by: string | null;
   due_date: string | null;
   job_id: string | null;
   created_at: string;
   updated_at: string;
   job?: Job | null;
+  assigned_user?: Profile | null;
   checklist_items?: TaskChecklistItem[];
 }
 

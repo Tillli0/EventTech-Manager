@@ -20,10 +20,14 @@ import { formatDate, formatDateTime, formatCurrency } from "@/lib/format";
 import { JobStatusBadge, OfferStatusBadge, StammkundeBadge } from "@/components/ui/StatusBadge";
 import { downloadOfferPdf } from "@/components/offers/OfferPdfDocument";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
+import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { canEdit } = useAuth();
+  const mayEditCustomers = canEdit("kunden");
+  const mayEditOffers = canEdit("angebote");
   const { data: customer, isLoading, error } = useCustomer(id);
   const { data: notes } = useCustomerNotes(id);
   const { data: jobs } = useCustomerJobs(id);
@@ -93,18 +97,20 @@ export function CustomerDetailPage() {
               <h2 className="text-sm font-semibold text-ink">Verlauf & Notizen</h2>
             </CardHeader>
             <CardBody>
-              <form onSubmit={handleAddNote} className="mb-4 flex gap-2">
-                <Textarea
-                  value={noteContent}
-                  onChange={(e) => setNoteContent(e.target.value)}
-                  placeholder="Notiz hinzufügen …"
-                  rows={2}
-                  className="flex-1"
-                />
-                <Button type="submit" size="icon" disabled={addNote.isPending}>
-                  <Send size={16} />
-                </Button>
-              </form>
+              {mayEditCustomers && (
+                <form onSubmit={handleAddNote} className="mb-4 flex gap-2">
+                  <Textarea
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                    placeholder="Notiz hinzufügen …"
+                    rows={2}
+                    className="flex-1"
+                  />
+                  <Button type="submit" size="icon" disabled={addNote.isPending}>
+                    <Send size={16} />
+                  </Button>
+                </form>
+              )}
 
               {notes && notes.length > 0 ? (
                 <div className="space-y-3">
@@ -151,10 +157,12 @@ export function CustomerDetailPage() {
           <Card>
             <CardHeader className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-ink">Angebote</h2>
-              <Button size="sm" variant="secondary" onClick={() => setCreateOfferOpen(true)}>
-                <Plus size={14} />
-                Neues Angebot
-              </Button>
+              {mayEditOffers && (
+                <Button size="sm" variant="secondary" onClick={() => setCreateOfferOpen(true)}>
+                  <Plus size={14} />
+                  Neues Angebot
+                </Button>
+              )}
             </CardHeader>
             <CardBody>
               {offers && offers.length > 0 ? (
@@ -239,30 +247,32 @@ export function CustomerDetailPage() {
                   <p className="text-xs text-ink-faint">Stammkunde</p>
                   {stammkunde && <StammkundeBadge />}
                 </div>
-                <div className="mt-2 flex gap-1 rounded-md bg-bg-raised p-1">
-                  {(
-                    [
-                      { value: null, label: "Automatisch" },
-                      { value: true, label: "Immer" },
-                      { value: false, label: "Nie" },
-                    ] as const
-                  ).map((opt) => (
-                    <button
-                      key={String(opt.value)}
-                      type="button"
-                      onClick={() => updateCustomer.mutate({ id: customer.id, is_stammkunde: opt.value })}
-                      className={cn(
-                        "flex-1 rounded px-2 py-1 text-xs font-medium transition-colors",
-                        customer.is_stammkunde === opt.value
-                          ? "bg-bg-surface text-ink shadow-sm"
-                          : "text-ink-muted hover:text-ink",
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                {customer.is_stammkunde === null && (
+                {mayEditCustomers && (
+                  <div className="mt-2 flex gap-1 rounded-md bg-bg-raised p-1">
+                    {(
+                      [
+                        { value: null, label: "Automatisch" },
+                        { value: true, label: "Immer" },
+                        { value: false, label: "Nie" },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={String(opt.value)}
+                        type="button"
+                        onClick={() => updateCustomer.mutate({ id: customer.id, is_stammkunde: opt.value })}
+                        className={cn(
+                          "flex-1 rounded px-2 py-1 text-xs font-medium transition-colors",
+                          customer.is_stammkunde === opt.value
+                            ? "bg-bg-surface text-ink shadow-sm"
+                            : "text-ink-muted hover:text-ink",
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {mayEditCustomers && customer.is_stammkunde === null && (
                   <p className="mt-1.5 text-xs text-ink-faint">
                     Automatisch ab 2 nicht-stornierten Jobs ({jobCount} vorhanden).
                   </p>

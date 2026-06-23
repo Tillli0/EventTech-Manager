@@ -1,9 +1,12 @@
 import { NavLink } from "react-router-dom";
 import { BOTTOM_NAV_ITEMS, SCAN_NAV_ITEM } from "@/lib/nav";
+import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
 
 export function BottomNav() {
-  const items = [...BOTTOM_NAV_ITEMS.slice(0, 2), SCAN_NAV_ITEM, ...BOTTOM_NAV_ITEMS.slice(2)];
+  const { hasArea } = useAuth();
+  const allItems = [...BOTTOM_NAV_ITEMS.slice(0, 2), SCAN_NAV_ITEM, ...BOTTOM_NAV_ITEMS.slice(2)];
+  const items = allItems.filter((item) => !item.area || hasArea(item.area));
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-bg-surface md:hidden">

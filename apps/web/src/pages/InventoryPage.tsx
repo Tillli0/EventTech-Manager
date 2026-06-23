@@ -14,8 +14,11 @@ import { CreateDeviceDialog } from "@/components/inventory/CreateDeviceDialog";
 import { ManageCategoriesDialog } from "@/components/inventory/ManageCategoriesDialog";
 import { ManageSetsDialog } from "@/components/inventory/ManageSetsDialog";
 import { exportToCsv } from "@/lib/csv";
+import { useAuth } from "@/auth/AuthProvider";
 
 export function InventoryPage() {
+  const { canEdit } = useAuth();
+  const mayEdit = canEdit("inventar");
   const { data: devices, isLoading, error } = useDevices();
   const { data: categories } = useCategories();
   const [search, setSearch] = useState("");
@@ -81,18 +84,22 @@ export function InventoryPage() {
               <Download size={16} />
               CSV
             </Button>
-            <Button variant="secondary" onClick={() => setCategoriesOpen(true)}>
-              <Settings2 size={16} />
-              Kategorien
-            </Button>
-            <Button variant="secondary" onClick={() => setSetsOpen(true)}>
-              <Boxes size={16} />
-              Sets
-            </Button>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus size={16} />
-              Gerät anlegen
-            </Button>
+            {mayEdit && (
+              <>
+                <Button variant="secondary" onClick={() => setCategoriesOpen(true)}>
+                  <Settings2 size={16} />
+                  Kategorien
+                </Button>
+                <Button variant="secondary" onClick={() => setSetsOpen(true)}>
+                  <Boxes size={16} />
+                  Sets
+                </Button>
+                <Button onClick={() => setCreateOpen(true)}>
+                  <Plus size={16} />
+                  Gerät anlegen
+                </Button>
+              </>
+            )}
           </>
         }
       />
@@ -155,10 +162,12 @@ export function InventoryPage() {
           title="Keine Geräte gefunden"
           description="Passe die Filter an oder lege ein neues Gerät an."
           action={
-            <Button variant="secondary" onClick={() => setCreateOpen(true)}>
-              <Plus size={16} />
-              Erstes Gerät anlegen
-            </Button>
+            mayEdit ? (
+              <Button variant="secondary" onClick={() => setCreateOpen(true)}>
+                <Plus size={16} />
+                Erstes Gerät anlegen
+              </Button>
+            ) : undefined
           }
         />
       )}

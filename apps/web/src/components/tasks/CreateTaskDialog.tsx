@@ -4,6 +4,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea, FormField } from "@/components/ui/Input";
 import { useCreateTask } from "@/hooks/useTasks";
+import { useProfiles, profileLabel } from "@/hooks/useProfiles";
 import { TASK_PRIORITY_OPTIONS } from "@/types/database";
 import type { TaskPriority, TaskContentType } from "@/types/database";
 import { cn } from "@/lib/cn";
@@ -17,11 +18,13 @@ interface CreateTaskDialogProps {
 
 export function CreateTaskDialog({ open, onClose, prefillJobId, prefillJobTitle }: CreateTaskDialogProps) {
   const createTask = useCreateTask();
+  const { data: profiles } = useProfiles();
   const [title, setTitle] = useState("");
   const [contentType, setContentType] = useState<TaskContentType>("notes");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("normal");
   const [dueDate, setDueDate] = useState("");
+  const [assignedUserId, setAssignedUserId] = useState("");
 
   async function handleSubmit() {
     if (!title.trim()) return;
@@ -32,9 +35,10 @@ export function CreateTaskDialog({ open, onClose, prefillJobId, prefillJobTitle 
       priority,
       due_date: dueDate || null,
       job_id: prefillJobId ?? null,
+      assigned_user_id: assignedUserId || null,
     });
     setTitle(""); setContentType("notes"); setDescription("");
-    setPriority("normal"); setDueDate("");
+    setPriority("normal"); setDueDate(""); setAssignedUserId("");
     onClose();
   }
 
@@ -110,6 +114,17 @@ export function CreateTaskDialog({ open, onClose, prefillJobId, prefillJobTitle 
             <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </FormField>
         </div>
+
+        <FormField label="Zuweisen an">
+          <Select value={assignedUserId} onChange={(e) => setAssignedUserId(e.target.value)}>
+            <option value="">Niemandem zugewiesen</option>
+            {profiles?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {profileLabel(p)}
+              </option>
+            ))}
+          </Select>
+        </FormField>
 
         {prefillJobTitle && (
           <div className="rounded-md bg-bg-raised px-3 py-2 text-sm text-ink-muted">

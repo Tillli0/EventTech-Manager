@@ -5,9 +5,12 @@ import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
 import { useInquiries, useUpdateInquiryStatus } from "@/hooks/useCustomers";
 import { INQUIRY_PIPELINE_OPTIONS, type InquiryPipelineStatus, type CustomerInquiry } from "@/types/database";
 import { formatDate, formatCurrency } from "@/lib/format";
+import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
 
 export function InquiryPipelineView() {
+  const { canEdit } = useAuth();
+  const mayEdit = canEdit("kunden");
   const { data: inquiries, isLoading, error } = useInquiries();
   const updateStatus = useUpdateInquiryStatus();
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -42,9 +45,9 @@ export function InquiryPipelineView() {
         <div
           key={column.value}
           className="flex min-w-[220px] flex-col rounded-lg bg-bg-surface"
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={(e) => mayEdit && e.preventDefault()}
           onDrop={() => {
-            if (draggedId) {
+            if (mayEdit && draggedId) {
               updateStatus.mutate({ id: draggedId, pipeline_status: column.value });
               setDraggedId(null);
             }
@@ -61,10 +64,11 @@ export function InquiryPipelineView() {
               <Link
                 key={inquiry.id}
                 to={`/kunden/${inquiry.customer_id}`}
-                draggable
-                onDragStart={() => setDraggedId(inquiry.id)}
+                draggable={mayEdit}
+                onDragStart={() => mayEdit && setDraggedId(inquiry.id)}
                 className={cn(
-                  "block cursor-grab rounded-md border border-border bg-bg-raised px-3 py-2.5 active:cursor-grabbing",
+                  "block rounded-md border border-border bg-bg-raised px-3 py-2.5",
+                  mayEdit && "cursor-grab active:cursor-grabbing",
                   "hover:border-accent/40",
                 )}
               >

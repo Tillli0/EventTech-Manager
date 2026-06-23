@@ -12,10 +12,18 @@ import { printPacklist } from "@/lib/printPacklist";
 import { JobTasksSection } from "@/components/tasks/JobTasksSection";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
+import { JobStatusBadge } from "@/components/ui/StatusBadge";
+import { useSetJobAssignees } from "@/hooks/useJobAssignees";
+import { useProfiles, profileLabel } from "@/hooks/useProfiles";
+import { useAuth } from "@/auth/AuthProvider";
+import type { Job } from "@/types/database";
+import { Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { canEdit } = useAuth();
+  const mayEdit = canEdit("jobs");
   const { data: job, isLoading, error } = useJob(id);
   const updateStatus = useUpdateJobStatus();
   const updateJob = useUpdateJob();
@@ -73,7 +81,7 @@ export function JobDetailPage() {
               <h2 className="text-sm font-semibold text-ink">Packliste</h2>
             </CardHeader>
             <CardBody>
-              <PacklistSection job={job} />
+              <PacklistSection job={job} canEdit={mayEdit} />
             </CardBody>
           </Card>
 
@@ -116,33 +124,101 @@ export function JobDetailPage() {
               <h2 className="text-sm font-semibold text-ink">Status</h2>
             </CardHeader>
             <CardBody className="flex flex-col gap-2">
-              {JOB_STATUS_OPTIONS.map((opt) => (
+              {mayEdit ? (
+                JOB_STATUS_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => updateStatus.mutate({ id: job.id, status: opt.value as JobStatus })}
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors",
+                      job.status === opt.value
+                        ? "border-accent bg-accent-soft text-ink"
+                        : "border-border text-ink-muted hover:border-accent/40 hover:text-ink",
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))
+              ) : (
+                <JobStatusBadge status={job.status} />
+              )}
+            </CardBody>
+          </Card>
+
+          <JobAssigneesCard job={job} canEdit={mayEdit} />
+
+          {mayEdit && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-sm font-semibold text-ink">Farbe</h2>
+              </CardHeader>
+              <CardBody>
+                <JobColorPicker value={job.color} onChange={(color) => updateJob.mutate({ id: job.id, color })} />
+              </CardBody>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JobAssigneesCard({ job, canEdit }: { job: Job; canEdit: boolean }) {
+  const { data: profiles } = useProfiles();
+  const setAssignees = useSetJobAssignees();
+  const assignedIds = (job.assignees ?? []).map((a) => a.user_id);
+
+  function toggle(userId: string) {
+    const next = assignedIds.includes(userId)
+      ? assignedIds.filter((id) => id !== userId)
+      : [...assignedIds, userId];
+    setAssignees.mutate({ jobId: job.id, userIds: next });
+  }
+
+  const assignedProfiles = (profiles ?? []).filter((p) => assignedIds.includes(p.id));
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+          <Users size={14} />
+          Zugewiesene Nutzer
+        </h2>
+      </CardHeader>
+      <CardBody>
+        {canEdit ? (
+          <div className="flex flex-wrap gap-2">
+            {(profiles ?? []).map((p) => {
+              const active = assignedIds.includes(p.id);
+              return (
                 <button
-                  key={opt.value}
-                  onClick={() => updateStatus.mutate({ id: job.id, status: opt.value as JobStatus })}
+                  key={p.id}
+                  type="button"
+                  onClick={() => toggle(p.id)}
                   className={cn(
-                    "rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors",
-                    job.status === opt.value
+                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    active
                       ? "border-accent bg-accent-soft text-ink"
                       : "border-border text-ink-muted hover:border-accent/40 hover:text-ink",
                   )}
                 >
-                  {opt.label}
+                  {profileLabel(p)}
                 </button>
-              ))}
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h2 className="text-sm font-semibold text-ink">Farbe</h2>
-            </CardHeader>
-            <CardBody>
-              <JobColorPicker value={job.color} onChange={(color) => updateJob.mutate({ id: job.id, color })} />
-            </CardBody>
-          </Card>
-        </div>
-      </div>
-    </div>
+              );
+            })}
+          </div>
+        ) : assignedProfiles.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {assignedProfiles.map((p) => (
+              <span key={p.id} className="rounded-full bg-bg-raised px-3 py-1 text-xs text-ink-muted">
+                {profileLabel(p)}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-ink-faint">Niemand zugewiesen.</p>
+        )}
+      </CardBody>
+    </Card>
   );
 }
