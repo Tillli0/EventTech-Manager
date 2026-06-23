@@ -48,9 +48,16 @@ export function RequireArea({ area, children }: { area: AppArea; children: React
   return <>{children}</>;
 }
 
-/** Nur für Admins (z.B. Nutzerverwaltung). */
+/** Nur für Admins (z.B. Account-Verwaltung). */
 export function RequireAdmin({ children }: { children: ReactNode }) {
   const { isAdmin } = useAuth();
   if (!isAdmin) return <NoAccess />;
+  return <>{children}</>;
+}
+
+/** Für Admin oder Verwaltung (Rechte-/Zuweisungs-/Sichtmodus-Verwaltung). */
+export function RequireManager({ children }: { children: ReactNode }) {
+  const { isManager } = useAuth();
+  if (!isManager) return <NoAccess />;
   return <>{children}</>;
 }

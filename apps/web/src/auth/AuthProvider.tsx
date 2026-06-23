@@ -10,6 +10,8 @@ interface AuthContextValue {
   profile: Profile | null;
   areaAccess: UserAreaAccess[];
   isAdmin: boolean;
+  /** Admin ODER Verwaltung — darf Rechte/Zuweisungen/Sichtmodi verwalten und sieht alle Bereiche. */
+  isManager: boolean;
   /** Darf der Nutzer den Bereich sehen? */
   hasArea: (area: AppArea) => boolean;
   /** Darf der Nutzer im Bereich bearbeiten? */
@@ -64,15 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadProfile]);
 
   const isAdmin = profile?.role === "admin";
+  const isManager = profile?.role === "admin" || profile?.role === "verwaltung";
 
   const hasArea = useCallback(
-    (area: AppArea) => isAdmin || areaAccess.some((a) => a.area === area),
-    [isAdmin, areaAccess],
+    (area: AppArea) => isManager || areaAccess.some((a) => a.area === area),
+    [isManager, areaAccess],
   );
 
   const canEdit = useCallback(
-    (area: AppArea) => isAdmin || areaAccess.some((a) => a.area === area && a.can_edit),
-    [isAdmin, areaAccess],
+    (area: AppArea) => isManager || areaAccess.some((a) => a.area === area && a.can_edit),
+    [isManager, areaAccess],
   );
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -97,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         areaAccess,
         isAdmin,
+        isManager,
         hasArea,
         canEdit,
         signIn,

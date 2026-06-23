@@ -68,7 +68,13 @@ Deno.serve(async (req) => {
 
       const newId = created.user.id;
       // Profil existiert dank Trigger; Rolle + Bereiche setzen.
-      await admin.from("profiles").update({ role: role === "admin" ? "admin" : "mitarbeiter", full_name: full_name ?? null }).eq("id", newId);
+      const finalRole = role === "admin" ? "admin" : role === "verwaltung" ? "verwaltung" : "mitarbeiter";
+      // Manager sehen standardmäßig alle Jobs, Mitarbeiter nur zugewiesene.
+      const viewMode = finalRole === "mitarbeiter" ? "zugewiesene" : "alle";
+      await admin
+        .from("profiles")
+        .update({ role: finalRole, full_name: full_name ?? null, job_view_mode: viewMode })
+        .eq("id", newId);
 
       if (Array.isArray(areas) && areas.length > 0) {
         await admin.from("user_area_access").insert(

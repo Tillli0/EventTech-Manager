@@ -13,11 +13,21 @@ import {
   useResetUserPassword,
   useSetUserRole,
   useSetAreaAccess,
+  useSetJobViewMode,
   type AdminUser,
 } from "@/hooks/useAdminUsers";
 import { useAuth } from "@/auth/AuthProvider";
-import { APP_AREAS, type AppArea, type UserRole } from "@/types/database";
+import {
+  APP_AREAS,
+  JOB_VIEW_MODE_OPTIONS,
+  USER_ROLE_OPTIONS,
+  type AppArea,
+  type JobViewMode,
+  type UserRole,
+} from "@/types/database";
 import { cn } from "@/lib/cn";
+
+const MANAGER_ROLES: UserRole[] = ["admin", "verwaltung"];
 
 type AccessState = "none" | "view" | "edit";
 
@@ -29,9 +39,10 @@ function accessStateOf(user: AdminUser, area: AppArea): AccessState {
 
 export function AdminPage() {
   const { data: users, isLoading, error } = useAdminUsers();
-  const { user: me } = useAuth();
+  const { user: me, isAdmin } = useAuth();
   const setRole = useSetUserRole();
   const setAccess = useSetAreaAccess();
+  const setViewMode = useSetJobViewMode();
   const deleteUser = useDeleteUser();
   const resetPassword = useResetUserPassword();
   const [createOpen, setCreateOpen] = useState(false);
@@ -56,12 +67,18 @@ export function AdminPage() {
     <div>
       <PageHeader
         title="Verwaltung"
-        description="Nutzer anlegen, Rollen vergeben und pro Bereich Lese-/Bearbeitungsrechte steuern."
+        description={
+          isAdmin
+            ? "Nutzer anlegen, Rollen vergeben, Bereichsrechte und Job-Sichtmodi steuern."
+            : "Bereichsrechte, Job-Zuweisungen und Sichtmodi steuern. (Accounts/Rollen nur Admin.)"
+        }
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={16} />
-            Nutzer anlegen
-          </Button>
+          isAdmin ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus size={16} />
+              Nutzer anlegen
+            </Button>
+          ) : undefined
         }
       />
 
@@ -76,7 +93,7 @@ export function AdminPage() {
               <CardHeader className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-bg-raised text-ink-muted">
-                    {user.role === "admin" ? <ShieldCheck size={18} /> : <UserIcon size={18} />}
+                    {MANAGER_ROLES.includes(user.role) ? <ShieldCheck size={18} /> : <UserIcon size={18} />}
                   </span>
                   <div>
                     <p className="text-sm font-medium text-ink">
@@ -86,40 +103,75 @@ export function AdminPage() {
                     <p className="text-xs text-ink-muted">{user.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={user.role}
-                    onChange={(e) => setRole.mutate({ userId: user.id, role: e.target.value as UserRole })}
-                    disabled={isMe}
-                    className="h-9 w-40"
-                    title={isMe ? "Eigene Rolle nicht änderbar" : undefined}
-                  >
-                    <option value="mitarbeiter">Mitarbeiter</option>
-                    <option value="admin">Administrator</option>
-                  </Select>
-                  <Button size="sm" variant="secondary" onClick={() => handleResetPassword(user.id)}>
-                    <KeyRound size={14} />
-                    Passwort
-                  </Button>
-                  {!isMe && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (confirm(`Nutzer „${user.full_name || user.email}" wirklich löschen?`)) {
-                          deleteUser.mutate(user.id, { onError: (e) => alert(`Fehler: ${e.message}`) });
-                        }
-                      }}
-                      className="flex h-9 w-9 items-center justify-center rounded-md text-ink-muted hover:text-status-defekt"
-                      aria-label="Nutzer löschen"
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-1.5 text-xs text-ink-muted">
+                    Sicht
+                    <Select
+                      value={user.job_view_mode}
+                      onChange={(e) =>
+                        setViewMode.mutate(
+                          { userId: user.id, mode: e.target.value as JobViewMode },
+                          { onError: (err) => alert(`Fehler: ${err.message}`) },
+                        )
+                      }
+                      className="h-9 w-36"
+                      title="Welche Jobs dieser Nutzer sieht"
                     >
-                      <Trash2 size={16} />
-                    </button>
+                      {JOB_VIEW_MODE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </label>
+                  {isAdmin ? (
+                    <Select
+                      value={user.role}
+                      onChange={(e) => setRole.mutate({ userId: user.id, role: e.target.value as UserRole })}
+                      disabled={isMe}
+                      className="h-9 w-40"
+                      title={isMe ? "Eigene Rolle nicht änderbar" : undefined}
+                    >
+                      {USER_ROLE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <span className="rounded-md border border-border px-3 py-1.5 text-xs text-ink-muted">
+                      {USER_ROLE_OPTIONS.find((o) => o.value === user.role)?.label ?? user.role}
+                    </span>
+                  )}
+                  {isAdmin && (
+                    <>
+                      <Button size="sm" variant="secondary" onClick={() => handleResetPassword(user.id)}>
+                        <KeyRound size={14} />
+                        Passwort
+                      </Button>
+                      {!isMe && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Nutzer „${user.full_name || user.email}" wirklich löschen?`)) {
+                              deleteUser.mutate(user.id, { onError: (e) => alert(`Fehler: ${e.message}`) });
+                            }
+                          }}
+                          className="flex h-9 w-9 items-center justify-center rounded-md text-ink-muted hover:text-status-defekt"
+                          aria-label="Nutzer löschen"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </CardHeader>
               <CardBody>
-                {user.role === "admin" ? (
-                  <p className="text-sm text-ink-muted">Administratoren haben vollen Zugriff auf alle Bereiche.</p>
+                {MANAGER_ROLES.includes(user.role) ? (
+                  <p className="text-sm text-ink-muted">
+                    {user.role === "admin" ? "Administratoren" : "Verwaltung"} haben vollen Zugriff auf alle Bereiche.
+                  </p>
                 ) : (
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {APP_AREAS.map((area) => {
@@ -225,8 +277,11 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </FormField>
           <FormField label="Rolle">
             <Select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
-              <option value="mitarbeiter">Mitarbeiter</option>
-              <option value="admin">Administrator</option>
+              {USER_ROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </Select>
           </FormField>
         </div>

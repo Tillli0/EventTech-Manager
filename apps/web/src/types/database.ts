@@ -28,7 +28,22 @@ export type CalendarSource = "intern" | "google" | "ical";
 // Auth / Rollen / Bereiche
 // ============================================================
 
-export type UserRole = "admin" | "mitarbeiter";
+export type UserRole = "admin" | "verwaltung" | "mitarbeiter";
+
+export const USER_ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+  { value: "mitarbeiter", label: "Mitarbeiter" },
+  { value: "verwaltung", label: "Verwaltung" },
+  { value: "admin", label: "Administrator" },
+];
+
+/** Sichtmodus für Jobs: welche Jobs ein Nutzer im Bereich „Jobs“ sieht. */
+export type JobViewMode = "eigene" | "zugewiesene" | "alle";
+
+export const JOB_VIEW_MODE_OPTIONS: { value: JobViewMode; label: string; hint: string }[] = [
+  { value: "eigene", label: "Nur eigene", hint: "Nur selbst angelegte Jobs (plus zugewiesene)" },
+  { value: "zugewiesene", label: "Zugewiesene", hint: "Nur Jobs, denen man zugewiesen ist" },
+  { value: "alle", label: "Alle", hint: "Alle Jobs im Bestand" },
+];
 
 /** Bereiche, für die der Admin pro Nutzer Lese-/Schreibrechte vergibt. */
 export type AppArea = "inventar" | "jobs" | "kunden" | "angebote" | "kalender" | "aufgaben";
@@ -47,6 +62,7 @@ export interface Profile {
   full_name: string | null;
   email: string | null;
   role: UserRole;
+  job_view_mode: JobViewMode;
   created_at: string;
   updated_at: string;
 }
@@ -218,6 +234,7 @@ export interface Job {
   return_at: string | null;
   notes: string | null;
   color: string;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
   customer?: Customer | null;

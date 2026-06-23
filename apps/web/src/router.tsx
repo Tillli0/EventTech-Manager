@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
-import { RequireAuth, RequireArea, RequireAdmin, RedirectIfAuthed } from "@/auth/guards";
+import { RequireAuth, RequireArea, RequireManager, RedirectIfAuthed } from "@/auth/guards";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { InventoryPage } from "@/pages/InventoryPage";
@@ -42,7 +42,7 @@ export const router = createBrowserRouter([
           { path: "kalender", element: <RequireArea area="kalender"><CalendarPage /></RequireArea> },
           { path: "scan", element: <RequireArea area="inventar"><ScanPage /></RequireArea> },
           { path: "aufgaben", element: <TasksPage /> },
-          { path: "admin", element: <RequireAdmin><AdminPage /></RequireAdmin> },
+          { path: "admin", element: <RequireManager><AdminPage /></RequireManager> },
         ],
       },
     ],

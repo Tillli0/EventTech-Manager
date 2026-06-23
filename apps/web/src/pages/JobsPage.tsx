@@ -8,16 +8,18 @@ import { Card } from "@/components/ui/Card";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 import { useJobs } from "@/hooks/useJobs";
-import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
+import { JOB_STATUS_OPTIONS, JOB_VIEW_MODE_OPTIONS, type JobStatus, type JobViewMode } from "@/types/database";
 import { formatDate } from "@/lib/format";
 import { CreateJobDialog } from "@/components/jobs/CreateJobDialog";
+import { useSetJobViewMode } from "@/hooks/useAdminUsers";
 import { exportToCsv } from "@/lib/csv";
 import type { Job } from "@/types/database";
 import { useAuth } from "@/auth/AuthProvider";
 
 export function JobsPage() {
-  const { canEdit } = useAuth();
+  const { canEdit, isManager, profile, user, refresh } = useAuth();
   const mayEdit = canEdit("jobs");
+  const setViewMode = useSetJobViewMode();
   const { data: jobs, isLoading, error } = useJobs();
   const [statusFilter, setStatusFilter] = useState<JobStatus | "alle">("alle");
   const [createOpen, setCreateOpen] = useState(false);
@@ -71,7 +73,7 @@ export function JobsPage() {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as JobStatus | "alle")}
@@ -84,6 +86,27 @@ export function JobsPage() {
             </option>
           ))}
         </Select>
+        {isManager && profile && (
+          <label className="flex items-center gap-2 text-sm text-ink-muted">
+            <span className="shrink-0">Sichtmodus:</span>
+            <Select
+              value={profile.job_view_mode}
+              onChange={async (e) => {
+                if (!user) return;
+                await setViewMode.mutateAsync({ userId: user.id, mode: e.target.value as JobViewMode });
+                await refresh();
+              }}
+              className="sm:w-48"
+              title="Welche Jobs du selbst siehst"
+            >
+              {JOB_VIEW_MODE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </label>
+        )}
       </div>
 
       {isLoading && <LoadingState label="Jobs werden geladen …" />}

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { AppArea, Profile, UserAreaAccess, UserRole } from "@/types/database";
+import type { AppArea, JobViewMode, Profile, UserAreaAccess, UserRole } from "@/types/database";
 
 const ADMIN_USERS_KEY = ["admin-users"] as const;
 
@@ -81,6 +81,24 @@ export function useSetUserRole() {
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY }),
+  });
+}
+
+/**
+ * Sichtmodus eines Nutzers setzen (eigene/zugewiesene/alle). RLS lässt das nur
+ * Admin/Verwaltung zu. Aktualisiert auch die Jobliste, falls es der eigene Modus ist.
+ */
+export function useSetJobViewMode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, mode }: { userId: string; mode: JobViewMode }) => {
+      const { error } = await supabase.from("profiles").update({ job_view_mode: mode }).eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
   });
 }
 

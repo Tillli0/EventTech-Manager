@@ -5,9 +5,9 @@ import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
 
 export function Sidebar() {
-  const { profile, user, isAdmin, hasArea, signOut } = useAuth();
+  const { profile, user, isAdmin, isManager, hasArea, signOut } = useAuth();
   const visibleItems = NAV_ITEMS.filter(
-    (item) => (!item.adminOnly || isAdmin) && (!item.area || hasArea(item.area)),
+    (item) => (!item.managerOnly || isManager) && (!item.area || hasArea(item.area)),
   );
   const displayName = profile?.full_name || user?.email || "Angemeldet";
 
@@ -78,7 +78,9 @@ export function Sidebar() {
         <div className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-ink">{displayName}</p>
-            <p className="text-xs text-ink-faint">{isAdmin ? "Administrator" : "Mitarbeiter"}</p>
+            <p className="text-xs text-ink-faint">
+              {isAdmin ? "Administrator" : profile?.role === "verwaltung" ? "Verwaltung" : "Mitarbeiter"}
+            </p>
           </div>
           <button
             onClick={() => signOut()}

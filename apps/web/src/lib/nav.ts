@@ -7,8 +7,8 @@ export interface NavItem {
   icon: typeof Package;
   /** Bereich, der für die Sichtbarkeit nötig ist. Fehlt er, ist der Eintrag immer sichtbar. */
   area?: AppArea;
-  /** Nur für Admins sichtbar. */
-  adminOnly?: boolean;
+  /** Nur für Admin oder Verwaltung sichtbar. */
+  managerOnly?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -19,7 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/angebote", label: "Angebote", icon: FileText, area: "angebote" },
   { to: "/kalender", label: "Kalender", icon: Calendar, area: "kalender" },
   { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
-  { to: "/admin", label: "Verwaltung", icon: Shield, adminOnly: true },
+  { to: "/admin", label: "Verwaltung", icon: Shield, managerOnly: true },
 ];
 
 export const SCAN_NAV_ITEM: NavItem = { to: "/scan", label: "Scannen", icon: ScanLine, area: "inventar" };
