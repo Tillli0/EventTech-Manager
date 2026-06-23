@@ -17,12 +17,15 @@ export function EventSchedulePicker({
   initialEnd,
   defaultStartTime = "10:00",
   defaultEndTime = "18:00",
+  autoOpen = false,
 }: {
   onChange: (start: Date | null, end: Date | null) => void;
   initialStart?: Date | null;
   initialEnd?: Date | null;
   defaultStartTime?: string;
   defaultEndTime?: string;
+  /** Beim Einblenden direkt den (Start-)Kalender öffnen. */
+  autoOpen?: boolean;
 }) {
   const pad = (n: number) => String(n).padStart(2, "0");
   const asTime = (d?: Date | null, fallback?: string) =>
@@ -30,16 +33,30 @@ export function EventSchedulePicker({
   const sameDay = (a?: Date | null, b?: Date | null) =>
     !!a && !!b && a.toDateString() === b.toDateString();
 
-  const [multiDay, setMultiDay] = useState(() => !!initialEnd && !sameDay(initialStart, initialEnd));
+  const [multiDay, setMultiDay] = useState(() => {
+    // Standard: Start → Ende (damit sich nach dem Startdatum das Enddatum öffnet).
+    if (initialStart && initialEnd) return !sameDay(initialStart, initialEnd);
+    return true;
+  });
   const [day, setDay] = useState<Date | null>(initialStart ?? null);
   const [startDay, setStartDay] = useState<Date | null>(initialStart ?? null);
   const [endDay, setEndDay] = useState<Date | null>(initialEnd ?? initialStart ?? null);
   const [startTime, setStartTime] = useState(asTime(initialStart, defaultStartTime));
   const [endTime, setEndTime] = useState(asTime(initialEnd, defaultEndTime));
 
+  const [dayOpen, setDayOpen] = useState(false);
   const [startOpen, setStartOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const startTimeRef = useRef<HTMLInputElement>(null);
+
+  // Beim Einblenden direkt den ersten Kalender öffnen.
+  useEffect(() => {
+    if (!autoOpen) return;
+    if (multiDay) setStartOpen(true);
+    else setDayOpen(true);
+    // nur einmal beim Mounten
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fertigen Zeitraum nach außen melden.
   useEffect(() => {
@@ -111,7 +128,13 @@ export function EventSchedulePicker({
       ) : (
         <div>
           <Label>Tag *</Label>
-          <DateField value={day} onChange={setDay} onComplete={focusStartTime} />
+          <DateField
+            value={day}
+            open={dayOpen}
+            onOpenChange={setDayOpen}
+            onChange={setDay}
+            onComplete={focusStartTime}
+          />
         </div>
       )}
 

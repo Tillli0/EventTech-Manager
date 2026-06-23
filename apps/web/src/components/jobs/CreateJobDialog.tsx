@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Label } from "@/components/ui/Input";
-import { EventSchedulePicker } from "@/components/ui/EventSchedulePicker";
+import { DateRangeField } from "@/components/ui/DateRangeField";
 import { useCreateJob } from "@/hooks/useJobs";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
 import { useProfiles, profileLabel } from "@/hooks/useProfiles";
@@ -102,7 +102,7 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
 
         <div>
           <Label>Zeitraum *</Label>
-          <EventSchedulePicker onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
+          <DateRangeField onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
         </div>
 
         {profiles && profiles.length > 0 && (
