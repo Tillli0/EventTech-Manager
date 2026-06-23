@@ -1,0 +1,21 @@
+# Cloudflare Tunnel — Konfiguration für den EventTech-Kalender-Feed
+#
+# Diese Datei nach  %USERPROFILE%\.cloudflared\config.yml  kopieren und die
+# Platzhalter (<...>) ersetzen. Sie gibt BEWUSST nur den Kalender-Feed-Pfad
+# nach außen frei — alles andere am lokalen Supabase bleibt unerreichbar (404).
+
+tunnel: <TUNNEL_UUID>
+credentials-file: C:\Users\<DEIN_USER>\.cloudflared\<TUNNEL_UUID>.json
+
+ingress:
+  # 1) Nur der Kalender-Feed wird durchgereicht (read-only, Token in der URL).
+  - hostname: <kalender.deine-domain.de>
+    path: ^/functions/v1/calendar-feed.*
+    service: http://localhost:54321
+
+  # 2) Jede andere Anfrage auf diesem Hostnamen wird geblockt.
+  - hostname: <kalender.deine-domain.de>
+    service: http_status:404
+
+  # 3) Pflicht-Catch-all (muss als letztes stehen).
+  - service: http_status:404

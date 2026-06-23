@@ -1,9 +1,28 @@
 import { useState } from "react";
-import { Copy, Check, RefreshCw, Calendar as CalendarIcon, Apple } from "lucide-react";
+import { Copy, Check, RefreshCw, Calendar as CalendarIcon, Apple, AlertTriangle } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/States";
 import { useCalendarFeedToken, useRegenerateCalendarFeed, calendarFeedUrl } from "@/hooks/useCalendarFeed";
+
+/** Erkennt lokale/LAN-Adressen, die aus dem Internet (z. B. von Googles Servern)
+ * nicht erreichbar sind — dann kann ein Online-Abo nicht funktionieren. */
+function isPrivateUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const h = u.hostname;
+    return (
+      h === "localhost" ||
+      h.endsWith(".local") ||
+      /^127\./.test(h) ||
+      /^10\./.test(h) ||
+      /^192\.168\./.test(h) ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(h)
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Zeigt den persönlichen Abo-Link, mit dem der interne Kalender einseitig in
@@ -53,6 +72,25 @@ export function CalendarSubscribeDialog({ open, onClose }: { open: boolean; onCl
             erscheinen dann automatisch in deinem privaten Kalender und aktualisieren sich von selbst
             (einseitig, read-only). Gelöschtes verschwindet, sobald dein Kalender neu lädt.
           </p>
+
+          {isPrivateUrl(url) && (
+            <div className="flex gap-2 rounded-lg border border-status-wartung/40 bg-status-wartung-bg px-3 py-2.5 text-xs text-ink">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0 text-status-wartung" />
+              <div className="space-y-1">
+                <p className="font-medium text-status-wartung">Nur im lokalen Netzwerk erreichbar</p>
+                <p className="text-ink-muted">
+                  Dieser Link zeigt auf eine lokale Adresse ({new URL(url).host}). <span className="font-medium text-ink">Google
+                  Calendar kann ihn nicht abrufen</span>, weil Googles Server diese Adresse aus dem Internet nicht
+                  erreichen. <span className="font-medium text-ink">Apple Kalender</span> funktioniert nur auf Geräten im
+                  <span className="font-medium text-ink"> selben WLAN</span>.
+                </p>
+                <p className="text-ink-muted">
+                  Für echtes Online-Abo (Google, überall) muss der Server über eine öffentliche Adresse erreichbar sein
+                  (z. B. per Tunnel/Domain). Sag Bescheid, dann richte ich das ein.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Abo-Link */}
           <div>

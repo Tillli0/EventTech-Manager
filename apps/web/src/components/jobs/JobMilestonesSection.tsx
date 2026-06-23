@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Clock } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { DateTimeField } from "@/components/ui/DateTimeField";
@@ -11,6 +11,7 @@ import {
 import type { JobMilestone } from "@/types/database";
 import { toDate } from "@/lib/datetime";
 import { formatTime, formatDate } from "@/lib/format";
+import { cn } from "@/lib/cn";
 
 export function JobMilestonesSection({
   jobId,
@@ -23,8 +24,6 @@ export function JobMilestonesSection({
   defaultAt: string;
 }) {
   const createMilestone = useCreateJobMilestone();
-  const updateMilestone = useUpdateJobMilestone();
-  const deleteMilestone = useDeleteJobMilestone();
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -45,10 +44,6 @@ export function JobMilestonesSection({
 
   const sorted = [...milestones].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
 
-  // Mehrtägiger Zeitplan? Dann pro Punkt auch das Datum zeigen, sonst nur Uhrzeit.
-  const spansMultipleDays =
-    sorted.length > 1 && sorted[0].at.slice(0, 10) !== sorted[sorted.length - 1].at.slice(0, 10);
-
   return (
     <div>
       {sorted.length === 0 && !showForm && (
@@ -58,40 +53,9 @@ export function JobMilestonesSection({
       )}
 
       {sorted.length > 0 && (
-        <ol className="mb-3 space-y-0">
+        <ol className="mb-3 space-y-1.5">
           {sorted.map((m, i) => (
-            <li key={m.id} className="relative flex gap-3 pb-3 last:pb-0">
-              {/* Zeitstrahl */}
-              <div className="flex flex-col items-center">
-                <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[0.65rem] font-semibold text-accent">
-                  {i + 1}
-                </span>
-                {i < sorted.length - 1 && <span className="w-px flex-1 bg-border" />}
-              </div>
-
-              <div className="min-w-0 flex-1 rounded-md border border-border bg-bg-raised px-3 py-2">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{m.title}</p>
-                  <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-ink-muted">
-                    <Clock size={12} />
-                    {spansMultipleDays && `${formatDate(m.at)} · `}
-                    {formatTime(m.at)}
-                  </span>
-                  <button
-                    onClick={() => deleteMilestone.mutate({ id: m.id, jobId })}
-                    className="shrink-0 text-ink-faint hover:text-status-defekt"
-                    aria-label="Programmpunkt löschen"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                <DateTimeField
-                  className="mt-2"
-                  value={toDate(m.at)}
-                  onChange={(d) => updateMilestone.mutate({ id: m.id, jobId, at: d.toISOString() })}
-                />
-              </div>
-            </li>
+            <MilestoneRow key={m.id} index={i} milestone={m} jobId={jobId} />
           ))}
         </ol>
       )}
@@ -121,5 +85,75 @@ export function JobMilestonesSection({
         </Button>
       )}
     </div>
+  );
+}
+
+/** Eine Zeitplan-Zeile: kompakt „Nr · Datum · Uhrzeit · Titel" in einer Zeile,
+ * per Stift-Knopf inline bearbeitbar (Titel + Zeitpunkt). */
+function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: JobMilestone; jobId: string }) {
+  const updateMilestone = useUpdateJobMilestone();
+  const deleteMilestone = useDeleteJobMilestone();
+
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(milestone.title);
+  const [at, setAt] = useState<Date | null>(toDate(milestone.at));
+
+  function save() {
+    if (!title.trim() || !at) return;
+    updateMilestone.mutate({ id: milestone.id, jobId, title: title.trim(), at: at.toISOString() });
+    setEditing(false);
+  }
+
+  function cancel() {
+    setTitle(milestone.title);
+    setAt(toDate(milestone.at));
+    setEditing(false);
+  }
+
+  return (
+    <li className="rounded-md border border-border bg-bg-raised">
+      {/* Anzeige: alles in einer Zeile */}
+      <div className={cn("flex items-center gap-2 px-3 py-2", editing && "border-b border-border")}>
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[0.65rem] font-semibold text-accent">
+          {index + 1}
+        </span>
+        <span className="shrink-0 whitespace-nowrap text-xs font-medium tabular-nums text-ink-muted">
+          {formatDate(milestone.at)} · {formatTime(milestone.at)}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{milestone.title}</span>
+        <button
+          onClick={() => setEditing((v) => !v)}
+          className="shrink-0 text-ink-faint hover:text-ink"
+          aria-label="Programmpunkt bearbeiten"
+        >
+          <Pencil size={14} />
+        </button>
+        <button
+          onClick={() => deleteMilestone.mutate({ id: milestone.id, jobId })}
+          className="shrink-0 text-ink-faint hover:text-status-defekt"
+          aria-label="Programmpunkt löschen"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+
+      {/* Bearbeiten: Titel + Zeitpunkt */}
+      {editing && (
+        <div className="space-y-2 px-3 py-2.5">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Bezeichnung" autoFocus />
+          <DateTimeField value={at} onChange={setAt} />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={save} disabled={!title.trim() || !at}>
+              <Check size={14} />
+              Speichern
+            </Button>
+            <Button variant="ghost" size="sm" onClick={cancel}>
+              <X size={14} />
+              Abbrechen
+            </Button>
+          </div>
+        </div>
+      )}
+    </li>
   );
 }

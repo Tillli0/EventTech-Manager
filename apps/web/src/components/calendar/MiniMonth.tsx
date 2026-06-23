@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   startOfMonth,
   endOfMonth,
@@ -15,6 +15,11 @@ import {
 import { de } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useCalendarEntries, useJobMilestonesInRange } from "@/hooks/useCalendar";
+
+function dayKey(d: Date): string {
+  return format(d, "yyyy-MM-dd");
+}
 
 const WEEKDAYS = ["M", "D", "M", "D", "F", "S", "S"];
 
@@ -41,6 +46,28 @@ export function MiniMonth({
     days.push(cursor);
     cursor = addDays(cursor, 1);
   }
+
+  // Termine + Job-Zeitplan des angezeigten Mini-Monats laden, um Tage mit
+  // Aktivität zu markieren (kleiner Punkt unter der Tageszahl).
+  const { data: entries } = useCalendarEntries(gridStart.toISOString(), gridEnd.toISOString());
+  const { data: milestones } = useJobMilestonesInRange(gridStart.toISOString(), gridEnd.toISOString());
+
+  const markedDays = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries ?? []) {
+      // Mehrtägige Termine: jeden abgedeckten Tag markieren.
+      const d = new Date(e.start_at);
+      d.setHours(0, 0, 0, 0);
+      const end = new Date(e.end_at);
+      let cur = d;
+      while (cur <= end) {
+        set.add(dayKey(cur));
+        cur = addDays(cur, 1);
+      }
+    }
+    for (const m of milestones ?? []) set.add(dayKey(new Date(m.at)));
+    return set;
+  }, [entries, milestones]);
 
   return (
     <div className="rounded-lg border border-border bg-bg-surface p-3">
@@ -74,12 +101,13 @@ export function MiniMonth({
           const inMonth = isSameMonth(day, viewMonth);
           const selected = isSameDay(day, selectedDate);
           const today = isToday(day);
+          const marked = markedDays.has(dayKey(day));
           return (
             <button
               key={day.toISOString()}
               onClick={() => onPick(day)}
               className={cn(
-                "flex h-7 items-center justify-center rounded-full text-xs transition-colors",
+                "relative flex h-7 items-center justify-center rounded-full text-xs transition-colors",
                 selected
                   ? "bg-accent font-semibold text-white"
                   : today
@@ -90,6 +118,14 @@ export function MiniMonth({
               )}
             >
               {format(day, "d")}
+              {marked && !selected && (
+                <span
+                  className={cn(
+                    "absolute bottom-[3px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full",
+                    today ? "bg-accent" : inMonth ? "bg-ink-muted" : "bg-ink-faint",
+                  )}
+                />
+              )}
             </button>
           );
         })}

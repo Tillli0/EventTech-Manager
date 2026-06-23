@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil, CalendarClock } from "lucide-react";
 import { startOfDay, endOfDay } from "date-fns";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Textarea, Label } from "@/components/ui/Input";
 import { DateRangeField } from "@/components/ui/DateRangeField";
-import { CalendarClock } from "lucide-react";
-import { useCreateCalendarEntry, useDeleteCalendarEntry } from "@/hooks/useCalendar";
+import { useCreateCalendarEntry, useUpdateCalendarEntry, useDeleteCalendarEntry } from "@/hooks/useCalendar";
 import { useJob } from "@/hooks/useJobs";
 import type { CalendarEntry } from "@/types/database";
 import { formatDateTime, formatDate } from "@/lib/format";
+import { toDate } from "@/lib/datetime";
 import { cn } from "@/lib/cn";
 
 interface CalendarEntryDialogProps {
@@ -22,17 +22,20 @@ interface CalendarEntryDialogProps {
 
 export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate }: CalendarEntryDialogProps) {
   const createEntry = useCreateCalendarEntry();
+  const updateEntry = useUpdateCalendarEntry();
   const deleteEntry = useDeleteCalendarEntry();
   // Bei einem Termin, der zu einem Job gehört: dessen Zeitplan mitladen, damit
   // man direkt aus dem Kalender heraus den Programmablauf sieht.
   const { data: jobDetail } = useJob(existingEntry?.job_id ?? undefined);
 
+  const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState("");
   const [allDay, setAllDay] = useState(false);
   const [start, setStart] = useState<Date | null>(null);
   const [end, setEnd] = useState<Date | null>(null);
   const [notes, setNotes] = useState("");
 
+  // Vorbelegung beim Anlegen (Klick auf Tag/Slot)
   useEffect(() => {
     if (existingEntry || !prefillDate) return;
     const hasSpecificTime = prefillDate.getHours() !== 0 || prefillDate.getMinutes() !== 0;
@@ -42,14 +45,29 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
     e.setHours(s.getHours() + 1);
     setStart(s);
     setEnd(e);
-    // Klick in Monatsansicht (00:00) → ganztägig vorschlagen
     if (!hasSpecificTime) setAllDay(true);
   }, [prefillDate, existingEntry]);
 
+  // Beim Schließen/Wechsel Edit-Modus zurücksetzen
+  useEffect(() => {
+    if (!open) setEditing(false);
+  }, [open]);
+
+  function fillFromEntry(entry: CalendarEntry) {
+    setTitle(entry.title);
+    setAllDay(entry.all_day);
+    setStart(toDate(entry.start_at));
+    setEnd(toDate(entry.end_at));
+    setNotes(entry.notes ?? "");
+  }
+
   function resetAndClose() {
-    setTitle(""); setAllDay(false);
-    setStart(null); setEnd(null);
+    setTitle("");
+    setAllDay(false);
+    setStart(null);
+    setEnd(null);
     setNotes("");
+    setEditing(false);
     onClose();
   }
 
@@ -59,6 +77,20 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
 
     const startIso = (allDay ? startOfDay(start) : start).toISOString();
     const endIso = (allDay ? endOfDay(end) : end).toISOString();
+
+    if (editing && existingEntry) {
+      await updateEntry.mutateAsync({
+        id: existingEntry.id,
+        title: title.trim(),
+        start_at: startIso,
+        end_at: endIso,
+        all_day: allDay,
+        notes: notes.trim() || null,
+      });
+      setEditing(false);
+      onClose();
+      return;
+    }
 
     await createEntry.mutateAsync({
       title: title.trim(),
@@ -77,7 +109,9 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
     onClose();
   }
 
-  if (existingEntry) {
+  // --- Detail-Ansicht eines bestehenden Termins (nicht im Edit-Modus) ---
+  if (existingEntry && !editing) {
+    const canEdit = existingEntry.source === "intern";
     return (
       <Dialog open={open} onClose={onClose} title={existingEntry.title}>
         <div className="space-y-3 text-sm">
@@ -105,7 +139,7 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
           {existingEntry.notes && (
             <div>
               <p className="text-xs text-ink-faint">Notizen</p>
-              <p className="text-ink">{existingEntry.notes}</p>
+              <p className="whitespace-pre-wrap text-ink">{existingEntry.notes}</p>
             </div>
           )}
           {/* Zeitplan des zugehörigen Jobs (Aufbau/Soundcheck/Abbau …) */}
@@ -115,13 +149,15 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
                 <CalendarClock size={13} />
                 Zeitplan
               </p>
-              <ul className="space-y-1.5">
+              <ul className="space-y-1">
                 {[...jobDetail.milestones]
                   .sort((a, b) => a.at.localeCompare(b.at))
                   .map((m) => (
                     <li key={m.id} className="flex items-baseline gap-2 text-sm">
-                      <span className="w-28 shrink-0 tabular-nums text-ink-muted">{formatDateTime(m.at)}</span>
-                      <span className="text-ink">{m.title}</span>
+                      <span className="shrink-0 whitespace-nowrap tabular-nums text-ink-muted">
+                        {formatDateTime(m.at)}
+                      </span>
+                      <span className="truncate text-ink">{m.title}</span>
                     </li>
                   ))}
               </ul>
@@ -133,12 +169,31 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
               Synchronisiert über {existingEntry.source === "google" ? "Google Calendar" : "iCal"}
             </p>
           )}
-          <div className="flex justify-between border-t border-border pt-4">
+          <div className="flex items-center justify-between gap-2 border-t border-border pt-4">
             {existingEntry.job_id ? (
-              <Link to={`/jobs/${existingEntry.job_id}`}><Button variant="secondary">Zum Job</Button></Link>
-            ) : <span />}
-            {existingEntry.source === "intern" && (
-              <Button variant="danger" onClick={handleDelete}><Trash2 size={14} />Löschen</Button>
+              <Link to={`/jobs/${existingEntry.job_id}`}>
+                <Button variant="secondary">Zum Job</Button>
+              </Link>
+            ) : (
+              <span />
+            )}
+            {canEdit && (
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    fillFromEntry(existingEntry);
+                    setEditing(true);
+                  }}
+                >
+                  <Pencil size={14} />
+                  Bearbeiten
+                </Button>
+                <Button variant="danger" onClick={handleDelete}>
+                  <Trash2 size={14} />
+                  Löschen
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -146,8 +201,14 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
     );
   }
 
+  // --- Anlegen oder Bearbeiten (Formular) ---
+  const isEdit = editing && !!existingEntry;
   return (
-    <Dialog open={open} onClose={resetAndClose} title="Termin anlegen">
+    <Dialog
+      open={open}
+      onClose={isEdit ? () => setEditing(false) : resetAndClose}
+      title={isEdit ? "Termin bearbeiten" : "Termin anlegen"}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <FormField label="Titel *">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} required autoFocus />
@@ -171,7 +232,7 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
         <div>
           <Label>Zeitraum *</Label>
           <DateRangeField
-            key={`${prefillDate?.getTime() ?? "new"}-${allDay}`}
+            key={`${existingEntry?.id ?? prefillDate?.getTime() ?? "new"}-${allDay}`}
             allDay={allDay}
             initialStart={start}
             initialEnd={end}
@@ -183,9 +244,17 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
         </FormField>
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={resetAndClose}>Abbrechen</Button>
-          <Button type="submit" disabled={createEntry.isPending}>
-            {createEntry.isPending ? "Wird gespeichert …" : "Termin anlegen"}
+          <Button type="button" variant="secondary" onClick={isEdit ? () => setEditing(false) : resetAndClose}>
+            Abbrechen
+          </Button>
+          <Button type="submit" disabled={createEntry.isPending || updateEntry.isPending}>
+            {isEdit
+              ? updateEntry.isPending
+                ? "Wird gespeichert …"
+                : "Speichern"
+              : createEntry.isPending
+                ? "Wird gespeichert …"
+                : "Termin anlegen"}
           </Button>
         </div>
       </form>

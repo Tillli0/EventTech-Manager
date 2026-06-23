@@ -48,18 +48,6 @@ function diffDays(a: Date, b: Date): number {
   return Math.round((stripTime(a).getTime() - stripTime(b).getTime()) / (1000 * 60 * 60 * 24));
 }
 
-/** Mehrtägig oder ganztägig → als durchgezogener Balken; sonst als Punkt-Chip
- * (wie Google: nur mehrtägige/ganztägige Termine werden zu Balken). */
-function isMultiDay(e: CalendarEntry): boolean {
-  if (e.all_day) return true;
-  return stripTime(new Date(e.end_at)).getTime() > stripTime(new Date(e.start_at)).getTime();
-}
-
-/** Ein Eintrag in der Tageszelle unterhalb der Balken: Einzeltermin oder Milestone. */
-type DayChip =
-  | { kind: "entry"; time: number; entry: CalendarEntry }
-  | { kind: "milestone"; time: number; milestone: MilestoneWithJob };
-
 /** Weist jedem Termin einer Woche eine "Lane" (Zeile) zu, ähnlich wie bei Google Calendar,
  * sodass sich überlappende Termine nicht visuell überdecken. */
 function layoutWeek(weekStart: Date, weekEnd: Date, entries: CalendarEntry[]): BarSegment[] {
@@ -136,19 +124,14 @@ export function MonthGrid({
     cursor = addDays(cursor, 7);
   }
 
-  // Einzeltermine (kein Balken) + Milestones eines Tages als zeitlich sortierte Chips.
-  function chipsForDay(d: Date): DayChip[] {
+  // Nur die Zeitplan-Punkte (Milestones) erscheinen als Punkt-Chips; alle echten
+  // Termine werden als durchgezogene Balken dargestellt.
+  function milestonesForDay(d: Date): MilestoneWithJob[] {
     const key = stripTime(d).getTime();
-    const dayEntries: DayChip[] = entries
-      .filter((e) => !isMultiDay(e) && stripTime(new Date(e.start_at)).getTime() === key)
-      .map((e) => ({ kind: "entry", time: new Date(e.start_at).getTime(), entry: e }));
-    const dayMilestones: DayChip[] = milestones
+    return milestones
       .filter((m) => !!m.job && stripTime(new Date(m.at)).getTime() === key)
-      .map((m) => ({ kind: "milestone", time: new Date(m.at).getTime(), milestone: m }));
-    return [...dayEntries, ...dayMilestones].sort((a, b) => a.time - b.time);
+      .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
   }
-
-  const multiDayEntries = entries.filter(isMultiDay);
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-bg">
@@ -169,7 +152,7 @@ export function MonthGrid({
       {weeks.map((week) => {
         const weekStart = week[0];
         const weekEnd = week[6];
-        const segments = layoutWeek(weekStart, weekEnd, multiDayEntries);
+        const segments = layoutWeek(weekStart, weekEnd, entries);
         const visibleSegments = segments.filter((s) => s.lane < MAX_VISIBLE_LANES);
         const hiddenBarsPerDay = new Array(7).fill(0);
         for (const s of segments) {
@@ -270,55 +253,32 @@ export function MonthGrid({
                 </div>
               )}
 
-              {/* Einzeltermine + Milestones als Punkt-Chips (Google-Stil) */}
+              {/* Zeitplan-Punkte (Milestones) als kleine Punkt-Chips unter den Balken */}
               <div className="grid grid-cols-7">
                 {week.map((d, col) => {
-                  const chips = chipsForDay(d);
-                  const visible = chips.slice(0, MAX_CHIPS_PER_DAY);
-                  const hidden = chips.length - visible.length + hiddenBarsPerDay[col];
+                  const dayMilestones = milestonesForDay(d);
+                  const visible = dayMilestones.slice(0, MAX_CHIPS_PER_DAY);
+                  const hidden = dayMilestones.length - visible.length + hiddenBarsPerDay[col];
                   return (
                     <div key={d.toISOString()} className="space-y-px px-1 pb-1 pt-0.5">
-                      {visible.map((chip) =>
-                        chip.kind === "entry" ? (
-                          <button
-                            key={`e-${chip.entry.id}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onEntryClick(chip.entry);
-                            }}
-                            title={`${chip.entry.title} (${formatTime(chip.entry.start_at)})`}
-                            className="flex w-full items-center gap-1 truncate rounded px-1 py-[1px] text-left text-[11px] transition-colors hover:bg-bg-raised"
-                          >
-                            <span
-                              className="h-1.5 w-1.5 shrink-0 rounded-full"
-                              style={{ backgroundColor: chip.entry.job?.color || "#3B82F6" }}
-                            />
-                            <span className="shrink-0 tabular-nums text-ink-muted">
-                              {formatTime(chip.entry.start_at)}
-                            </span>
-                            <span className="truncate text-ink">{chip.entry.title}</span>
-                          </button>
-                        ) : (
-                          <button
-                            key={`m-${chip.milestone.id}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onMilestoneClick?.(chip.milestone);
-                            }}
-                            title={`${chip.milestone.job.title} · ${chip.milestone.title} (${formatTime(chip.milestone.at)})`}
-                            className="flex w-full items-center gap-1 truncate rounded px-1 py-[1px] text-left text-[11px] transition-colors hover:bg-bg-raised"
-                          >
-                            <span
-                              className="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-inset ring-bg"
-                              style={{ backgroundColor: chip.milestone.job.color || "#3B82F6" }}
-                            />
-                            <span className="shrink-0 tabular-nums text-ink-muted">
-                              {formatTime(chip.milestone.at)}
-                            </span>
-                            <span className="truncate text-ink-muted">{chip.milestone.title}</span>
-                          </button>
-                        ),
-                      )}
+                      {visible.map((m) => (
+                        <button
+                          key={`m-${m.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMilestoneClick?.(m);
+                          }}
+                          title={`${m.job.title} · ${m.title} (${formatTime(m.at)})`}
+                          className="flex w-full items-center gap-1 truncate rounded px-1 py-[1px] text-left text-[11px] transition-colors hover:bg-bg-raised"
+                        >
+                          <span
+                            className="h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: m.job.color || "#3B82F6" }}
+                          />
+                          <span className="shrink-0 tabular-nums text-ink-muted">{formatTime(m.at)}</span>
+                          <span className="truncate text-ink-muted">{m.title}</span>
+                        </button>
+                      ))}
                       {hidden > 0 && (
                         <button
                           onClick={() => onDayClick(d)}

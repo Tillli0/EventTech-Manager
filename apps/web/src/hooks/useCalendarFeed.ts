@@ -3,9 +3,15 @@ import { supabase } from "@/lib/supabase";
 
 const FEED_KEY = ["calendar-feed-token"] as const;
 
-/** Basis-URL des Abo-Feeds (ohne Token). */
+/** Basis-URL des Abo-Feeds (ohne Token).
+ *
+ * Bevorzugt VITE_CALENDAR_FEED_BASE_URL (die öffentliche Tunnel-/Domain-Adresse,
+ * über die Google/Apple den Feed abrufen). Ist sie nicht gesetzt, wird die
+ * normale Supabase-URL benutzt (z. B. LAN-IP — funktioniert nur im selben Netz).
+ */
 function feedBaseUrl(): string {
-  const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, "");
+  const explicit = import.meta.env.VITE_CALENDAR_FEED_BASE_URL as string | undefined;
+  const base = (explicit || (import.meta.env.VITE_SUPABASE_URL as string)).replace(/\/$/, "");
   return `${base}/functions/v1/calendar-feed`;
 }
 
