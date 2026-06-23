@@ -4,6 +4,7 @@ import { AlertTriangle, MapPin, User, FileText, Clock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { CalendarEntry, JobMilestone } from "@/types/database";
 import { formatTime } from "@/lib/format";
+import { NowLine } from "./NowLine";
 
 const HOUR_HEIGHT = 80;
 const START_HOUR = 6;
@@ -96,11 +97,26 @@ export function DayView({
     <div className="overflow-hidden rounded-lg border border-border">
       {/* Kopfzeile */}
       <div className="flex items-center justify-between border-b border-border bg-bg-surface px-4 py-3">
-        <div>
-          <p className="text-sm font-medium text-ink-muted">{format(currentDate, "EEEE", { locale: de })}</p>
-          <p className={cn("text-lg font-semibold", isToday(currentDate) ? "text-accent" : "text-ink")}>
-            {format(currentDate, "d. MMMM yyyy", { locale: de })}
-          </p>
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "inline-flex h-12 w-12 items-center justify-center rounded-full text-2xl",
+              isToday(currentDate) ? "bg-accent font-medium text-white" : "text-ink",
+            )}
+          >
+            {format(currentDate, "d")}
+          </span>
+          <div>
+            <p
+              className={cn(
+                "text-sm font-medium uppercase tracking-wide",
+                isToday(currentDate) ? "text-accent" : "text-ink-muted",
+              )}
+            >
+              {format(currentDate, "EEEE", { locale: de })}
+            </p>
+            <p className="text-sm text-ink-muted">{format(currentDate, "MMMM yyyy", { locale: de })}</p>
+          </div>
         </div>
         <p className="text-xs text-ink-faint">
           {entries.length === 0 ? "Keine Termine" : `${positioned.length + allDayEntries.length} Termin(e)`}
@@ -179,6 +195,8 @@ export function DayView({
                 style={{ height: HOUR_HEIGHT }}
               />
             ))}
+
+            {isToday(currentDate) && <NowLine startHour={START_HOUR} endHour={END_HOUR} hourHeight={HOUR_HEIGHT} />}
 
             {positioned.map((p) => {
               const color = p.entry.job?.color || "#3B82F6";

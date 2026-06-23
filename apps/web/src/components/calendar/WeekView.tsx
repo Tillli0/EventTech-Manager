@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { CalendarEntry, JobMilestone } from "@/types/database";
 import { formatTime } from "@/lib/format";
+import { NowLine } from "./NowLine";
 
 const HOUR_HEIGHT = 64;
 const START_HOUR = 6;
@@ -132,12 +133,21 @@ export function WeekView({
       <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border bg-bg-surface">
         <div />
         {days.map((d) => (
-          <div key={d.toISOString()} className="border-l border-border px-2 py-2.5 text-center">
-            <p className="text-xs font-medium text-ink-muted">{format(d, "EEE", { locale: de })}</p>
-            <span className={cn(
-              "mt-1 inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium",
-              isToday(d) ? "bg-accent text-white" : "text-ink",
-            )}>
+          <div key={d.toISOString()} className="border-l border-border px-2 py-2 text-center">
+            <p
+              className={cn(
+                "text-[11px] font-medium uppercase tracking-wide",
+                isToday(d) ? "text-accent" : "text-ink-muted",
+              )}
+            >
+              {format(d, "EEE", { locale: de })}
+            </p>
+            <span
+              className={cn(
+                "mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg font-normal",
+                isToday(d) ? "bg-accent font-medium text-white" : "text-ink",
+              )}
+            >
               {format(d, "d")}
             </span>
           </div>
@@ -235,6 +245,8 @@ export function WeekView({
                     style={{ height: HOUR_HEIGHT }}
                   />
                 ))}
+
+                {isToday(d) && <NowLine startHour={START_HOUR} endHour={END_HOUR} hourHeight={HOUR_HEIGHT} />}
 
                 {positioned.map((p) => {
                   const color = p.entry.job?.color || "#3B82F6";

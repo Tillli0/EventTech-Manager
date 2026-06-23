@@ -371,6 +371,11 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# Kalender-Feed wird von Google/Apple ohne JWT abgerufen — Auth läuft über den
+# geheimen Token in der URL (?token=...), darum JWT-Prüfung hier abschalten.
+[functions.calendar-feed]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

@@ -6,7 +6,9 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Textarea, Label } from "@/components/ui/Input";
 import { DateRangeField } from "@/components/ui/DateRangeField";
+import { CalendarClock } from "lucide-react";
 import { useCreateCalendarEntry, useDeleteCalendarEntry } from "@/hooks/useCalendar";
+import { useJob } from "@/hooks/useJobs";
 import type { CalendarEntry } from "@/types/database";
 import { formatDateTime, formatDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
@@ -21,6 +23,9 @@ interface CalendarEntryDialogProps {
 export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate }: CalendarEntryDialogProps) {
   const createEntry = useCreateCalendarEntry();
   const deleteEntry = useDeleteCalendarEntry();
+  // Bei einem Termin, der zu einem Job gehört: dessen Zeitplan mitladen, damit
+  // man direkt aus dem Kalender heraus den Programmablauf sieht.
+  const { data: jobDetail } = useJob(existingEntry?.job_id ?? undefined);
 
   const [title, setTitle] = useState("");
   const [allDay, setAllDay] = useState(false);
@@ -103,6 +108,26 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
               <p className="text-ink">{existingEntry.notes}</p>
             </div>
           )}
+          {/* Zeitplan des zugehörigen Jobs (Aufbau/Soundcheck/Abbau …) */}
+          {jobDetail?.milestones && jobDetail.milestones.length > 0 && (
+            <div className="border-t border-border pt-3">
+              <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                <CalendarClock size={13} />
+                Zeitplan
+              </p>
+              <ul className="space-y-1.5">
+                {[...jobDetail.milestones]
+                  .sort((a, b) => a.at.localeCompare(b.at))
+                  .map((m) => (
+                    <li key={m.id} className="flex items-baseline gap-2 text-sm">
+                      <span className="w-28 shrink-0 tabular-nums text-ink-muted">{formatDateTime(m.at)}</span>
+                      <span className="text-ink">{m.title}</span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+
           {existingEntry.source !== "intern" && (
             <p className="text-xs text-ink-faint">
               Synchronisiert über {existingEntry.source === "google" ? "Google Calendar" : "iCal"}

@@ -16,7 +16,7 @@ import {
   format,
 } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Download, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Download, AlertTriangle, CalendarPlus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { LoadingState, ErrorState } from "@/components/ui/States";
@@ -24,17 +24,21 @@ import { useCalendarEntries, useJobMilestonesInRange, detectCollisions } from "@
 import { MonthGrid, formatMonthLabel } from "@/components/calendar/MonthGrid";
 import { WeekView, formatWeekLabel } from "@/components/calendar/WeekView";
 import { DayView } from "@/components/calendar/DayView";
+import { AgendaView } from "@/components/calendar/AgendaView";
+import { MiniMonth } from "@/components/calendar/MiniMonth";
 import { CalendarEntryDialog } from "@/components/calendar/CalendarEntryDialog";
+import { CalendarSubscribeDialog } from "@/components/calendar/CalendarSubscribeDialog";
 import { exportToIcs } from "@/lib/ics";
 import { cn } from "@/lib/cn";
 import type { CalendarEntry } from "@/types/database";
 
-type ViewMode = "month" | "week" | "day";
+type ViewMode = "month" | "week" | "day" | "agenda";
 
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: "month", label: "Monat" },
   { value: "week", label: "Woche" },
   { value: "day", label: "Tag" },
+  { value: "agenda", label: "Agenda" },
 ];
 
 export function CalendarPage() {
@@ -44,6 +48,7 @@ export function CalendarPage() {
   const [dialogState, setDialogState] = useState<{ entry?: CalendarEntry | null; prefillDate?: Date | null } | null>(
     null,
   );
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (view === "month") {
@@ -56,6 +61,13 @@ export function CalendarPage() {
       return {
         rangeStart: startOfWeek(currentDate, { weekStartsOn: 1 }).toISOString(),
         rangeEnd: endOfWeek(currentDate, { weekStartsOn: 1 }).toISOString(),
+      };
+    }
+    if (view === "agenda") {
+      // Agenda zeigt die kommenden ~60 Tage ab dem gewählten Tag.
+      return {
+        rangeStart: startOfDay(currentDate).toISOString(),
+        rangeEnd: endOfDay(addDays(currentDate, 60)).toISOString(),
       };
     }
     return {
@@ -72,12 +84,14 @@ export function CalendarPage() {
   function goToPrevious() {
     if (view === "month") setCurrentDate((d) => subMonths(d, 1));
     else if (view === "week") setCurrentDate((d) => subWeeks(d, 1));
+    else if (view === "agenda") setCurrentDate((d) => subDays(d, 30));
     else setCurrentDate((d) => subDays(d, 1));
   }
 
   function goToNext() {
     if (view === "month") setCurrentDate((d) => addMonths(d, 1));
     else if (view === "week") setCurrentDate((d) => addWeeks(d, 1));
+    else if (view === "agenda") setCurrentDate((d) => addDays(d, 30));
     else setCurrentDate((d) => addDays(d, 1));
   }
 
@@ -86,7 +100,9 @@ export function CalendarPage() {
       ? formatMonthLabel(currentDate)
       : view === "week"
         ? formatWeekLabel(currentDate)
-        : format(currentDate, "EEEE, d. MMMM yyyy", { locale: de });
+        : view === "agenda"
+          ? `Ab ${format(currentDate, "d. MMMM yyyy", { locale: de })}`
+          : format(currentDate, "EEEE, d. MMMM yyyy", { locale: de });
 
   return (
     <div>
@@ -94,6 +110,10 @@ export function CalendarPage() {
         title="Kalender"
         actions={
           <>
+            <Button variant="secondary" onClick={() => setSubscribeOpen(true)}>
+              <CalendarPlus size={16} />
+              Abonnieren
+            </Button>
             <Button
               variant="secondary"
               onClick={() => entries && exportToIcs(entries)}
@@ -158,40 +178,61 @@ export function CalendarPage() {
         </div>
       )}
 
-      {!isLoading && entries && view === "month" && (
-        <MonthGrid
-          currentMonth={currentDate}
-          entries={entries}
-          milestones={milestones ?? []}
-          collidingIds={collidingIds}
-          onDayClick={(day) => setDialogState({ prefillDate: day })}
-          onEntryClick={(entry) => setDialogState({ entry })}
-          onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
-        />
-      )}
+      {!isLoading && entries && (
+        <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-4">
+          {/* Mini-Monat zum schnellen Springen (nur auf großen Bildschirmen) */}
+          <div className="mb-4 hidden lg:mb-0 lg:block">
+            <MiniMonth selectedDate={currentDate} onPick={(day) => setCurrentDate(day)} />
+          </div>
 
-      {!isLoading && entries && view === "week" && (
-        <WeekView
-          currentDate={currentDate}
-          entries={entries}
-          milestones={milestones ?? []}
-          collidingIds={collidingIds}
-          onSlotClick={(slot) => setDialogState({ prefillDate: slot })}
-          onEntryClick={(entry) => setDialogState({ entry })}
-          onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
-        />
-      )}
+          <div className="min-w-0">
+            {view === "month" && (
+              <MonthGrid
+                currentMonth={currentDate}
+                entries={entries}
+                milestones={milestones ?? []}
+                collidingIds={collidingIds}
+                onDayClick={(day) => setDialogState({ prefillDate: day })}
+                onEntryClick={(entry) => setDialogState({ entry })}
+                onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
+              />
+            )}
 
-      {!isLoading && entries && view === "day" && (
-        <DayView
-          currentDate={currentDate}
-          entries={entries}
-          milestones={milestones ?? []}
-          collidingIds={collidingIds}
-          onSlotClick={(slot) => setDialogState({ prefillDate: slot })}
-          onEntryClick={(entry) => setDialogState({ entry })}
-          onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
-        />
+            {view === "week" && (
+              <WeekView
+                currentDate={currentDate}
+                entries={entries}
+                milestones={milestones ?? []}
+                collidingIds={collidingIds}
+                onSlotClick={(slot) => setDialogState({ prefillDate: slot })}
+                onEntryClick={(entry) => setDialogState({ entry })}
+                onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
+              />
+            )}
+
+            {view === "day" && (
+              <DayView
+                currentDate={currentDate}
+                entries={entries}
+                milestones={milestones ?? []}
+                collidingIds={collidingIds}
+                onSlotClick={(slot) => setDialogState({ prefillDate: slot })}
+                onEntryClick={(entry) => setDialogState({ entry })}
+                onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
+              />
+            )}
+
+            {view === "agenda" && (
+              <AgendaView
+                fromDate={currentDate}
+                entries={entries}
+                milestones={milestones ?? []}
+                onEntryClick={(entry) => setDialogState({ entry })}
+                onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
+              />
+            )}
+          </div>
+        </div>
       )}
 
       <CalendarEntryDialog
@@ -200,6 +241,8 @@ export function CalendarPage() {
         existingEntry={dialogState?.entry}
         prefillDate={dialogState?.prefillDate}
       />
+
+      <CalendarSubscribeDialog open={subscribeOpen} onClose={() => setSubscribeOpen(false)} />
     </div>
   );
 }

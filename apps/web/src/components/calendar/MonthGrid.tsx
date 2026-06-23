@@ -14,9 +14,16 @@ import type { CalendarEntry, JobMilestone } from "@/types/database";
 import { formatTime } from "@/lib/format";
 
 const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-const ROW_HEIGHT = 26;
+
+/** Sa/So (getDay 6/0) — für dezente Wochenend-Schattierung. */
+function isWeekend(d: Date): boolean {
+  const wd = d.getDay();
+  return wd === 0 || wd === 6;
+}
+const ROW_HEIGHT = 22;
 const MAX_VISIBLE_LANES = 3;
-const MAX_VISIBLE_MILESTONES_PER_DAY = 3;
+const MAX_CHIPS_PER_DAY = 3;
+const WEEK_MIN_HEIGHT = 116;
 
 type MilestoneWithJob = JobMilestone & { job: { id: string; title: string; color: string } };
 
@@ -40,6 +47,18 @@ function stripTime(date: Date): Date {
 function diffDays(a: Date, b: Date): number {
   return Math.round((stripTime(a).getTime() - stripTime(b).getTime()) / (1000 * 60 * 60 * 24));
 }
+
+/** Mehrtägig oder ganztägig → als durchgezogener Balken; sonst als Punkt-Chip
+ * (wie Google: nur mehrtägige/ganztägige Termine werden zu Balken). */
+function isMultiDay(e: CalendarEntry): boolean {
+  if (e.all_day) return true;
+  return stripTime(new Date(e.end_at)).getTime() > stripTime(new Date(e.start_at)).getTime();
+}
+
+/** Ein Eintrag in der Tageszelle unterhalb der Balken: Einzeltermin oder Milestone. */
+type DayChip =
+  | { kind: "entry"; time: number; entry: CalendarEntry }
+  | { kind: "milestone"; time: number; milestone: MilestoneWithJob };
 
 /** Weist jedem Termin einer Woche eine "Lane" (Zeile) zu, ähnlich wie bei Google Calendar,
  * sodass sich überlappende Termine nicht visuell überdecken. */
@@ -117,15 +136,31 @@ export function MonthGrid({
     cursor = addDays(cursor, 7);
   }
 
-  function milestonesForDay(d: Date) {
-    return milestones.filter((m) => stripTime(new Date(m.at)).getTime() === stripTime(d).getTime());
+  // Einzeltermine (kein Balken) + Milestones eines Tages als zeitlich sortierte Chips.
+  function chipsForDay(d: Date): DayChip[] {
+    const key = stripTime(d).getTime();
+    const dayEntries: DayChip[] = entries
+      .filter((e) => !isMultiDay(e) && stripTime(new Date(e.start_at)).getTime() === key)
+      .map((e) => ({ kind: "entry", time: new Date(e.start_at).getTime(), entry: e }));
+    const dayMilestones: DayChip[] = milestones
+      .filter((m) => !!m.job && stripTime(new Date(m.at)).getTime() === key)
+      .map((m) => ({ kind: "milestone", time: new Date(m.at).getTime(), milestone: m }));
+    return [...dayEntries, ...dayMilestones].sort((a, b) => a.time - b.time);
   }
 
+  const multiDayEntries = entries.filter(isMultiDay);
+
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-hidden rounded-lg border border-border bg-bg">
       <div className="grid grid-cols-7 border-b border-border bg-bg-surface">
-        {WEEKDAY_LABELS.map((label) => (
-          <div key={label} className="px-2 py-2 text-center text-xs font-medium text-ink-muted">
+        {WEEKDAY_LABELS.map((label, i) => (
+          <div
+            key={label}
+            className={cn(
+              "px-2 py-2 text-center text-[11px] font-medium uppercase tracking-wide",
+              i >= 5 ? "text-ink-faint" : "text-ink-muted",
+            )}
+          >
             {label}
           </div>
         ))}
@@ -134,128 +169,168 @@ export function MonthGrid({
       {weeks.map((week) => {
         const weekStart = week[0];
         const weekEnd = week[6];
-        const segments = layoutWeek(weekStart, weekEnd, entries);
+        const segments = layoutWeek(weekStart, weekEnd, multiDayEntries);
         const visibleSegments = segments.filter((s) => s.lane < MAX_VISIBLE_LANES);
-        const hiddenCountPerDay = new Array(7).fill(0);
+        const hiddenBarsPerDay = new Array(7).fill(0);
         for (const s of segments) {
           if (s.lane >= MAX_VISIBLE_LANES) {
-            for (let c = s.startCol; c <= s.endCol; c++) hiddenCountPerDay[c]++;
+            for (let c = s.startCol; c <= s.endCol; c++) hiddenBarsPerDay[c]++;
           }
         }
         const laneCount = Math.min(
           MAX_VISIBLE_LANES,
           segments.reduce((max, s) => Math.max(max, s.lane + 1), 0),
         );
-        const hasHidden = hiddenCountPerDay.some((n) => n > 0);
 
         return (
-          <div key={weekStart.toISOString()} className="border-b border-border last:border-b-0">
-            {/* Tageszahlen-Zeile */}
-            <div className="grid grid-cols-7">
+          <div
+            key={weekStart.toISOString()}
+            className="relative border-b border-border last:border-b-0"
+            style={{ minHeight: WEEK_MIN_HEIGHT }}
+          >
+            {/* Hintergrund-Zellen: liefern volle senkrechte Trennlinien + Wochenend-/Außer-Monat-Tönung */}
+            <div className="absolute inset-0 grid grid-cols-7">
               {week.map((d) => {
                 const inMonth = isSameMonth(d, currentMonth);
                 return (
-                  <button
+                  <div
                     key={d.toISOString()}
-                    onClick={() => onDayClick(d)}
                     className={cn(
-                      "flex items-start border-r border-border p-2 pb-0.5 text-left transition-colors last:border-r-0 hover:bg-bg-raised",
-                      !inMonth && "bg-bg-surface/50",
+                      "border-r border-border last:border-r-0",
+                      !inMonth && "bg-bg-surface/40",
+                      inMonth && isWeekend(d) && "bg-bg-surface/30",
                     )}
-                  >
-                    <span
-                      className={cn(
-                        "inline-flex h-6 w-6 items-center justify-center rounded-full text-sm",
-                        isToday(d) ? "bg-accent font-semibold text-white" : inMonth ? "text-ink" : "text-ink-faint",
-                      )}
-                    >
-                      {format(d, "d")}
-                    </span>
-                  </button>
+                  />
                 );
               })}
             </div>
 
-            {/* Durchgezogene Mehrtages-Balken */}
-            {laneCount > 0 && (
-              <div
-                className="relative grid grid-cols-7 px-1.5 pt-1"
-                style={{ height: laneCount * ROW_HEIGHT }}
-                onClick={() => onDayClick(weekStart)}
-              >
-                {visibleSegments.map((seg) => {
-                  const color = seg.entry.job?.color || "#3B82F6";
-                  const isColliding = collidingIds.has(seg.entry.id);
+            {/* Inhalt über dem Hintergrund */}
+            <div className="relative">
+              {/* Tageszahlen */}
+              <div className="grid grid-cols-7">
+                {week.map((d) => {
+                  const inMonth = isSameMonth(d, currentMonth);
                   return (
                     <button
-                      key={seg.entry.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEntryClick(seg.entry);
-                      }}
-                      title={`${seg.entry.title} (${formatTime(seg.entry.start_at)})`}
-                      className={cn(
-                        "flex h-[20px] items-center truncate px-2 text-xs font-medium text-white transition-opacity hover:opacity-90",
-                        seg.continuesFromPrev ? "rounded-l-none" : "rounded-l-[4px] ml-0.5",
-                        seg.continuesToNext ? "rounded-r-none" : "rounded-r-[4px] mr-0.5",
-                        isColliding && "ring-2 ring-status-defekt ring-inset",
-                      )}
-                      style={{
-                        gridColumn: `${seg.startCol + 1} / ${seg.endCol + 2}`,
-                        gridRow: 1,
-                        marginTop: seg.lane * ROW_HEIGHT,
-                        backgroundColor: color,
-                      }}
+                      key={d.toISOString()}
+                      onClick={() => onDayClick(d)}
+                      className="flex justify-center pt-1 text-center transition-colors hover:bg-bg-raised/40"
                     >
-                      {seg.continuesFromPrev && "« "}
-                      {seg.entry.title}
-                      {seg.continuesToNext && " »"}
+                      <span
+                        className={cn(
+                          "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs",
+                          isToday(d)
+                            ? "bg-accent font-semibold text-white"
+                            : inMonth
+                              ? "text-ink"
+                              : "text-ink-faint",
+                        )}
+                      >
+                        {format(d, "d")}
+                      </span>
                     </button>
                   );
                 })}
               </div>
-            )}
 
-            {hasHidden && (
-              <div className="grid grid-cols-7 px-1.5">
-                {hiddenCountPerDay.map((count, i) => (
-                  <p key={i} className="text-[10px] text-ink-faint">
-                    {count > 0 ? `+${count} weitere` : ""}
-                  </p>
-                ))}
-              </div>
-            )}
-
-            {/* Milestones (Unterevents) — schlichter Punkt + Label, keine durchgezogene Farbe */}
-            <div className="grid grid-cols-7">
-              {week.map((d) => {
-                const dayMilestones = milestonesForDay(d).filter((m) => !!m.job);
-                if (dayMilestones.length === 0) return <div key={d.toISOString()} className="pb-1" />;
-                const visible = dayMilestones.slice(0, MAX_VISIBLE_MILESTONES_PER_DAY);
-                const hiddenCount = dayMilestones.length - visible.length;
-                return (
-                  <div key={d.toISOString()} className="space-y-1 px-1.5 pb-2 pt-1">
-                    {visible.map((m) => (
+              {/* Durchgezogene Mehrtages-/Ganztags-Balken */}
+              {laneCount > 0 && (
+                <div className="relative grid grid-cols-7 px-1 pt-0.5" style={{ height: laneCount * ROW_HEIGHT }}>
+                  {visibleSegments.map((seg) => {
+                    const color = seg.entry.job?.color || "#3B82F6";
+                    const isColliding = collidingIds.has(seg.entry.id);
+                    return (
                       <button
-                        key={m.id}
+                        key={seg.entry.id}
                         onClick={(e) => {
                           e.stopPropagation();
-                          onMilestoneClick?.(m);
+                          onEntryClick(seg.entry);
                         }}
-                        title={`${m.job.title} · ${m.title} (${formatTime(m.at)})`}
-                        className="flex w-full items-center gap-1.5 truncate text-left text-xs text-ink-muted hover:text-ink"
+                        title={`${seg.entry.title} (${formatTime(seg.entry.start_at)})`}
+                        className={cn(
+                          "flex h-[18px] items-center truncate px-1.5 text-[11px] font-medium text-white transition-opacity hover:opacity-90",
+                          seg.continuesFromPrev ? "rounded-l-none" : "ml-0.5 rounded-l-[4px]",
+                          seg.continuesToNext ? "rounded-r-none" : "mr-0.5 rounded-r-[4px]",
+                          isColliding && "ring-2 ring-status-defekt ring-inset",
+                        )}
+                        style={{
+                          gridColumn: `${seg.startCol + 1} / ${seg.endCol + 2}`,
+                          gridRow: 1,
+                          marginTop: seg.lane * ROW_HEIGHT,
+                          backgroundColor: color,
+                        }}
                       >
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: m.job.color || "#3B82F6" }}
-                        />
-                        <span className="truncate">{m.title}</span>
+                        {seg.continuesFromPrev && "« "}
+                        {seg.entry.title}
+                        {seg.continuesToNext && " »"}
                       </button>
-                    ))}
-                    {hiddenCount > 0 && <p className="text-[11px] text-ink-faint">+{hiddenCount} weitere</p>}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Einzeltermine + Milestones als Punkt-Chips (Google-Stil) */}
+              <div className="grid grid-cols-7">
+                {week.map((d, col) => {
+                  const chips = chipsForDay(d);
+                  const visible = chips.slice(0, MAX_CHIPS_PER_DAY);
+                  const hidden = chips.length - visible.length + hiddenBarsPerDay[col];
+                  return (
+                    <div key={d.toISOString()} className="space-y-px px-1 pb-1 pt-0.5">
+                      {visible.map((chip) =>
+                        chip.kind === "entry" ? (
+                          <button
+                            key={`e-${chip.entry.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEntryClick(chip.entry);
+                            }}
+                            title={`${chip.entry.title} (${formatTime(chip.entry.start_at)})`}
+                            className="flex w-full items-center gap-1 truncate rounded px-1 py-[1px] text-left text-[11px] transition-colors hover:bg-bg-raised"
+                          >
+                            <span
+                              className="h-1.5 w-1.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: chip.entry.job?.color || "#3B82F6" }}
+                            />
+                            <span className="shrink-0 tabular-nums text-ink-muted">
+                              {formatTime(chip.entry.start_at)}
+                            </span>
+                            <span className="truncate text-ink">{chip.entry.title}</span>
+                          </button>
+                        ) : (
+                          <button
+                            key={`m-${chip.milestone.id}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMilestoneClick?.(chip.milestone);
+                            }}
+                            title={`${chip.milestone.job.title} · ${chip.milestone.title} (${formatTime(chip.milestone.at)})`}
+                            className="flex w-full items-center gap-1 truncate rounded px-1 py-[1px] text-left text-[11px] transition-colors hover:bg-bg-raised"
+                          >
+                            <span
+                              className="h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-inset ring-bg"
+                              style={{ backgroundColor: chip.milestone.job.color || "#3B82F6" }}
+                            />
+                            <span className="shrink-0 tabular-nums text-ink-muted">
+                              {formatTime(chip.milestone.at)}
+                            </span>
+                            <span className="truncate text-ink-muted">{chip.milestone.title}</span>
+                          </button>
+                        ),
+                      )}
+                      {hidden > 0 && (
+                        <button
+                          onClick={() => onDayClick(d)}
+                          className="px-1 text-left text-[11px] font-medium text-ink-muted hover:text-ink"
+                        >
+                          +{hidden} weitere
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         );
