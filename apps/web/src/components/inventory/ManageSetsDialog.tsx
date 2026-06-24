@@ -96,6 +96,15 @@ export function ManageSetsDialog({ open, onClose }: { open: boolean; onClose: ()
   );
 }
 
+/** Kurzfassung der Set-Bestandteile: Gesamtstückzahl (und Postenzahl, falls abweichend). */
+function setItemSummary(set: DeviceSet): string {
+  const distinct = set.items?.length ?? 0;
+  if (distinct === 0) return "Keine Geräte";
+  const total = set.items?.reduce((s, i) => s + (i.quantity || 0), 0) ?? 0;
+  if (total === distinct) return `${distinct} Geräte`;
+  return `${total} Geräte · ${distinct} Posten`;
+}
+
 /** Eine Set-Karte: Bild (oder farbige Fläche), farbiger Rand, Name + Geräteanzahl. */
 export function SetCard({
   set,
@@ -128,7 +137,7 @@ export function SetCard({
         )}
         <div className="p-2.5">
           <p className="truncate text-sm font-medium text-ink">{set.name}</p>
-          <p className="text-xs text-ink-muted">{set.items?.length ?? 0} Geräte</p>
+          <p className="text-xs text-ink-muted">{setItemSummary(set)}</p>
         </div>
       </button>
 

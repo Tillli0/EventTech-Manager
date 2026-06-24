@@ -40,7 +40,6 @@ export const USER_ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 export type JobViewMode = "eigene" | "zugewiesene" | "alle";
 
 export const JOB_VIEW_MODE_OPTIONS: { value: JobViewMode; label: string; hint: string }[] = [
-  { value: "eigene", label: "Nur eigene", hint: "Nur selbst angelegte Jobs (plus zugewiesene)" },
   { value: "zugewiesene", label: "Zugewiesene", hint: "Nur Jobs, denen man zugewiesen ist" },
   { value: "alle", label: "Alle", hint: "Alle Jobs im Bestand" },
 ];

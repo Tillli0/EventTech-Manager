@@ -15,7 +15,7 @@ import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
-import { useProfiles, profileLabel } from "@/hooks/useProfiles";
+import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
 import { useAuth } from "@/auth/AuthProvider";
 import type { Job } from "@/types/database";
 import { Users } from "lucide-react";
@@ -166,7 +166,8 @@ export function JobDetailPage() {
 }
 
 function JobAssigneesCard({ job, canEdit }: { job: Job; canEdit: boolean }) {
-  const { data: profiles } = useProfiles();
+  const { data: allProfiles } = useProfiles();
+  const profiles = assignableProfiles(allProfiles);
   const setAssignees = useSetJobAssignees();
   const assignedIds = (job.assignees ?? []).map((a) => a.user_id);
 

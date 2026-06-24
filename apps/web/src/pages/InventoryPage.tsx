@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
@@ -71,6 +71,17 @@ export function InventoryPage() {
   const [setsOpen, setSetsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
+  // Eingeklappte Kategorie-Abschnitte (per category_id).
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  function toggleCategory(id: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   // Suche entprellen, damit das Tippen bei vielen Geräten flüssig bleibt.
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -135,6 +146,31 @@ export function InventoryPage() {
       return cmp * dir;
     });
   }, [devices, debouncedSearch, statusFilter, categoryFilter, sort]);
+
+  // Farbe je Kategorie (Fallback grau, wenn keine gepflegt).
+  const colorById = useMemo(() => {
+    const m = new Map<string, string>();
+    categories?.forEach((c) => m.set(c.id, c.color ?? "#8B92A3"));
+    return m;
+  }, [categories]);
+
+  // Geräte nach Kategorie gruppieren (alphabetisch, „Ohne Kategorie" ans Ende).
+  const groupedByCategory = useMemo(() => {
+    const NONE = "__none__";
+    const map = new Map<string, { id: string; name: string; color: string; devices: Device[] }>();
+    for (const d of filteredDevices) {
+      const id = d.category_id ?? NONE;
+      const name = d.category?.name ?? "Ohne Kategorie";
+      const color = id === NONE ? "#5B6273" : colorById.get(id) ?? "#8B92A3";
+      if (!map.has(id)) map.set(id, { id, name, color, devices: [] });
+      map.get(id)!.devices.push(d);
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.id === NONE) return 1;
+      if (b.id === NONE) return -1;
+      return a.name.localeCompare(b.name, "de");
+    });
+  }, [filteredDevices, colorById]);
 
   function handleExport() {
     const statusLabel = (s: DeviceStatus) =>
@@ -282,40 +318,45 @@ export function InventoryPage() {
                 <SortHead label="Wiederbeschaffungswert" k="value" sort={sort} onSort={toggleSort} className="hidden px-4 py-3 text-right lg:table-cell" align="right" />
               </tr>
             </thead>
-            <tbody>
-              {filteredDevices.map((device) => (
-                <tr key={device.id} className="border-b border-border last:border-0 hover:bg-bg-raised">
-                  <td className="px-4 py-3">
-                    <Link to={`/inventar/${device.id}`} className="flex items-center gap-3">
-                      <DeviceThumbnail device={device} />
-                      <span className="block">
-                        <span className="block font-medium text-ink">{device.name}</span>
-                        <span className="block text-xs text-ink-muted">
-                          {[device.manufacturer, device.model].filter(Boolean).join(" · ") || "—"}
+            {groupedByCategory.map((group) => {
+              const isCollapsed = collapsed.has(group.id);
+              return (
+                <tbody key={group.id}>
+                  {/* Kategorie-Kopf, aufklappbar, in der Kategoriefarbe */}
+                  <tr className="border-b border-border">
+                    <td
+                      colSpan={6}
+                      className="border-l-4 px-3 py-2"
+                      style={{ borderLeftColor: group.color, backgroundColor: `${group.color}14` }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(group.id)}
+                        className="flex w-full items-center gap-2 text-left"
+                      >
+                        <ChevronRight
+                          size={15}
+                          className={cn("shrink-0 transition-transform", !isCollapsed && "rotate-90")}
+                          style={{ color: group.color }}
+                        />
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: group.color }}
+                          aria-hidden
+                        />
+                        <span className="text-sm font-semibold" style={{ color: group.color }}>
+                          {group.name}
                         </span>
-                      </span>
-                    </Link>
-                  </td>
-                  <td className="hidden px-4 py-3 font-mono text-xs text-ink-muted sm:table-cell">
-                    {device.barcodes?.[0]?.code ?? "—"}
-                  </td>
-                  <td className="hidden px-4 py-3 text-ink-muted md:table-cell">{device.location ?? "—"}</td>
-                  <td className="hidden px-4 py-3 text-right sm:table-cell">
-                    {device.stock_quantity > 1 ? (
-                      <span className="font-mono text-xs font-medium text-accent">{device.stock_quantity}×</span>
-                    ) : (
-                      <span className="text-ink-faint">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <DeviceStatusBadge status={device.status} />
-                  </td>
-                  <td className="hidden px-4 py-3 text-right font-mono text-ink-muted lg:table-cell">
-                    {formatCurrency(device.replacement_value)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+                        <span className="text-xs text-ink-faint">
+                          {group.devices.length} {group.devices.length === 1 ? "Gerät" : "Geräte"}
+                        </span>
+                      </button>
+                    </td>
+                  </tr>
+                  {!isCollapsed && group.devices.map((device) => <DeviceRow key={device.id} device={device} />)}
+                </tbody>
+              );
+            })}
           </table>
         </Card>
       )}
@@ -325,6 +366,41 @@ export function InventoryPage() {
       <ManageSetsDialog open={setsOpen} onClose={() => setSetsOpen(false)} />
       <ImportDevicesDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
+  );
+}
+
+function DeviceRow({ device }: { device: Device }) {
+  return (
+    <tr className="border-b border-border last:border-0 hover:bg-bg-raised">
+      <td className="px-4 py-3">
+        <Link to={`/inventar/${device.id}`} className="flex items-center gap-3">
+          <DeviceThumbnail device={device} />
+          <span className="block">
+            <span className="block font-medium text-ink">{device.name}</span>
+            <span className="block text-xs text-ink-muted">
+              {[device.manufacturer, device.model].filter(Boolean).join(" · ") || "—"}
+            </span>
+          </span>
+        </Link>
+      </td>
+      <td className="hidden px-4 py-3 font-mono text-xs text-ink-muted sm:table-cell">
+        {device.barcodes?.[0]?.code ?? "—"}
+      </td>
+      <td className="hidden px-4 py-3 text-ink-muted md:table-cell">{device.location ?? "—"}</td>
+      <td className="hidden px-4 py-3 text-right sm:table-cell">
+        {device.stock_quantity > 1 ? (
+          <span className="font-mono text-xs font-medium text-accent">{device.stock_quantity}×</span>
+        ) : (
+          <span className="text-ink-faint">—</span>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <DeviceStatusBadge status={device.status} />
+      </td>
+      <td className="hidden px-4 py-3 text-right font-mono text-ink-muted lg:table-cell">
+        {formatCurrency(device.replacement_value)}
+      </td>
+    </tr>
   );
 }
 

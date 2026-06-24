@@ -2,10 +2,10 @@ import { useState } from "react";
 import { List, StickyNote } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { Input, Select, Textarea, FormField } from "@/components/ui/Input";
+import { Input, Select, Textarea, FormField, Label } from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateField";
 import { useCreateTask } from "@/hooks/useTasks";
-import { useProfiles, profileLabel } from "@/hooks/useProfiles";
+import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
 import { TASK_PRIORITY_OPTIONS } from "@/types/database";
 import type { TaskPriority, TaskContentType } from "@/types/database";
 import { cn } from "@/lib/cn";
@@ -19,7 +19,8 @@ interface CreateTaskDialogProps {
 
 export function CreateTaskDialog({ open, onClose, prefillJobId, prefillJobTitle }: CreateTaskDialogProps) {
   const createTask = useCreateTask();
-  const { data: profiles } = useProfiles();
+  const { data: allProfiles } = useProfiles();
+  const profiles = assignableProfiles(allProfiles);
   const [title, setTitle] = useState("");
   const [contentType, setContentType] = useState<TaskContentType>("notes");
   const [description, setDescription] = useState("");
@@ -116,16 +117,33 @@ export function CreateTaskDialog({ open, onClose, prefillJobId, prefillJobTitle 
           </FormField>
         </div>
 
-        <FormField label="Zuweisen an">
-          <Select value={assignedUserId} onChange={(e) => setAssignedUserId(e.target.value)}>
-            <option value="">Niemandem zugewiesen</option>
-            {profiles?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {profileLabel(p)}
-              </option>
-            ))}
-          </Select>
-        </FormField>
+        <div>
+          <Label>Zuweisen an</Label>
+          {profiles.length === 0 ? (
+            <p className="mt-1 text-sm text-ink-faint">Keine Nutzer verfügbar.</p>
+          ) : (
+            <div className="mt-1 flex flex-wrap gap-2">
+              {profiles.map((p) => {
+                const active = assignedUserId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setAssignedUserId(active ? "" : p.id)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                      active
+                        ? "border-accent bg-accent-soft text-ink"
+                        : "border-border text-ink-muted hover:border-accent/40 hover:text-ink",
+                    )}
+                  >
+                    {profileLabel(p)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {prefillJobTitle && (
           <div className="rounded-md bg-bg-raised px-3 py-2 text-sm text-ink-muted">

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { startOfDay, endOfDay } from "date-fns";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Label } from "@/components/ui/Input";
 import { DateRangeField } from "@/components/ui/DateRangeField";
 import { useCreateJob } from "@/hooks/useJobs";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
-import { useProfiles, profileLabel } from "@/hooks/useProfiles";
+import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
 import { useCustomers } from "@/hooks/useCustomers";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { randomJobColor } from "@/types/database";
@@ -14,7 +15,8 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
   const createJob = useCreateJob();
   const setAssignees = useSetJobAssignees();
   const { data: customers } = useCustomers();
-  const { data: profiles } = useProfiles();
+  const { data: allProfiles } = useProfiles();
+  const profiles = assignableProfiles(allProfiles);
 
   const [title, setTitle] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -59,8 +61,9 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
       title: title.trim(),
       customer_id: customerId || null,
       location: location.trim() || null,
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
+      // Jobs sind tagesbasiert (keine Uhrzeit): Start = Tagesbeginn, Ende = Tagesende.
+      start_date: startOfDay(startDate).toISOString(),
+      end_date: endOfDay(endDate).toISOString(),
       color,
       customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
     });
@@ -102,7 +105,7 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
 
         <div>
           <Label>Zeitraum *</Label>
-          <DateRangeField onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
+          <DateRangeField allDay onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
         </div>
 
         {profiles && profiles.length > 0 && (

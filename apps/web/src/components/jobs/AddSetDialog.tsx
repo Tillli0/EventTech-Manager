@@ -1,43 +1,62 @@
 import { useEffect, useState } from "react";
-import { Boxes } from "lucide-react";
+import { Boxes, AlertTriangle } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
 import { SetCard } from "@/components/inventory/ManageSetsDialog";
-import { useDeviceSets } from "@/hooks/useDeviceSets";
-import { useAddDeviceSetToJob } from "@/hooks/useDeviceSets";
+import { useDeviceSets, useAddDeviceSetToJob } from "@/hooks/useDeviceSets";
+import { useDevicesAvailabilityMap, sumBookedQuantity } from "@/hooks/useJobs";
 
 /**
  * Set zu einem Job hinzufügen. Sets sind reine Anlage-Abkürzungen: nach dem
  * Hinzufügen sind die enthaltenen Geräte ganz normale Einzelposten auf der
- * Packliste, ohne weiteren Gruppenbezug. Mengen pro Set-Bestandteil lassen
- * sich hier vor dem Hinzufügen noch anpassen.
+ * Packliste. Mengen lassen sich vor dem Hinzufügen anpassen — aber nie über den
+ * im Zeitraum verfügbaren Bestand hinaus (Lager minus andere aktive Jobs).
  */
 export function AddSetDialog({
   open,
   onClose,
   jobId,
+  jobStartDate,
+  jobEndDate,
 }: {
   open: boolean;
   onClose: () => void;
   jobId: string;
+  jobStartDate: string;
+  jobEndDate: string;
 }) {
   const { data: sets, isLoading, error } = useDeviceSets();
   const addSetToJob = useAddDeviceSetToJob();
+  const { data: conflictMap } = useDevicesAvailabilityMap(jobStartDate, jobEndDate, jobId);
 
   const [selectedSetId, setSelectedSetId] = useState("");
   const [quantities, setQuantities] = useState<Map<string, number>>(new Map());
 
   const selectedSet = sets?.find((s) => s.id === selectedSetId);
 
+  /** Im Zeitraum verfügbarer Bestand eines Geräts (Lager minus andere aktive Jobs). */
+  function availableFor(deviceId: string, stock: number): number {
+    return Math.max(0, stock - sumBookedQuantity(conflictMap?.get(deviceId)));
+  }
+
   useEffect(() => {
     if (selectedSet) {
-      setQuantities(new Map(selectedSet.items?.map((i) => [i.device_id, i.quantity]) ?? []));
+      // Vorbelegung mit der Set-Menge, aber gedeckelt auf den verfügbaren Bestand.
+      setQuantities(
+        new Map(
+          selectedSet.items?.map((i) => {
+            const avail = availableFor(i.device_id, i.device?.stock_quantity ?? 1);
+            return [i.device_id, Math.min(i.quantity, Math.max(0, avail))];
+          }) ?? [],
+        ),
+      );
     } else {
       setQuantities(new Map());
     }
-  }, [selectedSet]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSet, conflictMap]);
 
   function handleClose() {
     setSelectedSetId("");
@@ -46,16 +65,23 @@ export function AddSetDialog({
   }
 
   async function handleAdd() {
-    if (!selectedSet || !selectedSet.items || selectedSet.items.length === 0) return;
-    await addSetToJob.mutateAsync({
-      jobId,
-      items: selectedSet.items.map((i) => ({
-        deviceId: i.device_id,
-        quantity: quantities.get(i.device_id) ?? i.quantity,
-      })),
-    });
+    if (!selectedSet?.items?.length) return;
+    const items = selectedSet.items
+      .map((i) => {
+        const avail = availableFor(i.device_id, i.device?.stock_quantity ?? 1);
+        const wanted = quantities.get(i.device_id) ?? i.quantity;
+        return { deviceId: i.device_id, quantity: Math.min(wanted, avail) };
+      })
+      .filter((x) => x.quantity >= 1);
+    if (items.length === 0) return;
+    await addSetToJob.mutateAsync({ jobId, items });
     handleClose();
   }
+
+  // Lässt sich überhaupt etwas hinzufügen? (mind. ein Gerät verfügbar)
+  const anyAddable = (selectedSet?.items ?? []).some(
+    (i) => availableFor(i.device_id, i.device?.stock_quantity ?? 1) >= 1,
+  );
 
   return (
     <Dialog open={open} onClose={handleClose} title="Set zur Packliste hinzufügen" maxWidth="max-w-lg">
@@ -87,27 +113,49 @@ export function AddSetDialog({
             {selectedSet && (
               <div className="space-y-1.5 rounded-lg border border-border p-3">
                 <p className="mb-1 text-sm font-medium text-ink">{selectedSet.name}</p>
-                {selectedSet.description && (
-                  <p className="mb-2 text-xs text-ink-muted">{selectedSet.description}</p>
-                )}
-                {(selectedSet.items ?? []).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-3 py-1">
-                    <p className="min-w-0 flex-1 truncate text-sm text-ink">{item.device?.name}</p>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={quantities.get(item.device_id) ?? item.quantity}
-                      onChange={(e) =>
-                        setQuantities((prev) => {
-                          const next = new Map(prev);
-                          next.set(item.device_id, Math.max(1, parseInt(e.target.value, 10) || 1));
-                          return next;
-                        })
-                      }
-                      className="w-20 shrink-0"
-                    />
-                  </div>
-                ))}
+                {selectedSet.description && <p className="mb-2 text-xs text-ink-muted">{selectedSet.description}</p>}
+                {(selectedSet.items ?? []).map((item) => {
+                  const stock = item.device?.stock_quantity ?? 1;
+                  const avail = availableFor(item.device_id, stock);
+                  const soldOut = avail <= 0;
+                  const value = Math.min(quantities.get(item.device_id) ?? item.quantity, Math.max(0, avail));
+                  return (
+                    <div key={item.id} className="py-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className={`min-w-0 flex-1 truncate text-sm ${soldOut ? "text-ink-faint" : "text-ink"}`}>
+                          {item.device?.name}
+                        </p>
+                        {soldOut ? (
+                          <span className="shrink-0 text-xs font-medium text-status-defekt">nicht verfügbar</span>
+                        ) : (
+                          <Input
+                            type="number"
+                            min={1}
+                            max={avail}
+                            value={value}
+                            onChange={(e) =>
+                              setQuantities((prev) => {
+                                const next = new Map(prev);
+                                next.set(item.device_id, Math.min(avail, Math.max(1, parseInt(e.target.value, 10) || 1)));
+                                return next;
+                              })
+                            }
+                            title={`max. ${avail} im Zeitraum verfügbar`}
+                            className="w-20 shrink-0"
+                          />
+                        )}
+                      </div>
+                      {(soldOut || avail < item.quantity) && (
+                        <p className="mt-0.5 flex items-center gap-1 text-xs text-status-wartung">
+                          <AlertTriangle size={11} className="shrink-0" />
+                          {soldOut
+                            ? `Im Zeitraum nicht verfügbar (Lager ${stock}, anderweitig verplant).`
+                            : `Nur ${avail}× im Zeitraum verfügbar (Set wünscht ${item.quantity}×).`}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
                 {(!selectedSet.items || selectedSet.items.length === 0) && (
                   <p className="text-sm text-ink-faint">Dieses Set enthält noch keine Geräte.</p>
                 )}
@@ -120,10 +168,7 @@ export function AddSetDialog({
           <Button variant="secondary" onClick={handleClose}>
             Abbrechen
           </Button>
-          <Button
-            onClick={handleAdd}
-            disabled={!selectedSet || !selectedSet.items?.length || addSetToJob.isPending}
-          >
+          <Button onClick={handleAdd} disabled={!selectedSet || !anyAddable || addSetToJob.isPending}>
             {addSetToJob.isPending ? "Wird hinzugefügt …" : "Set hinzufügen"}
           </Button>
         </div>

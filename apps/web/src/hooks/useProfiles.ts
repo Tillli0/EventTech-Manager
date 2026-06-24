@@ -23,3 +23,19 @@ export function useProfiles() {
 export function profileLabel(profile: Pick<Profile, "full_name"> | null | undefined): string {
   return profile?.full_name?.trim() || "—";
 }
+
+/**
+ * Profile, die man einem Job zuweisen kann: ohne Administrator, und Verwaltung
+ * vor den normalen Mitarbeitern (danach alphabetisch).
+ */
+export function assignableProfiles(profiles: Profile[] | undefined): Profile[] {
+  const roleOrder: Record<string, number> = { verwaltung: 0, mitarbeiter: 1 };
+  return (profiles ?? [])
+    .filter((p) => p.role !== "admin")
+    .sort((a, b) => {
+      const ra = roleOrder[a.role] ?? 9;
+      const rb = roleOrder[b.role] ?? 9;
+      if (ra !== rb) return ra - rb;
+      return profileLabel(a).localeCompare(profileLabel(b), "de");
+    });
+}

@@ -225,27 +225,33 @@ function DeviceRow({
   otherQuantity: number;
 }) {
   const isQuantityDevice = device.stock_quantity > 1;
+  const available = device.stock_quantity - otherQuantity;
+  const soldOut = available <= 0;
   const hasConflict = otherQuantity + quantity > device.stock_quantity;
+  const handleToggle = soldOut && !isSelected ? () => {} : onToggle;
 
   return (
     <div
       className={cn(
         "flex w-full items-start gap-3 rounded-md border px-3 py-2.5 text-left transition-colors",
         isSelected ? "border-accent bg-accent-soft" : "border-border bg-bg-raised hover:border-accent/40",
+        soldOut && !isSelected && "opacity-60",
       )}
     >
       <button
         type="button"
-        onClick={onToggle}
+        onClick={handleToggle}
+        disabled={soldOut && !isSelected}
         className={cn(
           "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
           isSelected ? "border-accent bg-accent" : "border-border",
+          soldOut && !isSelected && "cursor-not-allowed",
         )}
       >
         {isSelected && <Check size={13} className="text-white" strokeWidth={3} />}
       </button>
 
-      <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left">
+      <button type="button" onClick={handleToggle} className="min-w-0 flex-1 text-left">
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-sm font-medium text-ink">
             {device.name}
@@ -265,12 +271,15 @@ function DeviceRow({
           <p
             className={cn(
               "mt-1 flex items-center gap-1.5 text-xs",
-              hasConflict ? "text-status-defekt" : "text-ink-faint",
+              soldOut || hasConflict ? "text-status-defekt" : "text-ink-faint",
             )}
           >
             <AlertTriangle size={12} />
-            {otherQuantity}× bereits in anderen Jobs im Zeitraum verplant
-            {hasConflict && ` — reicht nicht für ${quantity}× zusätzlich (Bestand: ${device.stock_quantity})`}
+            {soldOut
+              ? `Im Zeitraum nicht verfügbar — ${otherQuantity}× von ${device.stock_quantity} in anderen Jobs verplant`
+              : `${otherQuantity}× bereits in anderen Jobs im Zeitraum verplant${
+                  hasConflict ? ` — nur noch ${available}× frei` : ""
+                }`}
           </p>
         )}
       </button>
@@ -279,9 +288,11 @@ function DeviceRow({
         <Input
           type="number"
           min={1}
+          max={available}
           value={quantity}
-          onChange={(e) => onQuantityChange(parseInt(e.target.value, 10) || 1)}
+          onChange={(e) => onQuantityChange(Math.min(available, Math.max(1, parseInt(e.target.value, 10) || 1)))}
           onClick={(e) => e.stopPropagation()}
+          title={`max. ${available} verfügbar`}
           className="w-20 shrink-0"
         />
       )}

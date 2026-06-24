@@ -11,6 +11,8 @@ import {
   useRemovePacklistItem,
   useMarkPacklistItemPickedUp,
   useReturnPacklistItem,
+  useDeviceAvailability,
+  sumBookedQuantity,
 } from "@/hooks/useJobs";
 import { useUpdateDeviceStatus } from "@/hooks/useDevices";
 import { useUsbScannerInput } from "@/components/barcode/BarcodeScanner";
@@ -66,36 +68,44 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
       return;
     }
 
-    const { item } = await scanPacklistItem.mutateAsync({
-      jobId: job.id,
-      deviceId: barcode.device_id,
-      existingItem: existingItem ? { id: existingItem.id, quantity: existingItem.quantity } : null,
-    });
+    const stockQuantity = deviceMeta?.stock_quantity ?? 1;
 
+    // Verfügbarkeit prüfen, BEVOR erhöht wird: Lagerbestand minus das, was im
+    // selben Zeitraum schon über andere aktive Jobs verplant ist. Über Bestand
+    // hinaus wird gar nicht erst hinzugefügt.
     const { data: conflicts } = await supabase
       .from("packlist_items")
-      .select("job_id, quantity, jobs!inner(id, title, status, start_date, end_date)")
+      .select("quantity, jobs!inner(id, status, start_date, end_date)")
       .eq("device_id", barcode.device_id)
       .neq("job_id", job.id)
       .in("jobs.status", ["anfrage", "bestaetigt", "laeuft"])
       .lt("jobs.start_date", job.end_date)
       .gt("jobs.end_date", job.start_date);
 
-    const stockQuantity = deviceMeta?.stock_quantity ?? 1;
     const otherQuantity = (conflicts ?? []).reduce((sum, c) => sum + c.quantity, 0);
-    const hasConflict = otherQuantity + item.quantity > stockQuantity;
+    const available = stockQuantity - otherQuantity;
+    const currentQty = existingItem?.quantity ?? 0;
 
-    if (hasConflict) {
-      setScanFeedback({
-        message: `„${deviceName}" — jetzt ${item.quantity}× auf der Liste. Achtung, Bestand reicht im Zeitraum nicht für alle Jobs (siehe unten).`,
-        hasConflict: true,
-      });
-    } else {
-      setScanFeedback({
-        message: stockQuantity > 1 ? `„${deviceName}" — jetzt ${item.quantity}× auf der Liste.` : `„${deviceName}" hinzugefügt.`,
-        hasConflict: false,
-      });
+    if (currentQty + 1 > available) {
+      setScanError(
+        `„${deviceName}": Bestand erschöpft — nur ${Math.max(0, available)}× im Zeitraum verfügbar` +
+          (otherQuantity > 0
+            ? ` (Lager ${stockQuantity}, ${otherQuantity}× in anderen Jobs verplant).`
+            : ` (Lager ${stockQuantity}).`),
+      );
+      return;
     }
+
+    const { item } = await scanPacklistItem.mutateAsync({
+      jobId: job.id,
+      deviceId: barcode.device_id,
+      existingItem: existingItem ? { id: existingItem.id, quantity: existingItem.quantity } : null,
+    });
+
+    setScanFeedback({
+      message: stockQuantity > 1 ? `„${deviceName}" — jetzt ${item.quantity}× auf der Liste.` : `„${deviceName}" hinzugefügt.`,
+      hasConflict: false,
+    });
     setTimeout(() => setScanFeedback(null), 4000);
   }
 
@@ -196,7 +206,13 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
         excludeDeviceIds={items.filter((item) => item.quantity_picked_up === 0).map((item) => item.device_id)}
       />
 
-      <AddSetDialog open={showSetDialog} onClose={() => setShowSetDialog(false)} jobId={job.id} />
+      <AddSetDialog
+        open={showSetDialog}
+        onClose={() => setShowSetDialog(false)}
+        jobId={job.id}
+        jobStartDate={job.start_date}
+        jobEndDate={job.end_date}
+      />
     </div>
   );
 }
@@ -229,6 +245,14 @@ function PacklistRow({
   const [pickupAmount, setPickupAmount] = useState("");
   const [editingQuantity, setEditingQuantity] = useState(false);
   const [quantityInput, setQuantityInput] = useState(String(item.quantity));
+  const [quantityWarning, setQuantityWarning] = useState<string | null>(null);
+
+  // Maximal verfügbare Menge für DIESEN Job: Lagerbestand minus das, was im
+  // selben Zeitraum bereits über andere aktive Jobs verplant ist.
+  const { data: otherBookings } = useDeviceAvailability(item.device_id, jobStartDate, jobEndDate, jobId);
+  const stock = item.device?.stock_quantity ?? 1;
+  const otherQuantity = sumBookedQuantity(otherBookings);
+  const maxAvailable = Math.max(0, stock - otherQuantity);
 
   const isQuantityDevice = item.device ? item.device.stock_quantity > 1 : item.quantity > 1;
   const notYetPickedUp = quantityNotYetPickedUp(item);
@@ -238,11 +262,27 @@ function PacklistRow({
   const canRemove = item.quantity_picked_up === 0;
 
   function commitQuantity() {
+    setQuantityWarning(null);
     const parsed = parseInt(quantityInput, 10);
-    if (Number.isFinite(parsed) && parsed > 0 && parsed !== item.quantity && parsed >= item.quantity_picked_up) {
-      onUpdateQuantity(parsed);
-    } else {
+    if (!Number.isFinite(parsed) || parsed < 1) {
       setQuantityInput(String(item.quantity));
+      setEditingQuantity(false);
+      return;
+    }
+    // Harte Obergrenze: nicht mehr als im Lager (abzüglich anderer Jobs im Zeitraum).
+    let next = parsed;
+    if (next > maxAvailable) {
+      next = maxAvailable;
+      setQuantityWarning(
+        otherQuantity > 0
+          ? `Nur ${maxAvailable}× verfügbar (Lager ${stock}, ${otherQuantity}× in anderen Jobs im Zeitraum).`
+          : `Nur ${stock}× im Lager.`,
+      );
+    }
+    if (next >= 1 && next !== item.quantity && next >= item.quantity_picked_up) {
+      onUpdateQuantity(next);
+    } else {
+      setQuantityInput(String(next >= 1 ? next : item.quantity));
     }
     setEditingQuantity(false);
   }
@@ -258,11 +298,13 @@ function PacklistRow({
                 <input
                   type="number"
                   min={1}
+                  max={maxAvailable}
                   autoFocus
                   value={quantityInput}
                   onChange={(e) => setQuantityInput(e.target.value)}
                   onBlur={commitQuantity}
                   onKeyDown={(e) => e.key === "Enter" && commitQuantity()}
+                  title={`max. ${maxAvailable} verfügbar`}
                   className="h-6 w-16 rounded border border-accent bg-bg-raised px-1.5 text-xs font-mono text-ink focus:outline-none"
                 />
               ) : (
@@ -286,6 +328,12 @@ function PacklistRow({
               )
             )}
           </div>
+          {quantityWarning && (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-status-wartung">
+              <AlertTriangle size={12} className="shrink-0" />
+              {quantityWarning}
+            </p>
+          )}
           <div className="mt-0.5 flex items-center gap-2">
             <p className="font-mono text-xs text-ink-faint">{item.device?.barcodes?.[0]?.code}</p>
             {item.device && (
