@@ -5,9 +5,12 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { DeviceStatusBadge, JobStatusBadge } from "@/components/ui/StatusBadge";
+import { JobStatusBadge } from "@/components/ui/StatusBadge";
+import { DeviceAvailabilityBadge } from "@/components/ui/DeviceAvailabilityBadge";
 import { LoadingState, ErrorState } from "@/components/ui/States";
-import { useDeviceBookings } from "@/hooks/useJobs";
+import { useDeviceBookings, useDevicesOutNowMap } from "@/hooks/useJobs";
+import { useDeviceHistory } from "@/hooks/useDeviceHistory";
+import type { DeviceHistory } from "@/types/database";
 import {
   useDevice,
   useUpdateDevice,
@@ -20,7 +23,7 @@ import {
   devicePhotoUrl,
 } from "@/hooks/useDevices";
 import { DEVICE_STATUS_OPTIONS, type DeviceStatus } from "@/types/database";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { BarcodeLabel, printBarcodeLabels } from "@/components/barcode/BarcodeLabel";
 import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
@@ -31,6 +34,7 @@ export function DeviceDetailPage() {
   const { canEdit } = useAuth();
   const mayEdit = canEdit("inventar");
   const { data: device, isLoading, error } = useDevice(id);
+  const { data: outNowMap } = useDevicesOutNowMap();
   const updateStatus = useUpdateDeviceStatus();
   const updateDevice = useUpdateDevice();
   const deleteDevice = useDeleteDevice();
@@ -208,7 +212,7 @@ export function DeviceDetailPage() {
                 )}
               </div>
               <DataField label="Seriennummer" value={device.serial_number} mono />
-              <DataField label="Lagerort" value={device.location} />
+              <DataField label="Lagerort" value={device.location_ref?.name ?? device.location} />
               <DataField label="Kategorie" value={device.category?.name} />
               <DataField label="Kaufdatum" value={formatDate(device.purchase_date)} />
               <DataField label="Kaufpreis" value={formatCurrency(device.purchase_price)} />
@@ -228,6 +232,8 @@ export function DeviceDetailPage() {
               </CardBody>
             </Card>
           )}
+
+          <DeviceHistoryCard deviceId={device.id} />
         </div>
 
         <div className="space-y-6">
@@ -235,10 +241,10 @@ export function DeviceDetailPage() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-sm font-semibold text-ink">Aktueller Status</h2>
+              <h2 className="text-sm font-semibold text-ink">Verfügbarkeit</h2>
             </CardHeader>
             <CardBody>
-              <DeviceStatusBadge status={device.status} />
+              <DeviceAvailabilityBadge device={device} outNow={outNowMap?.get(device.id) ?? 0} />
             </CardBody>
           </Card>
 
@@ -288,6 +294,58 @@ function DeviceBookingsCard({ deviceId }: { deviceId: string }) {
             </Link>
           ))}
         </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+const HISTORY_LABELS: Record<DeviceHistory["event_type"], { label: string; dot: string }> = {
+  ausgegeben: { label: "Ausgegeben", dot: "bg-status-ausgeliehen" },
+  zurueck: { label: "Zurückgegeben", dot: "bg-status-verfuegbar" },
+  defekt: { label: "Als defekt gemeldet", dot: "bg-status-defekt" },
+  lagerort: { label: "Lagerort geändert", dot: "bg-accent" },
+  status: { label: "Status geändert", dot: "bg-status-wartung" },
+};
+
+/** Verlauf eines Geräts: Ausgaben/Rückgaben, Defekt-Meldungen, Lagerort-/Status-Wechsel. */
+function DeviceHistoryCard({ deviceId }: { deviceId: string }) {
+  const { data: history, isLoading } = useDeviceHistory(deviceId);
+  if (isLoading || !history || history.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="text-sm font-semibold text-ink">Verlauf</h2>
+      </CardHeader>
+      <CardBody>
+        <ul className="space-y-3">
+          {history.map((h) => {
+            const meta = HISTORY_LABELS[h.event_type];
+            return (
+              <li key={h.id} className="flex gap-3">
+                <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", meta.dot)} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-ink">
+                    {meta.label}
+                    {h.quantity != null && h.quantity > 0 && (
+                      <span className="ml-1 font-mono text-xs text-ink-muted">{h.quantity}×</span>
+                    )}
+                  </p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
+                    <span>{formatDateTime(h.created_at)}</span>
+                    {h.job && (
+                      <Link to={`/jobs/${h.job_id}`} className="text-accent hover:underline">
+                        {h.job.title}
+                      </Link>
+                    )}
+                    {h.to_location && <span>→ {h.to_location.name}</span>}
+                    {h.note && <span className="text-ink-faint">· {h.note}</span>}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </CardBody>
     </Card>
   );

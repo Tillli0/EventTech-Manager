@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Job, JobStatus, PacklistItem, JobMilestone } from "@/types/database";
 import { randomJobColor } from "@/types/database";
+import { recordDeviceHistory } from "@/hooks/useDeviceHistory";
 
 const JOBS_KEY = ["jobs"] as const;
 
@@ -347,6 +348,14 @@ export function useMarkPacklistItemPickedUp() {
         .select()
         .single();
       if (error) throw error;
+
+      await recordDeviceHistory({
+        device_id: current.device_id,
+        event_type: "ausgegeben",
+        job_id: jobId,
+        quantity: amount,
+      });
+
       return { data, jobId, deviceId: current.device_id };
     },
     onSuccess: async ({ jobId, deviceId }) => {
@@ -363,6 +372,8 @@ export function useMarkPacklistItemPickedUp() {
       }
       queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, jobId] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
+      queryClient.invalidateQueries({ queryKey: ["devices-out-now-map"] });
+      queryClient.invalidateQueries({ queryKey: ["device-history", deviceId] });
     },
   });
 }
@@ -418,12 +429,36 @@ export function useReturnPacklistItem() {
         .single();
       if (error) throw error;
 
-      // Gerätestatus nur bei Einzelstücken anpassen (siehe useMarkPacklistItemPickedUp).
+      // History: Rückgabe gesamt protokollieren.
+      await recordDeviceHistory({
+        device_id: current.device_id,
+        event_type: "zurueck",
+        job_id: jobId,
+        quantity: returnedOk + damaged + missing,
+        note: missing > 0 ? `${missing}× fehlend` : null,
+      });
+
       const { data: device } = await supabase
         .from("devices")
-        .select("stock_quantity")
+        .select("stock_quantity, defective_quantity")
         .eq("id", current.device_id)
         .single();
+
+      // Defekte Rückgaben dauerhaft als defekt zählen (rechnet aus der
+      // Verfügbarkeit heraus) und protokollieren.
+      if (damaged > 0 && device) {
+        const nextDefective = Math.min(device.stock_quantity, (device.defective_quantity ?? 0) + damaged);
+        await supabase.from("devices").update({ defective_quantity: nextDefective }).eq("id", current.device_id);
+        await recordDeviceHistory({
+          device_id: current.device_id,
+          event_type: "defekt",
+          job_id: jobId,
+          quantity: damaged,
+          note: damageNotes?.trim() || null,
+        });
+      }
+
+      // Einzelstück-Status weiterhin pflegen (verfügbar/defekt).
       if (device && device.stock_quantity === 1) {
         await supabase
           .from("devices")
@@ -431,11 +466,13 @@ export function useReturnPacklistItem() {
           .eq("id", current.device_id);
       }
 
-      return { item, jobId };
+      return { item, jobId, deviceId: current.device_id };
     },
-    onSuccess: ({ jobId }) => {
+    onSuccess: ({ jobId, deviceId }) => {
       queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, jobId] });
       queryClient.invalidateQueries({ queryKey: ["devices"] });
+      queryClient.invalidateQueries({ queryKey: ["devices-out-now-map"] });
+      queryClient.invalidateQueries({ queryKey: ["device-history", deviceId] });
     },
   });
 }
@@ -483,6 +520,40 @@ export function useDevicesAvailabilityMap(
         const existing = map.get(row.device_id) ?? [];
         existing.push({ ...row.jobs, quantity: row.quantity });
         map.set(row.device_id, existing);
+      }
+      return map;
+    },
+  });
+}
+
+/**
+ * Pro Gerät: wie viele Einheiten sind AKTUELL ausgegeben (über aktive Jobs noch
+ * nicht zurückgemeldet) — Summe von quantityStillOut. Basis für die abgeleitete
+ * Verfügbarkeit (verfügbar = Lager − defekt − aktuell ausgegeben).
+ */
+export function useDevicesOutNowMap() {
+  return useQuery({
+    queryKey: ["devices-out-now-map"],
+    queryFn: async (): Promise<Map<string, number>> => {
+      const { data, error } = await supabase
+        .from("packlist_items")
+        .select(
+          "device_id, quantity_picked_up, quantity_returned_ok, quantity_damaged, quantity_missing, jobs!inner(status)",
+        )
+        .in("jobs.status", ["anfrage", "bestaetigt", "laeuft"]);
+      if (error) throw error;
+
+      const map = new Map<string, number>();
+      for (const row of data as unknown as {
+        device_id: string;
+        quantity_picked_up: number;
+        quantity_returned_ok: number;
+        quantity_damaged: number;
+        quantity_missing: number;
+      }[]) {
+        const stillOut =
+          row.quantity_picked_up - row.quantity_returned_ok - row.quantity_damaged - row.quantity_missing;
+        if (stillOut > 0) map.set(row.device_id, (map.get(row.device_id) ?? 0) + stillOut);
       }
       return map;
     },

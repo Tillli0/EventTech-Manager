@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Device, DeviceStatus } from "@/types/database";
+import { DEVICE_STATUS_OPTIONS } from "@/types/database";
+import { recordDeviceHistory } from "@/hooks/useDeviceHistory";
 
 const DEVICES_KEY = ["devices"] as const;
 
@@ -10,7 +12,7 @@ export function useDevices() {
     queryFn: async (): Promise<Device[]> => {
       const { data, error } = await supabase
         .from("devices")
-        .select("*, category:categories(*), barcodes(*), device_photos(*)")
+        .select("*, category:categories(*), location_ref:locations!location_id(*), barcodes(*), device_photos(*)")
         .order("name", { ascending: true });
 
       if (error) throw error;
@@ -27,7 +29,7 @@ export function useDevice(id: string | undefined) {
       if (!id) return null;
       const { data, error } = await supabase
         .from("devices")
-        .select("*, category:categories(*), barcodes(*), device_photos(*)")
+        .select("*, category:categories(*), location_ref:locations!location_id(*), barcodes(*), device_photos(*)")
         .eq("id", id)
         .single();
 
@@ -243,13 +245,16 @@ export function useUpdateDeviceStatus() {
         .select()
         .single();
       if (error) throw error;
+      const label = DEVICE_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status;
+      await recordDeviceHistory({ device_id: id, event_type: "status", note: label });
       return data as Device;
     },
-    onSuccess: () => {
+    onSuccess: (device) => {
       queryClient.invalidateQueries({ queryKey: DEVICES_KEY });
       // Auch Jobs/Packlisten zeigen den Gerätestatus an (z.B. Status-Wechsel direkt
       // am Job-Posten) — daher mit auffrischen.
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["device-history", device.id] });
     },
   });
 }

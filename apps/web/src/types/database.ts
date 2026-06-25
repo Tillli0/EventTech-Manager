@@ -88,6 +88,15 @@ export interface Category {
   updated_at: string;
 }
 
+export interface Location {
+  id: string;
+  name: string;
+  color: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Device {
   id: string;
   name: string;
@@ -96,7 +105,10 @@ export interface Device {
   model: string | null;
   serial_number: string | null;
   status: DeviceStatus;
+  /** Alter Freitext-Lagerort (Fallback). Neue Auswahl läuft über location_id. */
   location: string | null;
+  /** Verknüpfter Lagerort (Tabelle locations). Löst den Freitext ab. */
+  location_id: string | null;
   purchase_date: string | null;
   purchase_price: number | null;
   replacement_value: number | null;
@@ -107,14 +119,43 @@ export interface Device {
   power_watts: number | null;
   /** Gesamtbestand. 1 = Einzelstück (Normalfall), >1 = Mengen-Gerät (z.B. 20 Kabel unter einem Barcode). */
   stock_quantity: number;
+  /** Wie viele Einheiten dauerhaft defekt sind (zählt aus der Verfügbarkeit heraus). */
+  defective_quantity: number;
   /** Netto-Tagesmietpreis in EUR. Vorbelegung für Angebotspositionen. Null = nicht gepflegt. */
   daily_rental_price: number | null;
   created_at: string;
   updated_at: string;
   // Joins (optional, je nach Query)
   category?: Category | null;
+  /** Verknüpfter Lagerort (alias, um nicht mit dem Freitext-Feld „location" zu kollidieren). */
+  location_ref?: Location | null;
   barcodes?: Barcode[];
   device_photos?: DevicePhoto[];
+}
+
+/** Aufschlüsselung der Verfügbarkeit eines Geräts (eine Wahrheit). */
+export interface DeviceBreakdown {
+  total: number;
+  defective: number;
+  /** Aktuell ausgegeben (über aktive Jobs). */
+  out: number;
+  /** Frei verfügbar = total − defekt − ausgegeben. */
+  available: number;
+}
+
+/**
+ * Berechnet die Verfügbarkeits-Aufschlüsselung. „outNow" ist die Summe der aktuell
+ * über aktive Jobs ausgegebenen Stückzahl (client-seitig ermittelt).
+ */
+export function deviceBreakdown(
+  device: Pick<Device, "stock_quantity" | "defective_quantity">,
+  outNow: number,
+): DeviceBreakdown {
+  const total = device.stock_quantity;
+  const defective = device.defective_quantity ?? 0;
+  const out = Math.max(0, outNow);
+  const available = Math.max(0, total - defective - out);
+  return { total, defective, out, available };
 }
 
 /** Ist dieses Gerät ein Mengen-Gerät (Stückzahl > 1)? */
@@ -285,6 +326,25 @@ export function quantityStillOut(item: Pick<PacklistItem, "quantity_picked_up" |
 /** Wie viele Stück sind noch gar nicht ausgegeben? */
 export function quantityNotYetPickedUp(item: Pick<PacklistItem, "quantity" | "quantity_picked_up">): number {
   return item.quantity - item.quantity_picked_up;
+}
+
+export type DeviceHistoryEventType = "ausgegeben" | "zurueck" | "defekt" | "lagerort" | "status";
+
+export interface DeviceHistory {
+  id: string;
+  device_id: string;
+  event_type: DeviceHistoryEventType;
+  job_id: string | null;
+  quantity: number | null;
+  from_location_id: string | null;
+  to_location_id: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  // Joins (optional, je nach Query)
+  job?: { id: string; title: string } | null;
+  from_location?: Location | null;
+  to_location?: Location | null;
 }
 
 export interface CalendarEntry {

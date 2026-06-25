@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight, ScanLine } from "lucide-react";
+import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight, ScanLine, MapPin } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { DeviceStatusBadge } from "@/components/ui/StatusBadge";
+import { DeviceAvailabilityBadge } from "@/components/ui/DeviceAvailabilityBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 import { useDevices, useCategories, devicePhotoUrl } from "@/hooks/useDevices";
+import { useDevicesOutNowMap } from "@/hooks/useJobs";
+import { ManageLocationsDialog } from "@/components/inventory/ManageLocationsDialog";
 import { DEVICE_STATUS_OPTIONS, type DeviceStatus, type Device } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 import { CreateDeviceDialog } from "@/components/inventory/CreateDeviceDialog";
@@ -63,11 +65,13 @@ export function InventoryPage() {
   const mayEdit = canEdit("inventar");
   const { data: devices, isLoading, error } = useDevices();
   const { data: categories } = useCategories();
+  const { data: outNowMap } = useDevicesOutNowMap();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | "alle">("alle");
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
   const [createOpen, setCreateOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [locationsOpen, setLocationsOpen] = useState(false);
   const [setsOpen, setSetsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "name", dir: "asc" });
@@ -230,6 +234,10 @@ export function InventoryPage() {
                   <Settings2 size={16} />
                   Kategorien
                 </Button>
+                <Button variant="secondary" onClick={() => setLocationsOpen(true)}>
+                  <MapPin size={16} />
+                  Lagerorte
+                </Button>
                 <Button variant="secondary" onClick={() => setSetsOpen(true)}>
                   <Boxes size={16} />
                   Sets
@@ -361,7 +369,10 @@ export function InventoryPage() {
                       </button>
                     </td>
                   </tr>
-                  {!isCollapsed && group.devices.map((device) => <DeviceRow key={device.id} device={device} />)}
+                  {!isCollapsed &&
+                    group.devices.map((device) => (
+                      <DeviceRow key={device.id} device={device} outNow={outNowMap?.get(device.id) ?? 0} />
+                    ))}
                 </tbody>
               );
             })}
@@ -371,13 +382,15 @@ export function InventoryPage() {
 
       <CreateDeviceDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <ManageCategoriesDialog open={categoriesOpen} onClose={() => setCategoriesOpen(false)} />
+      <ManageLocationsDialog open={locationsOpen} onClose={() => setLocationsOpen(false)} />
       <ManageSetsDialog open={setsOpen} onClose={() => setSetsOpen(false)} />
       <ImportDevicesDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }
 
-function DeviceRow({ device }: { device: Device }) {
+function DeviceRow({ device, outNow }: { device: Device; outNow: number }) {
+  const locationName = device.location_ref?.name ?? device.location;
   return (
     <tr className="border-b border-border last:border-0 hover:bg-bg-raised">
       <td className="px-4 py-3">
@@ -394,7 +407,19 @@ function DeviceRow({ device }: { device: Device }) {
       <td className="hidden px-4 py-3 font-mono text-xs text-ink-muted sm:table-cell">
         {device.barcodes?.[0]?.code ?? "—"}
       </td>
-      <td className="hidden px-4 py-3 text-ink-muted md:table-cell">{device.location ?? "—"}</td>
+      <td className="hidden px-4 py-3 text-ink-muted md:table-cell">
+        {locationName ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: device.location_ref?.color ?? "#64748b" }}
+            />
+            {locationName}
+          </span>
+        ) : (
+          "—"
+        )}
+      </td>
       <td className="hidden px-4 py-3 text-right sm:table-cell">
         {device.stock_quantity > 1 ? (
           <span className="font-mono text-xs font-medium text-accent">{device.stock_quantity}×</span>
@@ -403,7 +428,7 @@ function DeviceRow({ device }: { device: Device }) {
         )}
       </td>
       <td className="px-4 py-3">
-        <DeviceStatusBadge status={device.status} />
+        <DeviceAvailabilityBadge device={device} outNow={outNow} />
       </td>
       <td className="hidden px-4 py-3 text-right font-mono text-ink-muted lg:table-cell">
         {formatCurrency(device.replacement_value)}
