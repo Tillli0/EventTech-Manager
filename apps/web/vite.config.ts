@@ -20,6 +20,9 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
+    // Tailscale-MagicDNS-Hostnamen (*.ts.net) zusätzlich zur LAN-IP erlauben,
+    // sonst blockt Vites Host-Header-Check den Zugriff über den Tailnet-Namen.
+    allowedHosts: [".ts.net"],
     watch: {
       ignored: ["**/src-tauri/**"],
     },
