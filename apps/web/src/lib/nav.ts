@@ -25,14 +25,14 @@ export const NAV_ITEMS: NavItem[] = [
 export const SCAN_NAV_ITEM: NavItem = { to: "/scan", label: "Scannen", icon: ScanLine, area: "inventar" };
 
 /**
- * Eigene, kuratierte Auswahl für die mobile BottomNav (max. 4 Items + Scan-Button
- * in der Mitte = 5, sonst wird es auf kleinen Screens zu eng). "Aufgaben" ist hier
- * bewusst ausgelassen und bleibt über die Desktop-Sidebar bzw. Links im Dashboard
- * erreichbar.
+ * Kuratierte Auswahl für die mobile BottomNav. Scannen ist hier bewusst NICHT
+ * mehr enthalten (erreichbar über den „Scannen"-Knopf auf der Inventar-Seite);
+ * dafür ist „Aufgaben" jetzt fester Bestandteil der unteren Leiste.
  */
 export const BOTTOM_NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Überblick", icon: LayoutDashboard },
   { to: "/inventar", label: "Inventar", icon: Package, area: "inventar" },
   { to: "/jobs", label: "Jobs", icon: Briefcase, area: "jobs" },
   { to: "/kalender", label: "Kalender", icon: Calendar, area: "kalender" },
+  { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
 ];

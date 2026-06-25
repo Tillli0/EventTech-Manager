@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight, ScanLine } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
@@ -208,6 +208,14 @@ export function InventoryPage() {
         description={devices ? `${devices.length} Geräte im Bestand` : undefined}
         actions={
           <>
+            {/* Mobiler Scan-Zugang (Desktop hat ihn in der Sidebar) */}
+            <Link
+              to="/scan"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-bg-raised px-4 text-sm font-medium text-ink transition-colors hover:bg-bg-surface md:hidden"
+            >
+              <ScanLine size={16} />
+              Scannen
+            </Link>
             <Button variant="secondary" onClick={handleExport} disabled={filteredDevices.length === 0}>
               <Download size={16} />
               CSV

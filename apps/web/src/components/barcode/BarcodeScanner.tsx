@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useZxing } from "react-zxing";
-import { CameraOff } from "lucide-react";
+import { CameraOff, SwitchCamera } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /**
@@ -16,6 +16,26 @@ export function CameraBarcodeScanner({
   paused?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
+  // Aktiv gewählte Kamera. Leer = Standard (Rückkamera über facingMode).
+  const [deviceId, setDeviceId] = useState<string | undefined>(undefined);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+
+  // Verfügbare Kameras ermitteln. DeviceIDs sind erst nach erteilter
+  // Kamerafreigabe gefüllt — daher zusätzlich beim Start des Videos neu laden.
+  const loadCameras = useCallback(async () => {
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      setCameras(all.filter((d) => d.kind === "videoinput"));
+    } catch {
+      /* enumerateDevices kann ohne Berechtigung fehlschlagen — ignorieren */
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCameras();
+    navigator.mediaDevices?.addEventListener?.("devicechange", loadCameras);
+    return () => navigator.mediaDevices?.removeEventListener?.("devicechange", loadCameras);
+  }, [loadCameras]);
 
   const { ref } = useZxing({
     onDecodeResult(result) {
@@ -25,10 +45,20 @@ export function CameraBarcodeScanner({
       setError(err instanceof Error ? err.message : "Kamera konnte nicht gestartet werden.");
     },
     paused,
+    deviceId,
     constraints: {
       video: { facingMode: "environment" },
     },
   });
+
+  const selectableIds = cameras.map((c) => c.deviceId).filter(Boolean);
+  const canSwitch = selectableIds.length >= 2;
+
+  function switchCamera() {
+    if (!canSwitch) return;
+    const current = deviceId ? selectableIds.indexOf(deviceId) : 0;
+    setDeviceId(selectableIds[(current + 1) % selectableIds.length]);
+  }
 
   if (error) {
     return (
@@ -42,10 +72,25 @@ export function CameraBarcodeScanner({
 
   return (
     <div className={cn("relative overflow-hidden rounded-lg border border-border bg-black")}>
-      <video ref={ref as React.RefObject<HTMLVideoElement>} className="aspect-video w-full object-cover" />
+      <video
+        ref={ref as React.RefObject<HTMLVideoElement>}
+        onLoadedMetadata={loadCameras}
+        className="aspect-video w-full object-cover"
+      />
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <div className="h-1/3 w-2/3 rounded-md border-2 border-accent/70" />
       </div>
+      {canSwitch && (
+        <button
+          type="button"
+          onClick={switchCamera}
+          className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-2 text-xs font-medium text-white backdrop-blur transition-colors hover:bg-black/70"
+          aria-label="Kamera wechseln"
+        >
+          <SwitchCamera size={16} />
+          Kamera
+        </button>
+      )}
     </div>
   );
 }

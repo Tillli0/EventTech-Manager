@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  AlignLeft, Briefcase, CalendarDays, Check, CircleDot, Flag, GripVertical, ListChecks, Plus, Trash2, X,
+  AlignLeft, Briefcase, CalendarDays, Check, CircleDot, Flag, GripVertical, ListChecks, Plus, Settings, Trash2, X,
 } from "lucide-react";
 import { Select } from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateField";
+import { Popover } from "@/components/ui/Popover";
+import { formatDate } from "@/lib/format";
 import {
   useTask, useUpdateTask, useDeleteTask, useUpdateTaskStatus,
   useCreateChecklistItem, useUpdateChecklistItem, useDeleteChecklistItem, useReorderChecklistItems,
@@ -190,6 +192,70 @@ export function TaskEditPanel({ taskId, onDeleted }: Props) {
             done && "text-ink-muted line-through",
           )}
         />
+
+        {/* Einstellungen (Datum, Priorität, Status) im Zahnrad-Popover */}
+        <div className="mt-0.5 shrink-0">
+          <Popover
+            align="right"
+            trigger={
+              <span
+                className="flex h-6 w-6 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-bg-raised hover:text-ink"
+                aria-label="Einstellungen"
+                title="Datum, Priorität, Status"
+              >
+                <Settings size={16} />
+              </span>
+            }
+          >
+            <div className="space-y-3">
+              <div>
+                <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                  <CalendarDays size={13} /> Fällig am
+                </p>
+                <DateInput
+                  value={dueDate}
+                  onChange={(v) => { setDueDate(v); queueAutosave({ due_date: v || null }); }}
+                  placeholder="Datum hinzufügen"
+                />
+              </div>
+              <div>
+                <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                  <Flag size={13} /> Priorität
+                </p>
+                <Select
+                  value={priority}
+                  onChange={(e) => { setPriority(e.target.value as TaskPriority); saveImmediately({ priority: e.target.value as TaskPriority }); }}
+                  className="h-9 w-full"
+                >
+                  {TASK_PRIORITY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                  <CircleDot size={13} /> Status
+                </p>
+                <div className="flex gap-1.5">
+                  {TASK_STATUS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => { setStatus(opt.value); updateStatus.mutate({ id: task.id, status: opt.value }); }}
+                      className={cn(
+                        "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                        status === opt.value ? "border-accent bg-accent text-white" : "border-border text-ink-muted hover:text-ink",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Popover>
+        </div>
+
         <button
           type="button"
           onClick={handleDelete}
@@ -200,6 +266,14 @@ export function TaskEditPanel({ taskId, onDeleted }: Props) {
         </button>
       </div>
 
+      {/* Dezenter Fälligkeits-Hinweis, damit das Datum nicht komplett im Zahnrad verschwindet */}
+      {dueDate && (
+        <div className="flex items-center gap-1.5 pl-8 text-xs text-ink-muted">
+          <CalendarDays size={12} />
+          {formatDate(dueDate)}
+        </div>
+      )}
+
       {/* Details (Notizen) */}
       <Row icon={<AlignLeft size={16} />} align="start">
         <textarea
@@ -209,43 +283,6 @@ export function TaskEditPanel({ taskId, onDeleted }: Props) {
           rows={2}
           className="w-full resize-none bg-transparent py-1 text-sm text-ink outline-none placeholder:text-ink-faint"
         />
-      </Row>
-
-      {/* Datum */}
-      <Row icon={<CalendarDays size={16} />}>
-        <DateInput value={dueDate} onChange={(v) => { setDueDate(v); queueAutosave({ due_date: v || null }); }} placeholder="Datum hinzufügen" />
-      </Row>
-
-      {/* Priorität */}
-      <Row icon={<Flag size={16} />}>
-        <Select
-          value={priority}
-          onChange={(e) => { setPriority(e.target.value as TaskPriority); saveImmediately({ priority: e.target.value as TaskPriority }); }}
-          className="h-9"
-        >
-          {TASK_PRIORITY_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </Select>
-      </Row>
-
-      {/* Status (3 Stufen — Google kennt nur erledigt/offen, wir behalten „in Bearbeitung") */}
-      <Row icon={<CircleDot size={16} />}>
-        <div className="flex gap-1.5">
-          {TASK_STATUS_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => { setStatus(opt.value); updateStatus.mutate({ id: task.id, status: opt.value }); }}
-              className={cn(
-                "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-                status === opt.value ? "border-accent bg-accent text-white" : "border-border text-ink-muted hover:text-ink",
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
       </Row>
 
       {/* Job-Bezug (nur Anzeige) */}
