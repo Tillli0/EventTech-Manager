@@ -52,21 +52,29 @@ export function MiniMonth({
   const { data: entries } = useCalendarEntries(gridStart.toISOString(), gridEnd.toISOString());
   const { data: milestones } = useJobMilestonesInRange(gridStart.toISOString(), gridEnd.toISOString());
 
+  // Pro Tag bis zu drei verschiedene Job-Farben sammeln, damit die Punkte unten
+  // genau wie im großen Kalender in der Job-Farbe erscheinen.
   const markedDays = useMemo(() => {
-    const set = new Set<string>();
+    const map = new Map<string, string[]>();
+    const push = (key: string, color: string) => {
+      const arr = map.get(key) ?? [];
+      if (!arr.includes(color) && arr.length < 3) arr.push(color);
+      map.set(key, arr);
+    };
     for (const e of entries ?? []) {
+      const color = e.job?.color ?? "#6366f1";
       // Mehrtägige Termine: jeden abgedeckten Tag markieren.
       const d = new Date(e.start_at);
       d.setHours(0, 0, 0, 0);
       const end = new Date(e.end_at);
       let cur = d;
       while (cur <= end) {
-        set.add(dayKey(cur));
+        push(dayKey(cur), color);
         cur = addDays(cur, 1);
       }
     }
-    for (const m of milestones ?? []) set.add(dayKey(new Date(m.at)));
-    return set;
+    for (const m of milestones ?? []) push(dayKey(new Date(m.at)), m.job?.color ?? "#6366f1");
+    return map;
   }, [entries, milestones]);
 
   return (
@@ -101,7 +109,7 @@ export function MiniMonth({
           const inMonth = isSameMonth(day, viewMonth);
           const selected = isSameDay(day, selectedDate);
           const today = isToday(day);
-          const marked = markedDays.has(dayKey(day));
+          const dotColors = markedDays.get(dayKey(day)) ?? [];
           return (
             <button
               key={day.toISOString()}
@@ -118,13 +126,16 @@ export function MiniMonth({
               )}
             >
               {format(day, "d")}
-              {marked && !selected && (
-                <span
-                  className={cn(
-                    "absolute bottom-[3px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full",
-                    today ? "bg-accent" : inMonth ? "bg-ink-muted" : "bg-ink-faint",
-                  )}
-                />
+              {dotColors.length > 0 && !selected && (
+                <span className="absolute bottom-[3px] left-1/2 flex -translate-x-1/2 gap-0.5">
+                  {dotColors.map((c, i) => (
+                    <span
+                      key={i}
+                      className={cn("h-1 w-1 rounded-full", !inMonth && "opacity-50")}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </span>
               )}
             </button>
           );

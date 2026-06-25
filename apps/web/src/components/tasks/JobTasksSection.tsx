@@ -10,9 +10,10 @@ import { cn } from "@/lib/cn";
 interface JobTasksSectionProps {
   jobId: string;
   jobTitle: string;
+  jobColor?: string;
 }
 
-export function JobTasksSection({ jobId, jobTitle }: JobTasksSectionProps) {
+export function JobTasksSection({ jobId, jobTitle, jobColor }: JobTasksSectionProps) {
   const { data: tasks, isLoading } = useJobTasks(jobId);
   const updateStatus = useUpdateTaskStatus();
   const deleteTask = useDeleteTask();
@@ -42,9 +43,10 @@ export function JobTasksSection({ jobId, jobTitle }: JobTasksSectionProps) {
             <div
               key={task.id}
               className={cn(
-                "flex items-start gap-3 rounded-md border border-border bg-bg-raised px-3 py-2.5",
+                "flex items-start gap-3 rounded-md border border-l-4 border-border bg-bg-raised px-3 py-2.5",
                 task.status === "erledigt" && "opacity-60",
               )}
+              style={{ borderLeftColor: jobColor }}
             >
               <button
                 onClick={() =>

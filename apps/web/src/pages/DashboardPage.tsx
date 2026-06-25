@@ -60,7 +60,8 @@ export function DashboardPage() {
                   <Link
                     key={task.id}
                     to="/aufgaben"
-                    className="flex items-center justify-between rounded-md border border-border bg-bg-raised px-3 py-2 transition-colors hover:border-accent/40"
+                    className="flex items-center justify-between rounded-md border border-l-4 border-border bg-bg-raised px-3 py-2 transition-colors hover:border-accent/40"
+                    style={{ borderLeftColor: task.job?.color ?? undefined }}
                   >
                     <span className="truncate text-sm font-medium text-ink">{task.title}</span>
                     <span className="ml-3 shrink-0 text-xs text-ink-muted">
@@ -125,7 +126,8 @@ export function DashboardPage() {
                   <Link
                     key={task.id}
                     to="/aufgaben"
-                    className="flex items-start gap-2 rounded-md border border-status-defekt/20 bg-status-defekt-bg px-3 py-2 transition-colors hover:opacity-80"
+                    className="flex items-start gap-2 rounded-md border border-l-4 border-status-defekt/20 bg-status-defekt-bg px-3 py-2 transition-colors hover:opacity-80"
+                    style={{ borderLeftColor: task.job?.color ?? undefined }}
                   >
                     <AlertCircle size={14} className="mt-0.5 shrink-0 text-status-defekt" />
                     <div className="min-w-0 flex-1">
@@ -141,7 +143,8 @@ export function DashboardPage() {
                   <Link
                     key={task.id}
                     to="/aufgaben"
-                    className="flex items-start gap-2 rounded-md border border-border bg-bg-raised px-3 py-2 transition-colors hover:border-accent/40"
+                    className="flex items-start gap-2 rounded-md border border-l-4 border-border bg-bg-raised px-3 py-2 transition-colors hover:border-accent/40"
+                    style={{ borderLeftColor: task.job?.color ?? undefined }}
                   >
                     <ListChecks size={14} className="mt-0.5 shrink-0 text-ink-faint" />
                     <div className="min-w-0 flex-1">
@@ -200,10 +203,20 @@ export function DashboardPage() {
 function JobRow({ job }: { job: Job }) {
   return (
     <Link to={`/jobs/${job.id}`} className="block">
-      <div className="rounded-md border border-border bg-bg-raised px-3 py-2.5 transition-colors hover:border-accent/40">
+      <div
+        className="rounded-md border border-l-4 border-border bg-bg-raised px-3 py-2.5 transition-colors hover:border-accent/40"
+        style={{ borderLeftColor: job.color }}
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-ink">{job.title}</p>
+            <p className="flex items-center gap-2 truncate text-sm font-medium text-ink">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: job.color }}
+                aria-hidden
+              />
+              {job.title}
+            </p>
             <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
               <span>
                 {formatDate(job.start_date)} – {formatDate(job.end_date)}

@@ -131,10 +131,20 @@ export function JobsPage() {
       <div className="space-y-2">
         {filteredJobs.map((job) => (
           <Link key={job.id} to={`/jobs/${job.id}`}>
-            <Card className="px-5 py-4 transition-colors hover:border-accent/40">
+            <Card
+              className="border-l-4 px-5 py-4 transition-colors hover:border-accent/40"
+              style={{ borderLeftColor: job.color }}
+            >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-medium text-ink">{job.title}</p>
+                  <p className="flex items-center gap-2 font-medium text-ink">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: job.color }}
+                      aria-hidden
+                    />
+                    {job.title}
+                  </p>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
                     <span>
                       {formatDate(job.start_date)} – {formatDate(job.end_date)}

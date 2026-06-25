@@ -245,8 +245,13 @@ export function TaskDetailDialog({ taskId, onClose }: Props) {
 
           {/* Job-Bezug (nur Anzeige) */}
           {task.job && (
-            <Row icon={<Briefcase size={16} />}>
-              <Link to={`/jobs/${task.job_id}`} onClick={onClose} className="text-sm text-accent hover:underline">
+            <Row icon={<Briefcase size={16} style={{ color: task.job.color }} />}>
+              <Link to={`/jobs/${task.job_id}`} onClick={onClose} className="flex items-center gap-2 text-sm text-accent hover:underline">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: task.job.color }}
+                  aria-hidden
+                />
                 {task.job.title}
               </Link>
             </Row>

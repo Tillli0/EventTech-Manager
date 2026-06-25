@@ -10,7 +10,7 @@ export function useTasks(filters?: { status?: TaskStatus; jobId?: string }) {
     queryFn: async (): Promise<Task[]> => {
       let query = supabase
         .from("tasks")
-        .select("*, job:jobs(id, title), assigned_user:profiles!assigned_user_id(id, full_name), checklist_items:task_checklist_items(*)")
+        .select("*, job:jobs(id, title, color), assigned_user:profiles!assigned_user_id(id, full_name), checklist_items:task_checklist_items(*)")
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (filters?.status) query = query.eq("status", filters.status);
@@ -31,7 +31,7 @@ export function useTask(id: string | undefined) {
       if (!id) return null;
       const { data, error } = await supabase
         .from("tasks")
-        .select("*, job:jobs(id, title), assigned_user:profiles!assigned_user_id(id, full_name), checklist_items:task_checklist_items(*)")
+        .select("*, job:jobs(id, title, color), assigned_user:profiles!assigned_user_id(id, full_name), checklist_items:task_checklist_items(*)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -79,7 +79,7 @@ export function useCreateTask() {
       const { data, error } = await supabase
         .from("tasks")
         .insert({ content_type: "notes", ...input })
-        .select("*, job:jobs(id, title)")
+        .select("*, job:jobs(id, title, color)")
         .single();
       if (error) throw error;
       return data as Task;
@@ -98,7 +98,7 @@ export function useUpdateTask() {
         .from("tasks")
         .update(updateFields)
         .eq("id", id)
-        .select("*, job:jobs(id, title)")
+        .select("*, job:jobs(id, title, color)")
         .single();
       if (error) throw error;
       return data as Task;

@@ -92,7 +92,7 @@ export function JobDetailPage() {
               <h2 className="text-sm font-semibold text-ink">Aufgaben</h2>
             </CardHeader>
             <CardBody>
-              <JobTasksSection jobId={job.id} jobTitle={job.title} />
+              <JobTasksSection jobId={job.id} jobTitle={job.title} jobColor={job.color} />
             </CardBody>
           </Card>
 

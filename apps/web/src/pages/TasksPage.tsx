@@ -195,7 +195,8 @@ function TaskRow({
 
   return (
     <div
-      className="group flex cursor-pointer items-start gap-3 px-3 py-2.5 transition-colors hover:bg-bg-raised"
+      className="group flex cursor-pointer items-start gap-3 border-l-[3px] px-3 py-2.5 transition-colors hover:bg-bg-raised"
+      style={{ borderLeftColor: task.job?.color ?? "transparent" }}
       onClick={onOpen}
     >
       {/* runde Checkbox wie Google Tasks */}
@@ -245,7 +246,7 @@ function TaskRow({
                 className="flex items-center gap-1 hover:text-ink"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Briefcase size={11} />
+                <Briefcase size={11} style={{ color: task.job.color }} />
                 {task.job.title}
               </Link>
             )}
