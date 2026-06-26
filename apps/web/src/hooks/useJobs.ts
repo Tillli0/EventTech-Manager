@@ -41,7 +41,7 @@ export function useJob(id: string | undefined) {
       const { data, error } = await supabase
         .from("jobs")
         .select(
-          "*, customer:customers(*), packlist_items(*, device:devices(*, barcodes(*))), milestones:job_milestones(*), assignees:job_assignees(user_id)",
+          "*, customer:customers(*), packlist_items(*, device:devices(*, category:categories(*), location_ref:locations!location_id(*), barcodes(*))), milestones:job_milestones(*), assignees:job_assignees(user_id)",
         )
         .eq("id", id)
         .single();

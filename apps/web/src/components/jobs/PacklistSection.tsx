@@ -26,8 +26,29 @@ const STAGES: { key: Stage; label: string }[] = [
   { key: "rueckgabe", label: "Rückgabe" },
 ];
 
+/**
+ * Packliste nach Lagerort, dann Kategorie, dann Gerätename sortieren — so liegt
+ * beim Packen alles aus demselben Regal/Bereich beieinander. Geräte ohne
+ * Lagerort bzw. Kategorie kommen jeweils ans Ende.
+ */
+function sortPacklistItems(items: PacklistItem[]): PacklistItem[] {
+  return [...items].sort((a, b) => {
+    const la = a.device?.location_ref?.name ?? "";
+    const lb = b.device?.location_ref?.name ?? "";
+    if (!la !== !lb) return la ? -1 : 1;
+    const byLoc = la.localeCompare(lb, "de");
+    if (byLoc !== 0) return byLoc;
+    const ca = a.device?.category?.name ?? "";
+    const cb = b.device?.category?.name ?? "";
+    if (!ca !== !cb) return ca ? -1 : 1;
+    const byCat = ca.localeCompare(cb, "de");
+    if (byCat !== 0) return byCat;
+    return (a.device?.name ?? "").localeCompare(b.device?.name ?? "", "de");
+  });
+}
+
 export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: boolean }) {
-  const items = job.packlist_items ?? [];
+  const items = sortPacklistItems(job.packlist_items ?? []);
   const [stage, setStage] = useState<Stage>("packen");
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
