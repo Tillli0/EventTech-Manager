@@ -7,6 +7,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { DeviceEditCard } from "@/components/inventory/DeviceEditCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { DeviceAvailabilityBadge } from "@/components/ui/DeviceAvailabilityBadge";
+import { PillSelect } from "@/components/ui/PillSelect";
 import { LoadingState, ErrorState } from "@/components/ui/States";
 import { useDeviceBookings, useDevicesOutNowMap } from "@/hooks/useJobs";
 import { useDeviceHistory } from "@/hooks/useDeviceHistory";
@@ -237,19 +238,45 @@ const HISTORY_LABELS: Record<DeviceHistory["event_type"], { label: string; dot: 
   status: { label: "Status geändert", dot: "bg-status-wartung" },
 };
 
+/** Ordnet einen History-Eintrag einer Filtergruppe zu (Jobs / Lagerort / Andere). */
+function historyGroup(eventType: DeviceHistory["event_type"]): "jobs" | "lagerort" | "andere" {
+  if (eventType === "ausgegeben" || eventType === "zurueck" || eventType === "defekt") return "jobs";
+  if (eventType === "lagerort") return "lagerort";
+  return "andere";
+}
+
+const HISTORY_FILTER_OPTIONS = [
+  { value: "jobs", label: "Jobs" },
+  { value: "lagerort", label: "Lagerort" },
+  { value: "andere", label: "Andere" },
+];
+
 /** Verlauf eines Geräts: Ausgaben/Rückgaben, Defekt-Meldungen, Lagerort-/Status-Wechsel. */
 function DeviceHistoryCard({ deviceId }: { deviceId: string }) {
   const { data: history, isLoading } = useDeviceHistory(deviceId);
+  const [filter, setFilter] = useState<string | null>(null);
   if (isLoading || !history || history.length === 0) return null;
+
+  const filtered = filter ? history.filter((h) => historyGroup(h.event_type) === filter) : history;
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-ink">Verlauf</h2>
+        <PillSelect
+          size="sm"
+          allLabel="Alle"
+          options={HISTORY_FILTER_OPTIONS}
+          value={filter}
+          onChange={setFilter}
+        />
       </CardHeader>
       <CardBody>
+        {filtered.length === 0 ? (
+          <p className="py-2 text-sm text-ink-faint">Keine Einträge in dieser Kategorie.</p>
+        ) : (
         <ul className="space-y-3">
-          {history.map((h) => {
+          {filtered.map((h) => {
             const meta = HISTORY_LABELS[h.event_type];
             return (
               <li key={h.id} className="flex gap-3">
@@ -276,6 +303,7 @@ function DeviceHistoryCard({ deviceId }: { deviceId: string }) {
             );
           })}
         </ul>
+        )}
       </CardBody>
     </Card>
   );

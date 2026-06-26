@@ -548,11 +548,7 @@ function DeviceRow({ device, outNow, select }: { device: Device; outNow: number;
         )}
       </td>
       <td className="hidden px-4 py-3 text-right sm:table-cell">
-        {device.stock_quantity > 1 ? (
-          <span className="font-mono text-xs font-medium text-accent">{device.stock_quantity}×</span>
-        ) : (
-          <span className="text-ink-faint">—</span>
-        )}
+        <span className="font-mono text-xs font-medium text-accent">{device.stock_quantity}×</span>
       </td>
       <td className="px-4 py-3">
         <DeviceAvailabilityBadge device={device} outNow={outNow} />
