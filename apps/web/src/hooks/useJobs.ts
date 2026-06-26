@@ -379,6 +379,52 @@ export function useMarkPacklistItemPickedUp() {
 }
 
 /**
+ * Macht eine Ausgabe rückgängig (Versehen): setzt quantity_picked_up auf die
+ * bereits zurückgemeldete Menge zurück (bei nichts zurückgemeldet → 0). Bereits
+ * zurückgegebene Einheiten lassen sich nicht „ent-ausgeben".
+ */
+export function useUndoPickup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, jobId }: { id: string; jobId: string }) => {
+      const { data: current, error } = await supabase
+        .from("packlist_items")
+        .select("device_id, quantity_returned_ok, quantity_damaged, quantity_missing")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+
+      const alreadyReturned =
+        current.quantity_returned_ok + current.quantity_damaged + current.quantity_missing;
+      const update: Record<string, unknown> = { quantity_picked_up: alreadyReturned };
+      if (alreadyReturned === 0) update.picked_up_at = null;
+
+      const { error: updErr } = await supabase.from("packlist_items").update(update).eq("id", id);
+      if (updErr) throw updErr;
+
+      // Einzelstück-Status zurücksetzen, wenn nichts mehr ausgegeben ist.
+      if (alreadyReturned === 0) {
+        const { data: device } = await supabase
+          .from("devices")
+          .select("stock_quantity")
+          .eq("id", current.device_id)
+          .single();
+        if (device && device.stock_quantity === 1) {
+          await supabase.from("devices").update({ status: "verfuegbar" }).eq("id", current.device_id);
+        }
+      }
+      return { jobId, deviceId: current.device_id };
+    },
+    onSuccess: ({ jobId, deviceId }) => {
+      queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, jobId] });
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
+      queryClient.invalidateQueries({ queryKey: ["devices-out-now-map"] });
+      queryClient.invalidateQueries({ queryKey: ["device-history", deviceId] });
+    },
+  });
+}
+
+/**
  * Erfasst eine Rückgabe in einem Schritt, aufgeteilt nach Stückzahl: intakt
  * zurück / defekt / fehlend. Teilrückgaben sind möglich — der Rest bleibt als
  * "noch ausgegeben" auf dem Posten stehen und kann später nachgemeldet werden.
@@ -393,6 +439,7 @@ export function useReturnPacklistItem() {
       damaged,
       missing,
       damageNotes,
+      locationId,
     }: {
       id: string;
       jobId: string;
@@ -400,6 +447,8 @@ export function useReturnPacklistItem() {
       damaged: number;
       missing: number;
       damageNotes?: string;
+      /** Lagerort, an dem ausgeladen wird — wird für intakt zurückgegebene Einheiten am Gerät gesetzt. */
+      locationId?: string | null;
     }) => {
       const { data: current, error: fetchError } = await supabase
         .from("packlist_items")
@@ -440,7 +489,7 @@ export function useReturnPacklistItem() {
 
       const { data: device } = await supabase
         .from("devices")
-        .select("stock_quantity, defective_quantity")
+        .select("stock_quantity, defective_quantity, location_id")
         .eq("id", current.device_id)
         .single();
 
@@ -455,6 +504,19 @@ export function useReturnPacklistItem() {
           job_id: jobId,
           quantity: damaged,
           note: damageNotes?.trim() || null,
+        });
+      }
+
+      // Beim Ausladen den Lagerort der intakt zurückgegebenen Einheiten setzen.
+      if (locationId && returnedOk > 0 && device && device.location_id !== locationId) {
+        await supabase.from("devices").update({ location_id: locationId }).eq("id", current.device_id);
+        await recordDeviceHistory({
+          device_id: current.device_id,
+          event_type: "lagerort",
+          job_id: jobId,
+          quantity: returnedOk,
+          from_location_id: device.location_id ?? null,
+          to_location_id: locationId,
         });
       }
 

@@ -1,434 +1,171 @@
 import { useRef, useState } from "react";
-import { ScanLine, Trash2, PackageCheck, PackageX, AlertTriangle, ListPlus, Boxes, ChevronDown } from "lucide-react";
+import {
+  ScanLine, Trash2, PackageCheck, PackageX, AlertTriangle, Undo2, MapPin, Check, ClipboardList, Camera,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Dialog } from "@/components/ui/Dialog";
-import { DeviceStatusBadge } from "@/components/ui/StatusBadge";
+import { PacklistPlanner } from "@/components/jobs/PacklistPlanner";
+import { CameraBarcodeScanner, useUsbScannerInput } from "@/components/barcode/BarcodeScanner";
 import {
-  useScanPacklistItem,
-  useUpdatePacklistItemQuantity,
   useRemovePacklistItem,
   useMarkPacklistItemPickedUp,
   useReturnPacklistItem,
-  useDeviceAvailability,
-  sumBookedQuantity,
+  useUndoPickup,
 } from "@/hooks/useJobs";
-import { useUpdateDeviceStatus } from "@/hooks/useDevices";
-import { useUsbScannerInput } from "@/components/barcode/BarcodeScanner";
-import { DeviceAvailabilityWarning } from "@/components/jobs/DeviceAvailabilityWarning";
-import { AddDevicesDialog } from "@/components/jobs/AddDevicesDialog";
-import { AddSetDialog } from "@/components/jobs/AddSetDialog";
-import type { Job, PacklistItem, DeviceStatus } from "@/types/database";
-import { quantityStillOut, quantityNotYetPickedUp, DEVICE_STATUS_OPTIONS } from "@/types/database";
+import { useLocations } from "@/hooks/useLocations";
+import type { Job, PacklistItem } from "@/types/database";
+import { quantityStillOut, quantityNotYetPickedUp } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 
+type Stage = "planung" | "packen" | "rueckgabe";
+
+const STAGES: { key: Stage; label: string }[] = [
+  { key: "planung", label: "Planung" },
+  { key: "packen", label: "Packen" },
+  { key: "rueckgabe", label: "Rückgabe" },
+];
+
 export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: boolean }) {
-  const [scanInput, setScanInput] = useState("");
-  const [scanError, setScanError] = useState<string | null>(null);
-  const [scanFeedback, setScanFeedback] = useState<{ message: string; hasConflict: boolean } | null>(null);
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showSetDialog, setShowSetDialog] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const scanPacklistItem = useScanPacklistItem();
-  const updateQuantity = useUpdatePacklistItemQuantity();
-  const removeItem = useRemovePacklistItem();
-  const markPickedUp = useMarkPacklistItemPickedUp();
-  const returnItem = useReturnPacklistItem();
-
   const items = job.packlist_items ?? [];
+  const [stage, setStage] = useState<Stage>("planung");
 
-  async function handleScan(code: string) {
-    setScanError(null);
-    const trimmed = code.trim();
-    if (!trimmed) return;
-
-    const { data: barcode, error } = await supabase
-      .from("barcodes")
-      .select("device_id, device:devices(name, status, stock_quantity)")
-      .eq("code", trimmed)
-      .maybeSingle();
-
-    if (error || !barcode) {
-      setScanError(`Kein Gerät mit Barcode „${trimmed}" gefunden.`);
-      return;
-    }
-
-    const deviceMeta = barcode.device as unknown as { name: string; stock_quantity: number } | null;
-    const deviceName = deviceMeta?.name ?? "Gerät";
-
-    const existingItem = items.find((item) => item.device_id === barcode.device_id);
-
-    // Bereits ausgegebene Posten nicht per Scan weiter hochzählen — dafür gibt es
-    // die explizite Ausgabe-Aktion, sonst würde "Ausgeben" rückwirkend verändert.
-    if (existingItem && existingItem.quantity_picked_up > 0) {
-      setScanError(`„${deviceName}" ist bereits (teilweise) ausgegeben — Menge bitte direkt am Posten anpassen.`);
-      return;
-    }
-
-    const stockQuantity = deviceMeta?.stock_quantity ?? 1;
-
-    // Verfügbarkeit prüfen, BEVOR erhöht wird: Lagerbestand minus das, was im
-    // selben Zeitraum schon über andere aktive Jobs verplant ist. Über Bestand
-    // hinaus wird gar nicht erst hinzugefügt.
-    const { data: conflicts } = await supabase
-      .from("packlist_items")
-      .select("quantity, jobs!inner(id, status, start_date, end_date)")
-      .eq("device_id", barcode.device_id)
-      .neq("job_id", job.id)
-      .in("jobs.status", ["anfrage", "bestaetigt", "laeuft"])
-      .lt("jobs.start_date", job.end_date)
-      .gt("jobs.end_date", job.start_date);
-
-    const otherQuantity = (conflicts ?? []).reduce((sum, c) => sum + c.quantity, 0);
-    const available = stockQuantity - otherQuantity;
-    const currentQty = existingItem?.quantity ?? 0;
-
-    if (currentQty + 1 > available) {
-      setScanError(
-        `„${deviceName}": Bestand erschöpft — nur ${Math.max(0, available)}× im Zeitraum verfügbar` +
-          (otherQuantity > 0
-            ? ` (Lager ${stockQuantity}, ${otherQuantity}× in anderen Jobs verplant).`
-            : ` (Lager ${stockQuantity}).`),
-      );
-      return;
-    }
-
-    const { item } = await scanPacklistItem.mutateAsync({
-      jobId: job.id,
-      deviceId: barcode.device_id,
-      existingItem: existingItem ? { id: existingItem.id, quantity: existingItem.quantity } : null,
-    });
-
-    setScanFeedback({
-      message: stockQuantity > 1 ? `„${deviceName}" — jetzt ${item.quantity}× auf der Liste.` : `„${deviceName}" hinzugefügt.`,
-      hasConflict: false,
-    });
-    setTimeout(() => setScanFeedback(null), 4000);
-  }
-
-  useUsbScannerInput((code) => handleScan(code), canEdit);
-
-  function handleManualSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    handleScan(scanInput);
-    setScanInput("");
-    inputRef.current?.focus();
-  }
-
-  const canPick = job.status === "anfrage" || job.status === "bestaetigt" || job.status === "laeuft";
+  // Fortschritts-Kennzahlen für die Stufen-Leiste.
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  const pickedQty = items.reduce((s, i) => s + i.quantity_picked_up, 0);
+  const outQty = items.reduce((s, i) => s + quantityStillOut(i), 0);
 
   return (
     <div>
-      {canEdit && (
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row">
-          <form onSubmit={handleManualSubmit} className="flex flex-1 gap-2">
-            <div className="relative flex-1">
-              <ScanLine size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-              <Input
-                ref={inputRef}
-                value={scanInput}
-                onChange={(e) => setScanInput(e.target.value)}
-                placeholder="Barcode scannen oder eintippen … (mehrfach scannen erhöht die Menge)"
-                className="pl-9 font-mono"
-                autoFocus
-              />
-            </div>
-            <Button type="submit" variant="secondary">
-              Hinzufügen
-            </Button>
-          </form>
-          <Button type="button" variant="secondary" onClick={() => setShowAddDialog(true)}>
-            <ListPlus size={16} />
-            Aus Inventar
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => setShowSetDialog(true)}>
-            <Boxes size={16} />
-            Set hinzufügen
-          </Button>
-        </div>
-      )}
+      {/* Stufen-Umschalter */}
+      <div className="mb-4 flex gap-1 rounded-lg bg-bg-raised p-1">
+        {STAGES.map((s) => {
+          const active = stage === s.key;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setStage(s.key)}
+              className={cn(
+                "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                active ? "bg-accent text-white shadow-sm" : "text-ink-muted hover:text-ink",
+              )}
+            >
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
 
-      {scanError && (
-        <p className="mb-3 flex items-center gap-1.5 text-sm text-status-defekt">
-          <AlertTriangle size={14} />
-          {scanError}
-        </p>
+      {stage === "planung" && <PlanungStage job={job} items={items} canEdit={canEdit} />}
+      {stage === "packen" && (
+        <PackenStage job={job} items={items} canEdit={canEdit} totalQty={totalQty} pickedQty={pickedQty} />
       )}
-      {scanFeedback && (
-        <p
-          className={cn(
-            "mb-3 flex items-center gap-1.5 text-sm",
-            scanFeedback.hasConflict ? "text-status-wartung" : "text-status-verfuegbar",
-          )}
-        >
-          {scanFeedback.hasConflict && <AlertTriangle size={14} />}
-          {scanFeedback.message}
-        </p>
-      )}
-
-      {items.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-ink-muted">
-          Noch keine Geräte auf der Packliste. Barcode scannen oder über „Aus Inventar"/„Set hinzufügen" auswählen.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {items.map((item) => (
-            <PacklistRow
-              key={item.id}
-              item={item}
-              canPick={canPick}
-              canEdit={canEdit}
-              jobId={job.id}
-              jobStartDate={job.start_date}
-              jobEndDate={job.end_date}
-              onRemove={() => removeItem.mutate({ id: item.id, jobId: job.id })}
-              onUpdateQuantity={(quantity) => updateQuantity.mutate({ id: item.id, jobId: job.id, quantity })}
-              onPickUp={(additionalQuantity) =>
-                markPickedUp.mutate({ id: item.id, jobId: job.id, additionalQuantity })
-              }
-              onReturn={(returnedOk, damaged, missing, damageNotes) =>
-                returnItem.mutate({ id: item.id, jobId: job.id, returnedOk, damaged, missing, damageNotes })
-              }
-            />
-          ))}
-        </div>
-      )}
-
-      <AddDevicesDialog
-        open={showAddDialog}
-        onClose={() => setShowAddDialog(false)}
-        jobId={job.id}
-        jobStartDate={job.start_date}
-        jobEndDate={job.end_date}
-        excludeDeviceIds={items.filter((item) => item.quantity_picked_up === 0).map((item) => item.device_id)}
-      />
-
-      <AddSetDialog
-        open={showSetDialog}
-        onClose={() => setShowSetDialog(false)}
-        jobId={job.id}
-        jobStartDate={job.start_date}
-        jobEndDate={job.end_date}
-      />
+      {stage === "rueckgabe" && <RueckgabeStage job={job} items={items} canEdit={canEdit} outQty={outQty} />}
     </div>
   );
 }
 
-function PacklistRow({
-  item,
-  canPick,
-  canEdit,
-  jobId,
-  jobStartDate,
-  jobEndDate,
-  onRemove,
-  onUpdateQuantity,
-  onPickUp,
-  onReturn,
-}: {
-  item: PacklistItem;
-  canPick: boolean;
-  canEdit: boolean;
-  jobId: string;
-  jobStartDate: string;
-  jobEndDate: string;
-  onRemove: () => void;
-  onUpdateQuantity: (quantity: number) => void;
-  onPickUp: (additionalQuantity?: number) => void;
-  onReturn: (returnedOk: number, damaged: number, missing: number, damageNotes?: string) => void;
-}) {
-  const [showReturnDialog, setShowReturnDialog] = useState(false);
-  const [showPickupInput, setShowPickupInput] = useState(false);
-  const [pickupAmount, setPickupAmount] = useState("");
-  const [editingQuantity, setEditingQuantity] = useState(false);
-  const [quantityInput, setQuantityInput] = useState(String(item.quantity));
-  const [quantityWarning, setQuantityWarning] = useState<string | null>(null);
+// ── Stufe 1: Planung ─────────────────────────────────────────────────────────
 
-  // Maximal verfügbare Menge für DIESEN Job: Lagerbestand minus das, was im
-  // selben Zeitraum bereits über andere aktive Jobs verplant ist.
-  const { data: otherBookings } = useDeviceAvailability(item.device_id, jobStartDate, jobEndDate, jobId);
-  const stock = item.device?.stock_quantity ?? 1;
-  const otherQuantity = sumBookedQuantity(otherBookings);
-  const maxAvailable = Math.max(0, stock - otherQuantity);
-
-  const isQuantityDevice = item.device ? item.device.stock_quantity > 1 : item.quantity > 1;
-  const notYetPickedUp = quantityNotYetPickedUp(item);
-  const stillOut = quantityStillOut(item);
-  const isFullyPickedUp = notYetPickedUp === 0;
-  const isFullyResolved = stillOut === 0 && isFullyPickedUp;
-  const canRemove = item.quantity_picked_up === 0;
-
-  function commitQuantity() {
-    setQuantityWarning(null);
-    const parsed = parseInt(quantityInput, 10);
-    if (!Number.isFinite(parsed) || parsed < 1) {
-      setQuantityInput(String(item.quantity));
-      setEditingQuantity(false);
-      return;
-    }
-    // Harte Obergrenze: nicht mehr als im Lager (abzüglich anderer Jobs im Zeitraum).
-    let next = parsed;
-    if (next > maxAvailable) {
-      next = maxAvailable;
-      setQuantityWarning(
-        otherQuantity > 0
-          ? `Nur ${maxAvailable}× verfügbar (Lager ${stock}, ${otherQuantity}× in anderen Jobs im Zeitraum).`
-          : `Nur ${stock}× im Lager.`,
-      );
-    }
-    if (next >= 1 && next !== item.quantity && next >= item.quantity_picked_up) {
-      onUpdateQuantity(next);
-    } else {
-      setQuantityInput(String(next >= 1 ? next : item.quantity));
-    }
-    setEditingQuantity(false);
-  }
+function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]; canEdit: boolean }) {
+  const removeItem = useRemovePacklistItem();
 
   return (
-    <div className={cn("rounded-lg border border-border bg-bg-surface px-4 py-3", isFullyResolved && "opacity-60")}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate font-medium text-ink">{item.device?.name}</p>
-            {canRemove && canEdit ? (
-              editingQuantity ? (
-                <input
-                  type="number"
-                  min={1}
-                  max={maxAvailable}
-                  autoFocus
-                  value={quantityInput}
-                  onChange={(e) => setQuantityInput(e.target.value)}
-                  onBlur={commitQuantity}
-                  onKeyDown={(e) => e.key === "Enter" && commitQuantity()}
-                  title={`max. ${maxAvailable} verfügbar`}
-                  className="h-6 w-16 rounded border border-accent bg-bg-raised px-1.5 text-xs font-mono text-ink focus:outline-none"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuantityInput(String(item.quantity));
-                    setEditingQuantity(true);
-                  }}
-                  className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-xs font-mono font-medium text-accent hover:opacity-80"
-                  title="Menge ändern"
-                >
-                  {item.quantity}×
-                </button>
-              )
-            ) : (
-              item.quantity > 1 && (
-                <span className="shrink-0 rounded bg-accent-soft px-1.5 py-0.5 text-xs font-mono font-medium text-accent">
-                  {item.quantity}×
-                </span>
-              )
-            )}
-          </div>
-          {quantityWarning && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-status-wartung">
-              <AlertTriangle size={12} className="shrink-0" />
-              {quantityWarning}
-            </p>
-          )}
-          <div className="mt-0.5 flex items-center gap-2">
-            <p className="font-mono text-xs text-ink-faint">{item.device?.barcodes?.[0]?.code}</p>
-            {item.device && (
-              <DeviceStatusControl deviceId={item.device_id} device={item.device} canEdit={canEdit} />
-            )}
-          </div>
-
-          {item.quantity_picked_up > 0 && (
-            <p className="mt-0.5 text-xs text-ink-muted">
-              Ausgegeben: {item.quantity_picked_up}× ({formatDateTime(item.picked_up_at)})
-              {item.quantity_returned_ok > 0 && ` · zurück OK: ${item.quantity_returned_ok}×`}
-              {item.quantity_damaged > 0 && ` · defekt: ${item.quantity_damaged}×`}
-              {item.quantity_missing > 0 && ` · fehlend: ${item.quantity_missing}×`}
-              {stillOut > 0 && ` · noch beim Kunden: ${stillOut}×`}
-            </p>
-          )}
-          {item.damage_notes && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-status-defekt">
-              <AlertTriangle size={12} />
-              {item.damage_notes}
-            </p>
-          )}
-          {!isFullyResolved && (
-            <DeviceAvailabilityWarning
-              deviceId={item.device_id}
-              startDate={jobStartDate}
-              endDate={jobEndDate}
-              excludeJobId={jobId}
-              stockQuantity={item.device?.stock_quantity ?? 1}
-              myQuantity={item.quantity}
-            />
-          )}
-        </div>
-
-        {canEdit && (
-          <div className="flex shrink-0 items-center gap-2">
-            {!isFullyPickedUp && canPick && !showPickupInput && (
-              <Button size="sm" variant="secondary" onClick={() => (isQuantityDevice ? setShowPickupInput(true) : onPickUp())}>
-                <PackageCheck size={14} />
-                {isQuantityDevice ? `Ausgeben (${notYetPickedUp} offen)` : "Ausgeben"}
-              </Button>
-            )}
-            {item.quantity_picked_up > 0 && stillOut > 0 && (
-              <Button size="sm" variant="secondary" onClick={() => setShowReturnDialog(true)}>
-                <PackageX size={14} />
-                Rückgabe erfassen
-              </Button>
-            )}
-            {canRemove && (
-              <Button size="icon" variant="ghost" onClick={onRemove} aria-label="Entfernen">
-                <Trash2 size={14} />
-              </Button>
-            )}
+    <div className="space-y-5">
+      {/* Aktuelle Packliste (kompakt) */}
+      <div>
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-muted">
+          <ClipboardList size={13} /> Geplant ({items.length})
+        </p>
+        {items.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-ink-muted">
+            Noch nichts geplant. Unten Geräte oder ein Set hinzufügen.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {items.map((item) => (
+              <span
+                key={item.id}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-bg-surface py-1 pl-3 pr-1 text-sm text-ink"
+              >
+                {item.device?.name}
+                {item.quantity > 1 && <span className="font-mono text-xs text-accent">{item.quantity}×</span>}
+                {canEdit && item.quantity_picked_up === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => removeItem.mutate({ id: item.id, jobId: job.id })}
+                    className="flex h-5 w-5 items-center justify-center rounded-full text-ink-faint hover:bg-bg-raised hover:text-status-defekt"
+                    aria-label="Entfernen"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
+              </span>
+            ))}
           </div>
         )}
       </div>
 
-      {showPickupInput && (
-        <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-          <Input
-            type="number"
-            min={1}
-            max={notYetPickedUp}
-            value={pickupAmount}
-            onChange={(e) => setPickupAmount(e.target.value)}
-            placeholder={`max. ${notYetPickedUp}`}
-            className="w-28"
-            autoFocus
-          />
-          <Button
-            size="sm"
-            onClick={() => {
-              const amount = Math.min(notYetPickedUp, Math.max(1, parseInt(pickupAmount, 10) || notYetPickedUp));
-              onPickUp(amount);
-              setShowPickupInput(false);
-              setPickupAmount("");
-            }}
-          >
-            Ausgeben
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setShowPickupInput(false)}>
-            Abbrechen
-          </Button>
+      {/* Inline-Picker */}
+      {canEdit && (
+        <div className="border-t border-border pt-4">
+          <PacklistPlanner job={job} items={items} />
         </div>
       )}
+    </div>
+  );
+}
 
-      {showReturnDialog && (
-        <ReturnDialog
-          open={showReturnDialog}
-          onClose={() => setShowReturnDialog(false)}
-          deviceName={item.device?.name ?? "Gerät"}
-          maxQuantity={stillOut}
-          onSubmit={(returnedOk, damaged, missing, damageNotes) => {
-            onReturn(returnedOk, damaged, missing, damageNotes);
-            setShowReturnDialog(false);
+// ── Scanner-Box (gemeinsam für Packen/Rückgabe) ──────────────────────────────
+
+function ScannerBox({
+  onScan,
+  enabled,
+  placeholder,
+}: {
+  onScan: (code: string) => void;
+  enabled: boolean;
+  placeholder: string;
+}) {
+  const [showCamera, setShowCamera] = useState(false);
+  const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // USB-Scanner (Keyboard-Wedge) global, solange diese Stufe aktiv ist.
+  useUsbScannerInput((code) => onScan(code), enabled);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (value.trim()) onScan(value.trim());
+    setValue("");
+    inputRef.current?.focus();
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <form onSubmit={submit} className="relative flex-1">
+          <ScanLine size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
+          <Input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            className="pl-9 font-mono"
+          />
+        </form>
+        <Button type="button" variant="secondary" onClick={() => setShowCamera((v) => !v)}>
+          <Camera size={16} />
+          {showCamera ? "Kamera aus" : "Kamera"}
+        </Button>
+      </div>
+      {showCamera && (
+        <CameraBarcodeScanner
+          onResult={(code) => {
+            onScan(code);
           }}
         />
       )}
@@ -436,66 +173,402 @@ function PacklistRow({
   );
 }
 
-/**
- * Kleines Status-Control direkt am Packlist-Posten. Für Einzelstücke (stock_quantity = 1)
- * lässt sich der Gerätestatus hier per Dropdown ändern (z.B. „defekt“ markieren, ohne
- * erst auf die Geräteseite zu wechseln). Für Mengen-Geräte ist der binäre Status nicht
- * aussagekräftig — dort nur Anzeige.
- */
-function DeviceStatusControl({
-  deviceId,
-  device,
-  canEdit,
-}: {
-  deviceId: string;
-  device: NonNullable<PacklistItem["device"]>;
-  canEdit: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const updateStatus = useUpdateDeviceStatus();
-  const isSingleUnit = device.stock_quantity === 1;
+/** Barcode → Packlist-Posten dieses Jobs auflösen. */
+async function findItemByBarcode(code: string, items: PacklistItem[]): Promise<PacklistItem | null> {
+  const { data } = await supabase.from("barcodes").select("device_id").eq("code", code.trim()).maybeSingle();
+  if (!data) return null;
+  return items.find((i) => i.device_id === data.device_id) ?? null;
+}
 
-  if (!isSingleUnit || !canEdit) {
-    return <DeviceStatusBadge status={device.status} />;
+// ── Stufe 2: Packen ──────────────────────────────────────────────────────────
+
+function PackenStage({
+  job,
+  items,
+  canEdit,
+  totalQty,
+  pickedQty,
+}: {
+  job: Job;
+  items: PacklistItem[];
+  canEdit: boolean;
+  totalQty: number;
+  pickedQty: number;
+}) {
+  const markPickedUp = useMarkPacklistItemPickedUp();
+  const undoPickup = useUndoPickup();
+  const [scanMsg, setScanMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  function flash(text: string, ok: boolean) {
+    setScanMsg({ text, ok });
+    setTimeout(() => setScanMsg(null), 3500);
+  }
+
+  async function handleScan(code: string) {
+    const item = await findItemByBarcode(code, items);
+    if (!item) {
+      flash(`Kein Posten mit Barcode „${code}" auf dieser Packliste.`, false);
+      return;
+    }
+    if (quantityNotYetPickedUp(item) <= 0) {
+      flash(`„${item.device?.name}" ist bereits vollständig ausgegeben.`, false);
+      return;
+    }
+    await markPickedUp.mutateAsync({ id: item.id, jobId: job.id, additionalQuantity: 1 });
+    flash(`„${item.device?.name}" ausgegeben.`, true);
+  }
+
+  if (items.length === 0) {
+    return <EmptyHint text="Erst in der Planung Geräte hinzufügen." />;
   }
 
   return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-full hover:opacity-80"
-        title="Gerätestatus ändern"
-      >
-        <DeviceStatusBadge status={device.status} />
-        <ChevronDown size={12} className="text-ink-faint" />
-      </button>
-      {open && (
+    <div className="space-y-4">
+      {canEdit && <ScannerBox onScan={handleScan} enabled placeholder="Zum Ausgeben scannen oder Barcode eintippen …" />}
+      {scanMsg && (
+        <p className={cn("flex items-center gap-1.5 text-sm", scanMsg.ok ? "text-status-verfuegbar" : "text-status-defekt")}>
+          {scanMsg.ok ? <Check size={14} /> : <AlertTriangle size={14} />}
+          {scanMsg.text}
+        </p>
+      )}
+
+      <ProgressBar value={pickedQty} max={totalQty} label={`${pickedQty}/${totalQty} ausgegeben`} />
+
+      <div className="space-y-2">
+        {items.map((item) => (
+          <PackenRow
+            key={item.id}
+            item={item}
+            canEdit={canEdit}
+            onPickUp={(amount) => markPickedUp.mutate({ id: item.id, jobId: job.id, additionalQuantity: amount })}
+            onUndo={() => undoPickup.mutate({ id: item.id, jobId: job.id })}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PackenRow({
+  item,
+  canEdit,
+  onPickUp,
+  onUndo,
+}: {
+  item: PacklistItem;
+  canEdit: boolean;
+  onPickUp: (amount: number) => void;
+  onUndo: () => void;
+}) {
+  const notYet = quantityNotYetPickedUp(item);
+  const done = notYet === 0;
+  const isQuantity = item.quantity > 1;
+  const [partial, setPartial] = useState(false);
+  const [amount, setAmount] = useState("");
+
+  return (
+    <div className={cn("rounded-lg border border-border bg-bg-surface px-4 py-3", done && "bg-status-verfuegbar-bg/40")}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={!canEdit || done}
+              onClick={() => onPickUp(notYet)}
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+                done ? "border-status-verfuegbar bg-status-verfuegbar text-white" : "border-ink-faint hover:border-accent",
+              )}
+              aria-label="Ausgeben"
+              title={done ? "Ausgegeben" : "Komplett ausgeben"}
+            >
+              {done && <Check size={12} />}
+            </button>
+            <p className={cn("truncate font-medium text-ink", done && "text-ink-muted")}>{item.device?.name}</p>
+            {item.quantity > 1 && <span className="shrink-0 font-mono text-xs text-accent">{item.quantity}×</span>}
+          </div>
+          <p className="mt-0.5 pl-7 text-xs text-ink-muted">
+            {item.quantity_picked_up > 0
+              ? `${item.quantity_picked_up}/${item.quantity} ausgegeben${item.picked_up_at ? ` · ${formatDateTime(item.picked_up_at)}` : ""}`
+              : "noch nicht ausgegeben"}
+          </p>
+        </div>
+
+        {canEdit && (
+          <div className="flex shrink-0 items-center gap-2">
+            {!done &&
+              (isQuantity ? (
+                <Button size="sm" variant="secondary" onClick={() => setPartial((v) => !v)}>
+                  <PackageCheck size={14} />
+                  Ausgeben ({notYet})
+                </Button>
+              ) : (
+                <Button size="sm" variant="secondary" onClick={() => onPickUp(notYet)}>
+                  <PackageCheck size={14} />
+                  Ausgeben
+                </Button>
+              ))}
+            {item.quantity_picked_up > 0 && (
+              <Button size="icon" variant="ghost" onClick={onUndo} aria-label="Ausgabe rückgängig" title="Ausgabe rückgängig">
+                <Undo2 size={14} />
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {partial && !done && (
+        <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+          <Input
+            type="number"
+            min={1}
+            max={notYet}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={`max. ${notYet}`}
+            className="w-28"
+            autoFocus
+          />
+          <Button
+            size="sm"
+            onClick={() => {
+              const n = Math.min(notYet, Math.max(1, parseInt(amount, 10) || notYet));
+              onPickUp(n);
+              setPartial(false);
+              setAmount("");
+            }}
+          >
+            Ausgeben
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setPartial(false)}>
+            Abbrechen
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Stufe 3: Rückgabe ────────────────────────────────────────────────────────
+
+function RueckgabeStage({
+  job,
+  items,
+  canEdit,
+  outQty,
+}: {
+  job: Job;
+  items: PacklistItem[];
+  canEdit: boolean;
+  outQty: number;
+}) {
+  const { data: locations } = useLocations();
+  const returnItem = useReturnPacklistItem();
+  const [locationId, setLocationId] = useState<string | null>(null);
+  const [returnFor, setReturnFor] = useState<PacklistItem | null>(null);
+  const [scanMsg, setScanMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const outItems = items.filter((i) => quantityStillOut(i) > 0);
+
+  function flash(text: string, ok: boolean) {
+    setScanMsg({ text, ok });
+    setTimeout(() => setScanMsg(null), 3500);
+  }
+
+  async function handleScan(code: string) {
+    const item = await findItemByBarcode(code, items);
+    if (!item) {
+      flash(`Kein Posten mit Barcode „${code}" auf dieser Packliste.`, false);
+      return;
+    }
+    if (quantityStillOut(item) <= 0) {
+      flash(`„${item.device?.name}" ist bereits vollständig zurück.`, false);
+      return;
+    }
+    await returnItem.mutateAsync({
+      id: item.id,
+      jobId: job.id,
+      returnedOk: 1,
+      damaged: 0,
+      missing: 0,
+      locationId,
+    });
+    flash(`„${item.device?.name}" zurückgebucht.`, true);
+  }
+
+  if (items.length === 0) {
+    return <EmptyHint text="Für diesen Job ist nichts ausgegeben." />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Lagerort-Abfrage */}
+      {canEdit && (
+        <div className="rounded-lg border border-border bg-bg-raised p-3">
+          <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink">
+            <MapPin size={15} /> Wo wird ausgeladen?
+          </p>
+          {locations && locations.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {locations.map((loc) => {
+                const active = locationId === loc.id;
+                return (
+                  <button
+                    key={loc.id}
+                    type="button"
+                    onClick={() => setLocationId(active ? null : loc.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                      active ? "border-transparent text-white" : "border-border text-ink-muted hover:text-ink",
+                    )}
+                    style={active ? { backgroundColor: loc.color ?? "#3B82F6" } : undefined}
+                  >
+                    {!active && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: loc.color ?? "#64748b" }} />}
+                    {loc.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-ink-muted">
+              Noch keine Lagerorte angelegt — im Inventar unter „Lagerorte" hinzufügen. Rückgabe geht auch ohne.
+            </p>
+          )}
+          {locationId && (
+            <p className="mt-2 text-xs text-ink-faint">
+              Intakt zurückgegebene Geräte werden auf diesen Lagerort gesetzt.
+            </p>
+          )}
+        </div>
+      )}
+
+      {canEdit && (
+        <ScannerBox onScan={handleScan} enabled placeholder="Zum Zurückbuchen scannen oder Barcode eintippen …" />
+      )}
+      {scanMsg && (
+        <p className={cn("flex items-center gap-1.5 text-sm", scanMsg.ok ? "text-status-verfuegbar" : "text-status-defekt")}>
+          {scanMsg.ok ? <Check size={14} /> : <AlertTriangle size={14} />}
+          {scanMsg.text}
+        </p>
+      )}
+
+      {outItems.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-status-verfuegbar">
+          Alles zurückgegeben. 🎉
+        </p>
+      ) : (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} role="presentation" />
-          <div className="absolute left-0 top-full z-20 mt-1 w-40 rounded-md border border-border bg-bg-surface py-1 shadow-lg">
-            {DEVICE_STATUS_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => {
-                  if (opt.value !== device.status) {
-                    updateStatus.mutate({ id: deviceId, status: opt.value as DeviceStatus });
-                  }
-                  setOpen(false);
-                }}
-                className={cn(
-                  "flex w-full items-center px-3 py-1.5 text-left text-sm hover:bg-bg-raised",
-                  opt.value === device.status ? "font-medium text-ink" : "text-ink-muted",
-                )}
-              >
-                {opt.label}
-              </button>
+          <p className="text-xs text-ink-muted">Noch beim Kunden: {outQty}×</p>
+          <div className="space-y-2">
+            {outItems.map((item) => (
+              <RueckgabeRow
+                key={item.id}
+                item={item}
+                canEdit={canEdit}
+                onQuickReturn={() =>
+                  returnItem.mutate({
+                    id: item.id,
+                    jobId: job.id,
+                    returnedOk: quantityStillOut(item),
+                    damaged: 0,
+                    missing: 0,
+                    locationId,
+                  })
+                }
+                onDetailedReturn={() => setReturnFor(item)}
+              />
             ))}
           </div>
         </>
       )}
+
+      {returnFor && (
+        <ReturnDialog
+          open={!!returnFor}
+          onClose={() => setReturnFor(null)}
+          deviceName={returnFor.device?.name ?? "Gerät"}
+          maxQuantity={quantityStillOut(returnFor)}
+          onSubmit={(ok, dmg, miss, notes) => {
+            returnItem.mutate({
+              id: returnFor.id,
+              jobId: job.id,
+              returnedOk: ok,
+              damaged: dmg,
+              missing: miss,
+              damageNotes: notes,
+              locationId,
+            });
+            setReturnFor(null);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function RueckgabeRow({
+  item,
+  canEdit,
+  onQuickReturn,
+  onDetailedReturn,
+}: {
+  item: PacklistItem;
+  canEdit: boolean;
+  onQuickReturn: () => void;
+  onDetailedReturn: () => void;
+}) {
+  const stillOut = quantityStillOut(item);
+  return (
+    <div className="rounded-lg border border-border bg-bg-surface px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate font-medium text-ink">{item.device?.name}</p>
+            {item.quantity > 1 && <span className="shrink-0 font-mono text-xs text-accent">{stillOut}× offen</span>}
+          </div>
+          {(item.quantity_returned_ok > 0 || item.quantity_damaged > 0 || item.quantity_missing > 0) && (
+            <p className="mt-0.5 text-xs text-ink-muted">
+              {item.quantity_returned_ok > 0 && `zurück OK: ${item.quantity_returned_ok}× `}
+              {item.quantity_damaged > 0 && `· defekt: ${item.quantity_damaged}× `}
+              {item.quantity_missing > 0 && `· fehlend: ${item.quantity_missing}×`}
+            </p>
+          )}
+        </div>
+        {canEdit && (
+          <div className="flex shrink-0 items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={onQuickReturn}>
+              <PackageCheck size={14} />
+              Intakt zurück
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onDetailedReturn} title="Defekt/fehlend erfassen">
+              <PackageX size={14} />
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Hilfs-Komponenten ────────────────────────────────────────────────────────
+
+function ProgressBar({ value, max, label }: { value: number; max: number; label: string }) {
+  const pct = max > 0 ? (value / max) * 100 : 0;
+  return (
+    <div>
+      <div className="mb-1 flex justify-between text-xs text-ink-muted">
+        <span>{label}</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+        <div className="h-full rounded-full bg-status-verfuegbar transition-all" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function EmptyHint({ text }: { text: string }) {
+  return (
+    <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-ink-muted">{text}</p>
   );
 }
 
