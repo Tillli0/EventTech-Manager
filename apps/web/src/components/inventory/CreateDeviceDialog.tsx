@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { ImagePlus, X, RefreshCw, Check, AlertCircle } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
+import { FormField, Input, Textarea } from "@/components/ui/Input";
+import { PillSelect } from "@/components/ui/PillSelect";
 import {
   useCreateDevice,
   useNextBarcodeSuggestion,
@@ -10,6 +11,7 @@ import {
   useCategories,
   useUploadDevicePhoto,
 } from "@/hooks/useDevices";
+import { useLocations } from "@/hooks/useLocations";
 
 export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createDevice = useCreateDevice();
@@ -17,13 +19,14 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   const { data: suggestedBarcode, refetch: refetchSuggestion, isFetching: suggestionLoading } =
     useNextBarcodeSuggestion();
   const { data: categories } = useCategories();
+  const { data: locations } = useLocations();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
-  const [location, setLocation] = useState("");
+  const [locationId, setLocationId] = useState<string | null>(null);
   const [barcode, setBarcode] = useState("");
   // Wurde der Barcode manuell verändert? Steuert, ob bei einer Kollision
   // automatisch der nächste freie Code genommen werden darf.
@@ -58,6 +61,8 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
     if (suggestedBarcode && !barcode && !barcodeTouched) setBarcode(suggestedBarcode);
   }, [suggestedBarcode, barcode, barcodeTouched]);
 
+  const rootCategories = (categories ?? []).filter((c) => !c.parent_id);
+
   const trimmedBarcode = barcode.trim();
   const { data: barcodeFree, isFetching: checkingBarcode } = useBarcodeAvailability(trimmedBarcode);
   const barcodeTaken = barcodeFree === false;
@@ -71,8 +76,8 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   }
 
   function reset() {
-    setName(""); setCategoryId(""); setManufacturer(""); setModel("");
-    setLocation(""); setBarcode(suggestedBarcode ?? ""); setNotes("");
+    setName(""); setCategoryId(null); setManufacturer(""); setModel("");
+    setLocationId(null); setBarcode(suggestedBarcode ?? ""); setNotes("");
     setBarcodeTouched(false);
     setStockQuantity("1");
     setDailyRentalPrice("");
@@ -107,10 +112,10 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
     try {
       const device = await createDevice.mutateAsync({
         name: name.trim(),
-        category_id: categoryId || null,
+        category_id: categoryId,
         manufacturer: manufacturer.trim() || null,
         model: model.trim() || null,
-        location: location.trim() || null,
+        location_id: locationId,
         notes: notes.trim() || null,
         barcode: trimmedBarcode,
         autoBarcode: !barcodeTouched,
@@ -152,18 +157,33 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
           </FormField>
         </div>
 
-        <FormField label="Kategorie">
-          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">Keine Kategorie</option>
-            {categories?.map((c) => (
-              <option key={c.id} value={c.id}>{c.parent_id ? `— ${c.name}` : c.name}</option>
-            ))}
-          </Select>
-        </FormField>
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-ink-muted">Kategorie</p>
+          {rootCategories.length > 0 ? (
+            <PillSelect
+              allLabel="Keine"
+              options={rootCategories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+              value={categoryId}
+              onChange={setCategoryId}
+            />
+          ) : (
+            <p className="text-xs text-ink-faint">Noch keine Kategorien angelegt.</p>
+          )}
+        </div>
 
-        <FormField label="Lagerort">
-          <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="z.B. Lager A, Regal 1" />
-        </FormField>
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-ink-muted">Lagerort</p>
+          {locations && locations.length > 0 ? (
+            <PillSelect
+              allLabel="Keiner"
+              options={locations.map((l) => ({ value: l.id, label: l.name, color: l.color }))}
+              value={locationId}
+              onChange={setLocationId}
+            />
+          ) : (
+            <p className="text-xs text-ink-faint">Noch keine Lagerorte angelegt (im Inventar unter „Lagerorte").</p>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <FormField

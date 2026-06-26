@@ -143,6 +143,7 @@ interface CreateDeviceInput {
   model?: string | null;
   serial_number?: string | null;
   location?: string | null;
+  location_id?: string | null;
   purchase_date?: string | null;
   purchase_price?: number | null;
   replacement_value?: number | null;
