@@ -113,7 +113,9 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
       removeItem.mutate({ id: item.id, jobId: packlistJob.id });
       return;
     }
-    if (next > availableFor(device)) return;
+    // Nur beim Erhöhen gegen die Verfügbarkeit kappen — Verringern muss immer
+    // gehen, auch wenn der Posten (z.B. per Set) bereits an der Kapazität liegt.
+    if (delta > 0 && next > availableFor(device)) return;
     updateQty.mutate({ id: item.id, jobId: packlistJob.id, quantity: next });
   }
   async function addSet(setId: string) {
@@ -131,6 +133,27 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
       })
       .filter((x) => x.quantity >= 1);
     if (payload.length > 0) await addSetToJob.mutateAsync({ jobId: packlistJob.id, items: payload });
+  }
+  /** Gilt das Set als „auf der Liste"? = jedes Set-Gerät ist mind. in Set-Menge vorhanden. */
+  function setOnList(set: { items?: { device_id: string; quantity: number }[] }): boolean {
+    return !!set.items?.length && set.items.every((i) => (itemByDevice.get(i.device_id)?.quantity ?? 0) >= i.quantity);
+  }
+  async function removeSet(setId: string) {
+    if (!packlistJob) return;
+    const set = sets?.find((s) => s.id === setId);
+    if (!set?.items?.length) return;
+    for (const i of set.items) {
+      const cur = itemByDevice.get(i.device_id);
+      if (!cur) continue;
+      const next = cur.quantity - i.quantity;
+      if (next < 1) await removeItem.mutateAsync({ id: cur.id, jobId: packlistJob.id });
+      else await updateQty.mutateAsync({ id: cur.id, jobId: packlistJob.id, quantity: next });
+    }
+  }
+  async function toggleSet(setId: string) {
+    const set = sets?.find((s) => s.id === setId);
+    if (set && setOnList(set)) await removeSet(setId);
+    else await addSet(setId);
   }
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | "alle">("alle");
@@ -351,7 +374,7 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
             {sets.map((set) => (
               <div key={set.id} className="w-36 shrink-0">
-                <SetCard set={set} selected={false} onClick={() => addSet(set.id)} />
+                <SetCard set={set} selected={setOnList(set)} onClick={() => toggleSet(set.id)} />
               </div>
             ))}
           </div>
@@ -525,7 +548,7 @@ function DeviceRow({ device, outNow, select }: { device: Device; outNow: number;
   );
 
   return (
-    <tr className={cn("border-b border-border last:border-0", onList ? "bg-accent-soft hover:bg-bg-raised" : "hover:bg-bg-raised")}>
+    <tr className={cn("border-b border-border last:border-0", onList ? "bg-accent-soft" : "hover:bg-bg-raised")}>
       <td className="px-4 py-3">
         {select ? (
           nameBlock

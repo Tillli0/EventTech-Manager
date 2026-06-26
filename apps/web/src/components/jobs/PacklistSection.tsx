@@ -56,6 +56,31 @@ function sortPacklistItems(items: PacklistItem[]): PacklistItem[] {
   });
 }
 
+/**
+ * Bereits nach Lagerort sortierte Posten in zusammenhängende Lagerort-Gruppen
+ * bündeln, damit über jeder Gruppe der Lagerort als Überschrift stehen kann.
+ */
+function groupByLocation(items: PacklistItem[]): { label: string; items: PacklistItem[] }[] {
+  const groups: { label: string; items: PacklistItem[] }[] = [];
+  for (const it of items) {
+    const label = it.device?.location_ref?.name ?? "Ohne Lagerort";
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(it);
+    else groups.push({ label, items: [it] });
+  }
+  return groups;
+}
+
+/** Lagerort-Überschrift über einer Gruppe der Packliste. */
+function LocationHeader({ label }: { label: string }) {
+  return (
+    <p className="flex items-center gap-1.5 px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+      <MapPin size={12} />
+      {label}
+    </p>
+  );
+}
+
 export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: boolean }) {
   const items = sortPacklistItems(job.packlist_items ?? []);
   const [stage, setStage] = useState<Stage>("packen");
@@ -274,15 +299,20 @@ function PackenStage({
 
       <ProgressBar value={pickedQty} max={totalQty} label={`${pickedQty}/${totalQty} ausgegeben`} />
 
-      <div className="space-y-2">
-        {items.map((item) => (
-          <PackenRow
-            key={item.id}
-            item={item}
-            canEdit={canEdit}
-            onPickUp={(amount) => markPickedUp.mutate({ id: item.id, jobId: job.id, additionalQuantity: amount })}
-            onUndo={() => undoPickup.mutate({ id: item.id, jobId: job.id })}
-          />
+      <div className="space-y-3">
+        {groupByLocation(items).map((group) => (
+          <div key={group.label} className="space-y-2">
+            <LocationHeader label={group.label} />
+            {group.items.map((item) => (
+              <PackenRow
+                key={item.id}
+                item={item}
+                canEdit={canEdit}
+                onPickUp={(amount) => markPickedUp.mutate({ id: item.id, jobId: job.id, additionalQuantity: amount })}
+                onUndo={() => undoPickup.mutate({ id: item.id, jobId: job.id })}
+              />
+            ))}
+          </div>
         ))}
       </div>
     </div>
@@ -409,6 +439,8 @@ function RueckgabeStage({
   const [scanMsg, setScanMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const outItems = items.filter((i) => quantityStillOut(i) > 0);
+  // Lagerort ist bei der Rückgabe Pflicht — erst danach lässt sich zurückbuchen.
+  const canReturn = !!locationId;
 
   function flash(text: string, ok: boolean) {
     setScanMsg({ text, ok });
@@ -416,6 +448,10 @@ function RueckgabeStage({
   }
 
   async function handleScan(code: string) {
+    if (!locationId) {
+      flash("Bitte zuerst einen Lagerort wählen.", false);
+      return;
+    }
     const item = await findItemByBarcode(code, items);
     if (!item) {
       flash(`Kein Posten mit Barcode „${code}" auf dieser Packliste.`, false);
@@ -442,11 +478,16 @@ function RueckgabeStage({
 
   return (
     <div className="space-y-4">
-      {/* Lagerort-Abfrage */}
+      {/* Lagerort-Abfrage (Pflicht) */}
       {canEdit && (
-        <div className="rounded-lg border border-border bg-bg-raised p-3">
+        <div
+          className={cn(
+            "rounded-lg border p-3",
+            canReturn ? "border-border bg-bg-raised" : "border-status-defekt/40 bg-status-defekt/5",
+          )}
+        >
           <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink">
-            <MapPin size={15} /> Wo wird ausgeladen?
+            <MapPin size={15} /> Wo wird ausgeladen? <span className="text-status-defekt">*</span>
           </p>
           {locations && locations.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
@@ -470,19 +511,20 @@ function RueckgabeStage({
               })}
             </div>
           ) : (
-            <p className="text-xs text-ink-muted">
-              Noch keine Lagerorte angelegt — im Inventar unter „Lagerorte" hinzufügen. Rückgabe geht auch ohne.
+            <p className="text-xs text-status-defekt">
+              Noch keine Lagerorte angelegt — im Inventar unter „Lagerorte" anlegen. Ohne Lagerort ist keine
+              Rückgabe möglich.
             </p>
           )}
-          {locationId && (
-            <p className="mt-2 text-xs text-ink-faint">
-              Intakt zurückgegebene Geräte werden auf diesen Lagerort gesetzt.
-            </p>
-          )}
+          <p className={cn("mt-2 text-xs", canReturn ? "text-ink-faint" : "text-status-defekt")}>
+            {canReturn
+              ? "Intakt zurückgegebene Geräte werden auf diesen Lagerort gesetzt."
+              : "Pflicht: Bitte einen Lagerort wählen, bevor zurückgebucht werden kann."}
+          </p>
         </div>
       )}
 
-      {canEdit && (
+      {canEdit && canReturn && (
         <ScannerBox onScan={handleScan} enabled placeholder="Zum Zurückbuchen scannen oder Barcode eintippen …" />
       )}
       {scanMsg && (
@@ -499,24 +541,30 @@ function RueckgabeStage({
       ) : (
         <>
           <p className="text-xs text-ink-muted">Noch beim Kunden: {outQty}×</p>
-          <div className="space-y-2">
-            {outItems.map((item) => (
-              <RueckgabeRow
-                key={item.id}
-                item={item}
-                canEdit={canEdit}
-                onQuickReturn={() =>
-                  returnItem.mutate({
-                    id: item.id,
-                    jobId: job.id,
-                    returnedOk: quantityStillOut(item),
-                    damaged: 0,
-                    missing: 0,
-                    locationId,
-                  })
-                }
-                onDetailedReturn={() => setReturnFor(item)}
-              />
+          <div className="space-y-3">
+            {groupByLocation(outItems).map((group) => (
+              <div key={group.label} className="space-y-2">
+                <LocationHeader label={group.label} />
+                {group.items.map((item) => (
+                  <RueckgabeRow
+                    key={item.id}
+                    item={item}
+                    canEdit={canEdit}
+                    disabled={!canReturn}
+                    onQuickReturn={() =>
+                      returnItem.mutate({
+                        id: item.id,
+                        jobId: job.id,
+                        returnedOk: quantityStillOut(item),
+                        damaged: 0,
+                        missing: 0,
+                        locationId,
+                      })
+                    }
+                    onDetailedReturn={() => setReturnFor(item)}
+                  />
+                ))}
+              </div>
             ))}
           </div>
         </>
@@ -549,11 +597,14 @@ function RueckgabeStage({
 function RueckgabeRow({
   item,
   canEdit,
+  disabled = false,
   onQuickReturn,
   onDetailedReturn,
 }: {
   item: PacklistItem;
   canEdit: boolean;
+  /** true = Aktionen gesperrt (z.B. solange kein Lagerort gewählt ist). */
+  disabled?: boolean;
   onQuickReturn: () => void;
   onDetailedReturn: () => void;
 }) {
@@ -576,11 +627,11 @@ function RueckgabeRow({
         </div>
         {canEdit && (
           <div className="flex shrink-0 items-center gap-2">
-            <Button size="sm" variant="secondary" onClick={onQuickReturn}>
+            <Button size="sm" variant="secondary" onClick={onQuickReturn} disabled={disabled}>
               <PackageCheck size={14} />
               Intakt zurück
             </Button>
-            <Button size="sm" variant="ghost" onClick={onDetailedReturn} title="Defekt/fehlend erfassen">
+            <Button size="sm" variant="ghost" onClick={onDetailedReturn} disabled={disabled} title="Defekt/fehlend erfassen">
               <PackageX size={14} />
             </Button>
           </div>

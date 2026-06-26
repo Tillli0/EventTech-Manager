@@ -49,7 +49,13 @@ export function CreateOfferDialog({
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<DraftItem[]>([]);
   const [deviceToAdd, setDeviceToAdd] = useState("");
+  const [bulkDays, setBulkDays] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+
+  function applyDaysToAll() {
+    const d = Math.max(1, parseInt(bulkDays, 10) || 1);
+    setItems((prev) => prev.map((it) => ({ ...it, rental_days: d })));
+  }
 
   useEffect(() => {
     if (open) {
@@ -61,6 +67,7 @@ export function CreateOfferDialog({
       setNotes("");
       setItems(presetItems ? presetItems.map((it) => ({ ...it, key: nextKey() })) : []);
       setDeviceToAdd("");
+      setBulkDays("");
       setFormError(null);
     }
   }, [open, presetCustomerId, presetInquiryId, presetTitle, presetItems]);
@@ -190,7 +197,25 @@ export function CreateOfferDialog({
 
         {/* Positionen */}
         <div>
-          <p className="mb-2 text-sm font-medium text-ink-muted">Positionen</p>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium text-ink-muted">Positionen</p>
+            {items.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-ink-muted">Tage für alle:</span>
+                <Input
+                  type="number"
+                  min={1}
+                  value={bulkDays}
+                  onChange={(e) => setBulkDays(e.target.value)}
+                  placeholder="z.B. 3"
+                  className="w-20 text-right"
+                />
+                <Button type="button" variant="secondary" onClick={applyDaysToAll} disabled={!bulkDays.trim()}>
+                  Übernehmen
+                </Button>
+              </div>
+            )}
+          </div>
           <div className="mb-3 flex gap-2">
             <Select value={deviceToAdd} onChange={(e) => setDeviceToAdd(e.target.value)} className="flex-1">
               <option value="">Gerät aus Inventar wählen …</option>
