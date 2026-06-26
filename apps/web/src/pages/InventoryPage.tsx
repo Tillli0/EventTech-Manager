@@ -1,17 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight, ScanLine, MapPin } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Plus, Minus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight, ScanLine, MapPin, ArrowLeft, Check } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PillSelect } from "@/components/ui/PillSelect";
 import { Card } from "@/components/ui/Card";
+import { SetCard } from "@/components/inventory/ManageSetsDialog";
 import { DeviceAvailabilityBadge } from "@/components/ui/DeviceAvailabilityBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 import { useDevices, useCategories, devicePhotoUrl } from "@/hooks/useDevices";
-import { useDevicesOutNowMap } from "@/hooks/useJobs";
+import {
+  useDevicesOutNowMap,
+  useDevicesAvailabilityMap,
+  useAddPacklistItems,
+  useUpdatePacklistItemQuantity,
+  useRemovePacklistItem,
+  sumBookedQuantity,
+} from "@/hooks/useJobs";
+import { useDeviceSets, useAddDeviceSetToJob } from "@/hooks/useDeviceSets";
 import { ManageLocationsDialog } from "@/components/inventory/ManageLocationsDialog";
-import { DEVICE_STATUS_OPTIONS, type DeviceStatus, type Device } from "@/types/database";
+import { DEVICE_STATUS_OPTIONS, type DeviceStatus, type Device, type Job, type PacklistItem } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 import { CreateDeviceDialog } from "@/components/inventory/CreateDeviceDialog";
 import { ManageCategoriesDialog } from "@/components/inventory/ManageCategoriesDialog";
@@ -61,12 +70,64 @@ function SortHead({
   );
 }
 
-export function InventoryPage() {
+export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
+  const navigate = useNavigate();
   const { canEdit } = useAuth();
   const mayEdit = canEdit("inventar");
   const { data: devices, isLoading, error } = useDevices();
   const { data: categories } = useCategories();
   const { data: outNowMap } = useDevicesOutNowMap();
+
+  // ── Auswahl-Modus für eine Job-Packliste ──────────────────────────────────
+  const selectMode = !!packlistJob;
+  const { data: sets } = useDeviceSets();
+  const { data: conflictMap } = useDevicesAvailabilityMap(
+    packlistJob?.start_date,
+    packlistJob?.end_date,
+    packlistJob?.id,
+  );
+  const addItems = useAddPacklistItems();
+  const updateQty = useUpdatePacklistItemQuantity();
+  const removeItem = useRemovePacklistItem();
+  const addSetToJob = useAddDeviceSetToJob();
+
+  const packItems = useMemo(() => packlistJob?.packlist_items ?? [], [packlistJob]);
+  const itemByDevice = useMemo(() => {
+    const m = new Map<string, PacklistItem>();
+    for (const it of packItems) m.set(it.device_id, it);
+    return m;
+  }, [packItems]);
+
+  function availableFor(device: Device): number {
+    const otherBooked = sumBookedQuantity(conflictMap?.get(device.id));
+    return Math.max(0, device.stock_quantity - (device.defective_quantity ?? 0) - otherBooked);
+  }
+  function addDevice(device: Device) {
+    if (!packlistJob || itemByDevice.has(device.id) || availableFor(device) < 1) return;
+    addItems.mutate({ jobId: packlistJob.id, items: [{ deviceId: device.id, quantity: 1 }] });
+  }
+  function changeQty(item: PacklistItem, device: Device, delta: number) {
+    if (!packlistJob) return;
+    const next = item.quantity + delta;
+    if (next < 1) {
+      removeItem.mutate({ id: item.id, jobId: packlistJob.id });
+      return;
+    }
+    if (next > availableFor(device)) return;
+    updateQty.mutate({ id: item.id, jobId: packlistJob.id, quantity: next });
+  }
+  async function addSet(setId: string) {
+    if (!packlistJob) return;
+    const set = sets?.find((s) => s.id === setId);
+    if (!set?.items?.length) return;
+    const payload = set.items
+      .map((i) => {
+        const dev = devices?.find((d) => d.id === i.device_id);
+        return { deviceId: i.device_id, quantity: Math.min(i.quantity, dev ? availableFor(dev) : 0) };
+      })
+      .filter((x) => x.quantity >= 1);
+    if (payload.length > 0) await addSetToJob.mutateAsync({ jobId: packlistJob.id, items: payload });
+  }
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | "alle">("alle");
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
@@ -210,60 +271,100 @@ export function InventoryPage() {
 
   return (
     <div>
+      {selectMode && packlistJob && (
+        <Link
+          to={`/jobs/${packlistJob.id}`}
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink"
+        >
+          <ArrowLeft size={14} />
+          Zurück zum Job
+        </Link>
+      )}
       <PageHeader
-        title="Inventar"
-        description={devices ? `${devices.length} Geräte im Bestand` : undefined}
+        title={selectMode ? "Packliste zusammenstellen" : "Inventar"}
+        description={
+          selectMode && packlistJob
+            ? `${packlistJob.title} · ${packItems.length} Posten`
+            : devices
+              ? `${devices.length} Geräte im Bestand`
+              : undefined
+        }
         actions={
-          <>
-            {/* Mobiler Scan-Zugang (Desktop hat ihn in der Sidebar) */}
-            <Link
-              to="/scan"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-bg-raised px-4 text-sm font-medium text-ink transition-colors hover:bg-bg-surface md:hidden"
-            >
-              <ScanLine size={16} />
-              Scannen
-            </Link>
-            <Button variant="secondary" onClick={handleExport} disabled={filteredDevices.length === 0}>
-              <Download size={16} />
-              CSV
+          selectMode && packlistJob ? (
+            <Button onClick={() => navigate(`/jobs/${packlistJob.id}`)}>
+              <Check size={16} />
+              Fertig
             </Button>
-            {mayEdit && (
-              <>
-                <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                  <Upload size={16} />
-                  Import
-                </Button>
-                <Button variant="secondary" onClick={() => setCategoriesOpen(true)}>
-                  <Settings2 size={16} />
-                  Kategorien
-                </Button>
-                <Button variant="secondary" onClick={() => setLocationsOpen(true)}>
-                  <MapPin size={16} />
-                  Lagerorte
-                </Button>
-                <Button variant="secondary" onClick={() => setSetsOpen(true)}>
-                  <Boxes size={16} />
-                  Sets
-                </Button>
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus size={16} />
-                  Gerät anlegen
-                </Button>
-              </>
-            )}
-          </>
+          ) : (
+            <>
+              {/* Mobiler Scan-Zugang (Desktop hat ihn in der Sidebar) */}
+              <Link
+                to="/scan"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-bg-raised px-4 text-sm font-medium text-ink transition-colors hover:bg-bg-surface md:hidden"
+              >
+                <ScanLine size={16} />
+                Scannen
+              </Link>
+              <Button variant="secondary" onClick={handleExport} disabled={filteredDevices.length === 0}>
+                <Download size={16} />
+                CSV
+              </Button>
+              {mayEdit && (
+                <>
+                  <Button variant="secondary" onClick={() => setImportOpen(true)}>
+                    <Upload size={16} />
+                    Import
+                  </Button>
+                  <Button variant="secondary" onClick={() => setCategoriesOpen(true)}>
+                    <Settings2 size={16} />
+                    Kategorien
+                  </Button>
+                  <Button variant="secondary" onClick={() => setLocationsOpen(true)}>
+                    <MapPin size={16} />
+                    Lagerorte
+                  </Button>
+                  <Button variant="secondary" onClick={() => setSetsOpen(true)}>
+                    <Boxes size={16} />
+                    Sets
+                  </Button>
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <Plus size={16} />
+                    Gerät anlegen
+                  </Button>
+                </>
+              )}
+            </>
+          )
         }
       />
 
-      {/* Status-Übersicht als Kennzahlen */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {DEVICE_STATUS_OPTIONS.map((opt) => (
-          <Card key={opt.value} className="px-4 py-3">
-            <p className="text-xs text-ink-muted">{opt.label}</p>
-            <p className="mt-1 text-2xl font-semibold text-ink">{statusCounts[opt.value] ?? 0}</p>
-          </Card>
-        ))}
-      </div>
+      {/* Sets oben (nur im Auswahl-Modus) */}
+      {selectMode && sets && sets.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-muted">
+            <Boxes size={13} /> Sets
+          </p>
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
+            {sets.map((set) => (
+              <div key={set.id} className="w-36 shrink-0">
+                <SetCard set={set} selected={false} onClick={() => addSet(set.id)} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Status-Übersicht als Kennzahlen (nicht im Auswahl-Modus) */}
+      {!selectMode && (
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {DEVICE_STATUS_OPTIONS.map((opt) => (
+            <Card key={opt.value} className="px-4 py-3">
+              <p className="text-xs text-ink-muted">{opt.label}</p>
+              <p className="mt-1 text-2xl font-semibold text-ink">{statusCounts[opt.value] ?? 0}</p>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Filterleiste — Suche + farbige Pillen statt Dropdowns */}
       <div className="mb-4 space-y-2.5">
@@ -362,7 +463,22 @@ export function InventoryPage() {
                   </tr>
                   {!isCollapsed &&
                     group.devices.map((device) => (
-                      <DeviceRow key={device.id} device={device} outNow={outNowMap?.get(device.id) ?? 0} />
+                      <DeviceRow
+                        key={device.id}
+                        device={device}
+                        outNow={outNowMap?.get(device.id) ?? 0}
+                        select={
+                          selectMode
+                            ? {
+                                item: itemByDevice.get(device.id) ?? null,
+                                available: availableFor(device),
+                                onAdd: () => addDevice(device),
+                                onInc: (it) => changeQty(it, device, 1),
+                                onDec: (it) => changeQty(it, device, -1),
+                              }
+                            : undefined
+                        }
+                      />
                     ))}
                 </tbody>
               );
@@ -380,20 +496,40 @@ export function InventoryPage() {
   );
 }
 
-function DeviceRow({ device, outNow }: { device: Device; outNow: number }) {
+interface SelectProps {
+  item: PacklistItem | null;
+  available: number;
+  onAdd: () => void;
+  onInc: (item: PacklistItem) => void;
+  onDec: (item: PacklistItem) => void;
+}
+
+function DeviceRow({ device, outNow, select }: { device: Device; outNow: number; select?: SelectProps }) {
   const locationName = device.location_ref?.name ?? device.location;
+  const onList = !!select?.item;
+
+  const nameBlock = (
+    <span className="flex items-center gap-3">
+      <DeviceThumbnail device={device} />
+      <span className="block">
+        <span className="block font-medium text-ink">{device.name}</span>
+        <span className="block text-xs text-ink-muted">
+          {[device.manufacturer, device.model].filter(Boolean).join(" · ") || "—"}
+        </span>
+      </span>
+    </span>
+  );
+
   return (
-    <tr className="border-b border-border last:border-0 hover:bg-bg-raised">
+    <tr className={cn("border-b border-border last:border-0 hover:bg-bg-raised", onList && "bg-accent-soft")}>
       <td className="px-4 py-3">
-        <Link to={`/inventar/${device.id}`} className="flex items-center gap-3">
-          <DeviceThumbnail device={device} />
-          <span className="block">
-            <span className="block font-medium text-ink">{device.name}</span>
-            <span className="block text-xs text-ink-muted">
-              {[device.manufacturer, device.model].filter(Boolean).join(" · ") || "—"}
-            </span>
-          </span>
-        </Link>
+        {select ? (
+          nameBlock
+        ) : (
+          <Link to={`/inventar/${device.id}`} className="flex items-center gap-3">
+            {nameBlock}
+          </Link>
+        )}
       </td>
       <td className="hidden px-4 py-3 font-mono text-xs text-ink-muted sm:table-cell">
         {device.barcodes?.[0]?.code ?? "—"}
@@ -421,10 +557,59 @@ function DeviceRow({ device, outNow }: { device: Device; outNow: number }) {
       <td className="px-4 py-3">
         <DeviceAvailabilityBadge device={device} outNow={outNow} />
       </td>
-      <td className="hidden px-4 py-3 text-right font-mono text-ink-muted lg:table-cell">
-        {formatCurrency(device.replacement_value)}
-      </td>
+      {select ? (
+        <td className="px-4 py-3 text-right">
+          <AddControl select={select} />
+        </td>
+      ) : (
+        <td className="hidden px-4 py-3 text-right font-mono text-ink-muted lg:table-cell">
+          {formatCurrency(device.replacement_value)}
+        </td>
+      )}
     </tr>
+  );
+}
+
+/** Hinzufügen-Button bzw. −/Menge/+-Stepper für den Packlisten-Auswahlmodus. */
+function AddControl({ select }: { select: SelectProps }) {
+  const { item, available, onAdd, onInc, onDec } = select;
+  if (item) {
+    const atMax = item.quantity >= available;
+    return (
+      <div className="inline-flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => onDec(item)}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-border text-ink-muted hover:text-ink"
+          aria-label="Weniger"
+        >
+          <Minus size={14} />
+        </button>
+        <span className="w-6 text-center font-mono text-sm font-medium text-ink">{item.quantity}</span>
+        <button
+          type="button"
+          onClick={() => onInc(item)}
+          disabled={atMax}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-border text-ink-muted hover:text-ink disabled:opacity-40"
+          aria-label="Mehr"
+          title={atMax ? `max. ${available} im Zeitraum` : undefined}
+        >
+          <Plus size={14} />
+        </button>
+      </div>
+    );
+  }
+  const soldOut = available < 1;
+  return (
+    <button
+      type="button"
+      onClick={onAdd}
+      disabled={soldOut}
+      className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      <Plus size={14} />
+      {soldOut ? "nicht verfügbar" : "Hinzufügen"}
+    </button>
   );
 }
 
