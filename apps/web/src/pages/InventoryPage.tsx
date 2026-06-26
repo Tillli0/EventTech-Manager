@@ -120,10 +120,14 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
     if (!packlistJob) return;
     const set = sets?.find((s) => s.id === setId);
     if (!set?.items?.length) return;
+    // Wichtig: die bereits auf DIESER Packliste liegende Menge mit abziehen, sonst
+    // bucht mehrfaches Klicken auf ein Set über die echte Verfügbarkeit hinaus.
     const payload = set.items
       .map((i) => {
         const dev = devices?.find((d) => d.id === i.device_id);
-        return { deviceId: i.device_id, quantity: Math.min(i.quantity, dev ? availableFor(dev) : 0) };
+        const capacity = dev ? availableFor(dev) : 0;
+        const already = itemByDevice.get(i.device_id)?.quantity ?? 0;
+        return { deviceId: i.device_id, quantity: Math.min(i.quantity, capacity - already) };
       })
       .filter((x) => x.quantity >= 1);
     if (payload.length > 0) await addSetToJob.mutateAsync({ jobId: packlistJob.id, items: payload });
@@ -521,7 +525,7 @@ function DeviceRow({ device, outNow, select }: { device: Device; outNow: number;
   );
 
   return (
-    <tr className={cn("border-b border-border last:border-0 hover:bg-bg-raised", onList && "bg-accent-soft")}>
+    <tr className={cn("border-b border-border last:border-0", onList ? "bg-accent-soft hover:bg-bg-raised" : "hover:bg-bg-raised")}>
       <td className="px-4 py-3">
         {select ? (
           nameBlock
