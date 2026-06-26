@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { ScanLine, Zap, LogOut, Settings } from "lucide-react";
+import { ScanLine, LogOut, Settings } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav";
+import { Logo } from "@/components/layout/Logo";
 import { useAuth } from "@/auth/AuthProvider";
 import { AccountDialog } from "@/components/account/AccountDialog";
 import { cn } from "@/lib/cn";
@@ -16,14 +17,8 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-60 flex-col border-r border-border bg-bg-surface md:flex">
-      <div className="flex items-center gap-2.5 border-b border-border px-5 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent">
-          <Zap size={16} className="text-white" strokeWidth={2.5} />
-        </div>
-        <div>
-          <p className="text-sm font-semibold leading-tight text-ink">EventTech</p>
-          <p className="text-xs leading-tight text-ink-faint">Manager</p>
-        </div>
+      <div className="border-b border-border px-5 py-5">
+        <Logo />
       </div>
 
       <nav className="flex-1 px-3 py-4">

@@ -11,6 +11,8 @@ export interface DashboardData {
   error: Error | null;
   /** Jobs, die heute beginnen, laufen oder enden (Status nicht storniert/abgeschlossen). */
   todayJobs: Job[];
+  /** Der nächste aktive Job (läuft gerade oder steht als nächstes an) — null, wenn keiner. */
+  nextJob: Job | null;
   /** Anstehende Jobs in den nächsten 14 Tagen (nicht heute, nicht storniert/abgeschlossen). */
   upcomingJobs: Job[];
   deviceStatusCounts: Record<string, number>;
@@ -36,8 +38,8 @@ export function useDashboard(): DashboardData {
 
   const now = useMemo(() => new Date(), []);
 
-  const { todayJobs, upcomingJobs } = useMemo(() => {
-    if (!jobs) return { todayJobs: [] as Job[], upcomingJobs: [] as Job[] };
+  const { todayJobs, upcomingJobs, nextJob } = useMemo(() => {
+    if (!jobs) return { todayJobs: [] as Job[], upcomingJobs: [] as Job[], nextJob: null as Job | null };
 
     const activeJobs = jobs.filter((j) => j.status !== "storniert" && j.status !== "abgeschlossen");
     const horizon = new Date(now.getTime() + 14 * DAY_MS);
@@ -59,7 +61,11 @@ export function useDashboard(): DashboardData {
       }
     }
 
-    return { todayJobs: today, upcomingJobs: upcoming };
+    // Nächster Job = frühester aktiver Job (nach start_date sortiert geladen),
+    // der noch nicht vorbei ist (Ende ≥ jetzt) — ein heute laufender zählt mit.
+    const next = activeJobs.find((j) => new Date(j.end_date) >= now) ?? null;
+
+    return { todayJobs: today, upcomingJobs: upcoming, nextJob: next };
   }, [jobs, now]);
 
   const deviceStatusCounts = useMemo(() => {
@@ -88,6 +94,7 @@ export function useDashboard(): DashboardData {
     isLoading: jobsLoading || devicesLoading || tasksLoading,
     error: (jobsError ?? devicesError ?? tasksError) as Error | null,
     todayJobs,
+    nextJob,
     upcomingJobs,
     deviceStatusCounts,
     totalDevices: devices?.length ?? 0,

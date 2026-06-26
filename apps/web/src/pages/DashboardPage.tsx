@@ -21,7 +21,7 @@ function customerLabel(job: Job): string | null {
 }
 
 export function DashboardPage() {
-  const { isLoading, error, todayJobs, upcomingJobs, deviceStatusCounts, overdueTasks, otherOpenTasks } =
+  const { isLoading, error, nextJob, upcomingJobs, deviceStatusCounts, overdueTasks, otherOpenTasks } =
     useDashboard();
   const { user, profile, isAdmin } = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
@@ -88,23 +88,19 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Heutige Jobs */}
+        {/* Nächster Job */}
         <Card>
           <CardHeader className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">Heute</h2>
+            <h2 className="text-sm font-semibold text-ink">Nächster Job</h2>
             <Link to="/jobs" className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink">
               Alle Jobs <ArrowRight size={12} />
             </Link>
           </CardHeader>
           <CardBody>
-            {todayJobs.length === 0 ? (
-              <p className="py-4 text-center text-sm text-ink-faint">Heute steht kein Job an.</p>
+            {!nextJob ? (
+              <p className="py-4 text-center text-sm text-ink-faint">Kein kommender Job geplant.</p>
             ) : (
-              <div className="space-y-2">
-                {todayJobs.map((job) => (
-                  <JobRow key={job.id} job={job} />
-                ))}
-              </div>
+              <JobRow job={nextJob} />
             )}
           </CardBody>
         </Card>

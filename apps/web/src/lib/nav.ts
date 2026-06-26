@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, Briefcase, Users, Calendar, ScanLine, CheckSquare, FileText, Shield } from "lucide-react";
+import { Package, Briefcase, Users, Calendar, ScanLine, CheckSquare, FileText, Shield } from "lucide-react";
 import type { AppArea } from "@/types/database";
 
 export interface NavItem {
@@ -12,7 +12,6 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Überblick", icon: LayoutDashboard },
   { to: "/inventar", label: "Inventar", icon: Package, area: "inventar" },
   { to: "/jobs", label: "Jobs", icon: Briefcase, area: "jobs" },
   { to: "/kunden", label: "Kunden", icon: Users, area: "kunden" },
@@ -27,10 +26,10 @@ export const SCAN_NAV_ITEM: NavItem = { to: "/scan", label: "Scannen", icon: Sca
 /**
  * Kuratierte Auswahl für die mobile BottomNav. Scannen ist hier bewusst NICHT
  * mehr enthalten (erreichbar über den „Scannen"-Knopf auf der Inventar-Seite);
- * dafür ist „Aufgaben" jetzt fester Bestandteil der unteren Leiste.
+ * dafür ist „Aufgaben" jetzt fester Bestandteil der unteren Leiste. „Überblick"
+ * ist hier raus — die Startseite erreicht man über das Logo im Top-Header.
  */
 export const BOTTOM_NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Überblick", icon: LayoutDashboard },
   { to: "/inventar", label: "Inventar", icon: Package, area: "inventar" },
   { to: "/jobs", label: "Jobs", icon: Briefcase, area: "jobs" },
   { to: "/kalender", label: "Kalender", icon: Calendar, area: "kalender" },
