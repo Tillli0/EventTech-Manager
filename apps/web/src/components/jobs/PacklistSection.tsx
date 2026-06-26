@@ -1,23 +1,32 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ScanLine, PackageCheck, PackageX, AlertTriangle, Undo2, MapPin, Check, Camera, ListPlus, PackageOpen,
+  ScanLine, PackageCheck, PackageX, AlertTriangle, Undo2, MapPin, Check, Camera, ListPlus, PackageOpen, FileText,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Dialog } from "@/components/ui/Dialog";
 import { CameraBarcodeScanner, useUsbScannerInput } from "@/components/barcode/BarcodeScanner";
+import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
+import type { CreateOfferItemInput } from "@/hooks/useOffers";
 import {
   useMarkPacklistItemPickedUp,
   useReturnPacklistItem,
   useUndoPickup,
 } from "@/hooks/useJobs";
 import { useLocations } from "@/hooks/useLocations";
+import { useAuth } from "@/auth/AuthProvider";
 import type { Job, PacklistItem } from "@/types/database";
 import { quantityStillOut, quantityNotYetPickedUp } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
+
+/** Job-Dauer in Tagen (inklusive Start- und Endtag, mindestens 1). */
+function jobDurationDays(job: Job): number {
+  const ms = new Date(job.end_date).getTime() - new Date(job.start_date).getTime();
+  return Math.max(1, Math.round(ms / (24 * 60 * 60 * 1000)) + 1);
+}
 
 type Stage = "packen" | "rueckgabe";
 
@@ -50,10 +59,22 @@ function sortPacklistItems(items: PacklistItem[]): PacklistItem[] {
 export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: boolean }) {
   const items = sortPacklistItems(job.packlist_items ?? []);
   const [stage, setStage] = useState<Stage>("packen");
+  const [offerOpen, setOfferOpen] = useState(false);
+  const { canEdit: canEditArea } = useAuth();
+  const mayCreateOffer = canEditArea("angebote");
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
   const pickedQty = items.reduce((s, i) => s + i.quantity_picked_up, 0);
   const outQty = items.reduce((s, i) => s + quantityStillOut(i), 0);
+
+  // Packliste → Angebotspositionen (Mietdauer = Job-Dauer, Preis aus Gerät).
+  const offerItems: CreateOfferItemInput[] = items.map((it) => ({
+    device_id: it.device_id,
+    description: it.device?.name ?? "Gerät",
+    quantity: it.quantity,
+    rental_days: jobDurationDays(job),
+    unit_price: it.device?.daily_rental_price ?? 0,
+  }));
 
   // Leere Packliste: klarer Call-to-Action zur Vollbild-Auswahl.
   if (items.length === 0) {
@@ -96,21 +117,43 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
             );
           })}
         </div>
-        {canEdit && (
-          <Link
-            to={`/jobs/${job.id}/packliste`}
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-bg-raised px-3 text-sm font-medium text-ink transition-colors hover:bg-bg-surface"
-          >
-            <ListPlus size={15} />
-            Geräte auswählen
-          </Link>
-        )}
+        <div className="flex gap-2">
+          {mayCreateOffer && (
+            <button
+              type="button"
+              onClick={() => setOfferOpen(true)}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-bg-raised px-3 text-sm font-medium text-ink transition-colors hover:bg-bg-surface"
+            >
+              <FileText size={15} />
+              Als Angebot
+            </button>
+          )}
+          {canEdit && (
+            <Link
+              to={`/jobs/${job.id}/packliste`}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-bg-raised px-3 text-sm font-medium text-ink transition-colors hover:bg-bg-surface"
+            >
+              <ListPlus size={15} />
+              Geräte auswählen
+            </Link>
+          )}
+        </div>
       </div>
 
       {stage === "packen" ? (
         <PackenStage job={job} items={items} canEdit={canEdit} totalQty={totalQty} pickedQty={pickedQty} />
       ) : (
         <RueckgabeStage job={job} items={items} canEdit={canEdit} outQty={outQty} />
+      )}
+
+      {mayCreateOffer && (
+        <CreateOfferDialog
+          open={offerOpen}
+          onClose={() => setOfferOpen(false)}
+          presetCustomerId={job.customer_id ?? undefined}
+          presetTitle={job.title}
+          presetItems={offerItems}
+        />
       )}
     </div>
   );

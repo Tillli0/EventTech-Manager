@@ -26,12 +26,15 @@ export function CreateOfferDialog({
   presetCustomerId,
   presetInquiryId,
   presetTitle,
+  presetItems,
 }: {
   open: boolean;
   onClose: () => void;
   presetCustomerId?: string;
   presetInquiryId?: string;
   presetTitle?: string;
+  /** Vorbefüllte Positionen, z.B. aus einer Job-Packliste übernommen. */
+  presetItems?: CreateOfferItemInput[];
 }) {
   const { data: customers } = useCustomers();
   const { data: inquiries } = useInquiries();
@@ -56,11 +59,11 @@ export function CreateOfferDialog({
       setValidUntil("");
       setTaxRate("19");
       setNotes("");
-      setItems([]);
+      setItems(presetItems ? presetItems.map((it) => ({ ...it, key: nextKey() })) : []);
       setDeviceToAdd("");
       setFormError(null);
     }
-  }, [open, presetCustomerId, presetInquiryId, presetTitle]);
+  }, [open, presetCustomerId, presetInquiryId, presetTitle, presetItems]);
 
   const customerInquiries = useMemo(
     () => (inquiries ?? []).filter((inq) => inq.customer_id === customerId),
