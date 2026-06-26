@@ -296,6 +296,21 @@ export interface JobMilestone {
   created_at: string;
 }
 
+/**
+ * Ist ein Job komplett in der Vergangenheit? = der späteste relevante Zeitpunkt
+ * (Enddatum, Rückgabe-Termin sowie alle Zeitplan-Termine, die ja auch nach dem
+ * Enddatum liegen können) liegt vor dem heutigen Tagesbeginn. Solche Jobs wandern
+ * in der Jobliste in den „Vergangen"-Ordner.
+ */
+export function isJobCompletelyPast(job: Job, now: Date = new Date()): boolean {
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  let latest = new Date(job.end_date).getTime();
+  if (job.return_at) latest = Math.max(latest, new Date(job.return_at).getTime());
+  for (const m of job.milestones ?? []) latest = Math.max(latest, new Date(m.at).getTime());
+  return latest < todayStart.getTime();
+}
+
 export interface PacklistItem {
   id: string;
   job_id: string;
