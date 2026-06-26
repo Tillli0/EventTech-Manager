@@ -234,6 +234,35 @@ export function useUpdateDevice() {
   });
 }
 
+/** Setzt den Lagerort eines Geräts und protokolliert die Änderung. */
+export function useSetDeviceLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      deviceId,
+      locationId,
+      fromLocationId,
+    }: {
+      deviceId: string;
+      locationId: string | null;
+      fromLocationId: string | null;
+    }) => {
+      const { error } = await supabase.from("devices").update({ location_id: locationId }).eq("id", deviceId);
+      if (error) throw error;
+      await recordDeviceHistory({
+        device_id: deviceId,
+        event_type: "lagerort",
+        from_location_id: fromLocationId,
+        to_location_id: locationId,
+      });
+    },
+    onSuccess: (_, { deviceId }) => {
+      queryClient.invalidateQueries({ queryKey: DEVICES_KEY });
+      queryClient.invalidateQueries({ queryKey: ["device-history", deviceId] });
+    },
+  });
+}
+
 export function useUpdateDeviceStatus() {
   const queryClient = useQueryClient();
   return useMutation({

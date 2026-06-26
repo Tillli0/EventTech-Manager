@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Printer, Trash2, Pencil, Check, ImagePlus, Star, X } from "lucide-react";
+import { ArrowLeft, Printer, Trash2, Pencil, ImagePlus, Star, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { DeviceEditCard } from "@/components/inventory/DeviceEditCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { DeviceAvailabilityBadge } from "@/components/ui/DeviceAvailabilityBadge";
 import { LoadingState, ErrorState } from "@/components/ui/States";
@@ -13,7 +13,6 @@ import { useDeviceHistory } from "@/hooks/useDeviceHistory";
 import type { DeviceHistory } from "@/types/database";
 import {
   useDevice,
-  useUpdateDevice,
   useUpdateDeviceStatus,
   useDeleteDevice,
   useDevicePhotos,
@@ -36,12 +35,8 @@ export function DeviceDetailPage() {
   const { data: device, isLoading, error } = useDevice(id);
   const { data: outNowMap } = useDevicesOutNowMap();
   const updateStatus = useUpdateDeviceStatus();
-  const updateDevice = useUpdateDevice();
   const deleteDevice = useDeleteDevice();
-  const [editingStock, setEditingStock] = useState(false);
-  const [stockInput, setStockInput] = useState("1");
-  const [editingPrice, setEditingPrice] = useState(false);
-  const [priceInput, setPriceInput] = useState("");
+  const [editing, setEditing] = useState(false);
 
   if (isLoading) return <LoadingState label="Gerät wird geladen …" />;
   if (error) return <ErrorState message={error.message} />;
@@ -78,6 +73,12 @@ export function DeviceDetailPage() {
               <Printer size={16} />
               Label drucken
             </Button>
+            {mayEdit && !editing && (
+              <Button variant="secondary" onClick={() => setEditing(true)}>
+                <Pencil size={16} />
+                Bearbeiten
+              </Button>
+            )}
             {mayEdit && (
               <Button variant="danger" onClick={handleDelete}>
                 <Trash2 size={16} />
@@ -91,6 +92,10 @@ export function DeviceDetailPage() {
         <div className="space-y-6 md:col-span-2">
           <DeviceBookingsCard deviceId={device.id} />
 
+          {editing ? (
+            <DeviceEditCard device={device} onDone={() => setEditing(false)} />
+          ) : (
+          <>
           {mayEdit && (
           <Card>
             <CardHeader>
@@ -129,88 +134,11 @@ export function DeviceDetailPage() {
               <h2 className="text-sm font-semibold text-ink">Stammdaten</h2>
             </CardHeader>
             <CardBody className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs text-ink-faint">Stückzahl</p>
-                {editingStock ? (
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    <Input
-                      type="number"
-                      min={1}
-                      value={stockInput}
-                      onChange={(e) => setStockInput(e.target.value)}
-                      className="h-8 w-20"
-                      autoFocus
-                    />
-                    <button
-                      onClick={async () => {
-                        const parsed = Math.max(1, parseInt(stockInput, 10) || 1);
-                        await updateDevice.mutateAsync({ id: device.id, stock_quantity: parsed });
-                        setEditingStock(false);
-                      }}
-                      className="rounded p-1 text-accent hover:bg-accent-soft"
-                    >
-                      <Check size={14} />
-                    </button>
-                  </div>
-                ) : mayEdit ? (
-                  <button
-                    onClick={() => {
-                      setStockInput(String(device.stock_quantity));
-                      setEditingStock(true);
-                    }}
-                    className="mt-0.5 flex items-center gap-1.5 text-ink hover:text-accent"
-                  >
-                    {device.stock_quantity}
-                    {device.stock_quantity > 1 && " Stück"}
-                    <Pencil size={11} className="text-ink-faint" />
-                  </button>
-                ) : (
-                  <p className="mt-0.5 text-ink">
-                    {device.stock_quantity}
-                    {device.stock_quantity > 1 && " Stück"}
-                  </p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-ink-faint">Tagesmietpreis</p>
-                {editingPrice ? (
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={priceInput}
-                      onChange={(e) => setPriceInput(e.target.value)}
-                      className="h-8 w-24"
-                      autoFocus
-                    />
-                    <button
-                      onClick={async () => {
-                        const raw = priceInput.trim().replace(",", ".");
-                        const parsed = raw === "" ? null : Math.max(0, parseFloat(raw) || 0);
-                        await updateDevice.mutateAsync({ id: device.id, daily_rental_price: parsed });
-                        setEditingPrice(false);
-                      }}
-                      className="rounded p-1 text-accent hover:bg-accent-soft"
-                    >
-                      <Check size={14} />
-                    </button>
-                  </div>
-                ) : mayEdit ? (
-                  <button
-                    onClick={() => {
-                      setPriceInput(device.daily_rental_price != null ? String(device.daily_rental_price) : "");
-                      setEditingPrice(true);
-                    }}
-                    className="mt-0.5 flex items-center gap-1.5 text-ink hover:text-accent"
-                  >
-                    {formatCurrency(device.daily_rental_price)}
-                    <Pencil size={11} className="text-ink-faint" />
-                  </button>
-                ) : (
-                  <p className="mt-0.5 text-ink">{formatCurrency(device.daily_rental_price)}</p>
-                )}
-              </div>
+              <DataField
+                label="Stückzahl"
+                value={`${device.stock_quantity}${device.stock_quantity > 1 ? " Stück" : ""}`}
+              />
+              <DataField label="Tagesmietpreis" value={formatCurrency(device.daily_rental_price)} />
               <DataField label="Seriennummer" value={device.serial_number} mono />
               <DataField label="Lagerort" value={device.location_ref?.name ?? device.location} />
               <DataField label="Kategorie" value={device.category?.name} />
@@ -231,6 +159,8 @@ export function DeviceDetailPage() {
                 <p className="whitespace-pre-wrap text-sm text-ink-muted">{device.notes}</p>
               </CardBody>
             </Card>
+          )}
+          </>
           )}
 
           <DeviceHistoryCard deviceId={device.id} />

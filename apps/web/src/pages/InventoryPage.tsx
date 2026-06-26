@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Plus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight, ScanLine, MapPin } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
+import { PillSelect } from "@/components/ui/PillSelect";
 import { Card } from "@/components/ui/Card";
 import { DeviceAvailabilityBadge } from "@/components/ui/DeviceAvailabilityBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
@@ -158,6 +159,8 @@ export function InventoryPage() {
     return m;
   }, [categories]);
 
+  const rootCategories = useMemo(() => (categories ?? []).filter((c) => !c.parent_id), [categories]);
+
   // Geräte nach Kategorie gruppieren (alphabetisch, „Ohne Kategorie" ans Ende).
   const groupedByCategory = useMemo(() => {
     const NONE = "__none__";
@@ -262,9 +265,9 @@ export function InventoryPage() {
         ))}
       </div>
 
-      {/* Filterleiste */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
+      {/* Filterleiste — Suche + farbige Pillen statt Dropdowns */}
+      <div className="mb-4 space-y-2.5">
+        <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
           <Input
             ref={searchRef}
@@ -274,32 +277,20 @@ export function InventoryPage() {
             className="pl-9"
           />
         </div>
-        <Select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as DeviceStatus | "alle")}
-          className="sm:w-48"
-        >
-          <option value="alle">Alle Status</option>
-          {DEVICE_STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </Select>
-        <Select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="sm:w-48"
-        >
-          <option value="alle">Alle Kategorien</option>
-          {categories
-            ?.filter((c) => !c.parent_id)
-            .map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-        </Select>
+        <PillSelect
+          allLabel="Alle Status"
+          options={DEVICE_STATUS_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          value={statusFilter === "alle" ? null : statusFilter}
+          onChange={(v) => setStatusFilter((v as DeviceStatus) ?? "alle")}
+        />
+        {rootCategories.length > 0 && (
+          <PillSelect
+            allLabel="Alle Kategorien"
+            options={rootCategories.map((c) => ({ value: c.id, label: c.name, color: c.color }))}
+            value={categoryFilter === "alle" ? null : categoryFilter}
+            onChange={(v) => setCategoryFilter(v ?? "alle")}
+          />
+        )}
       </div>
 
       {isLoading && <LoadingState label="Geräte werden geladen …" />}
