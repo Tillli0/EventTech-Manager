@@ -73,6 +73,24 @@ export function PacklistPlanner({ job, items }: { job: Job; items: PacklistItem[
     });
   }, [devices, search, categoryFilter]);
 
+  // Nach Kategorie gruppieren — wie auf der Inventarseite.
+  const groupedDevices = useMemo(() => {
+    const byCat = new Map<string, Device[]>();
+    for (const d of filtered) {
+      const key = d.category_id ?? "__none__";
+      if (!byCat.has(key)) byCat.set(key, []);
+      byCat.get(key)!.push(d);
+    }
+    const groups: { id: string; name: string; color: string; devices: Device[] }[] = [];
+    for (const c of categories ?? []) {
+      const ds = byCat.get(c.id);
+      if (ds?.length) groups.push({ id: c.id, name: c.name, color: c.color ?? "#8B92A3", devices: ds });
+    }
+    const none = byCat.get("__none__");
+    if (none?.length) groups.push({ id: "__none__", name: "Ohne Kategorie", color: "#5B6273", devices: none });
+    return groups;
+  }, [filtered, categories]);
+
   function flash(msg: string) {
     setFeedback(msg);
     setTimeout(() => setFeedback(null), 3000);
@@ -168,26 +186,42 @@ export function PacklistPlanner({ job, items }: { job: Job; items: PacklistItem[
         )}
       </div>
 
-      {/* Geräteliste */}
+      {/* Geräteliste — nach Kategorie gruppiert wie im Inventar */}
       {isLoading ? (
         <LoadingState label="Geräte werden geladen …" />
-      ) : filtered.length === 0 ? (
+      ) : groupedDevices.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-ink-muted">
           Keine Geräte gefunden.
         </p>
       ) : (
-        <div className="max-h-[55vh] space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
-          {filtered.map((device) => (
-            <PlannerDeviceRow
-              key={device.id}
-              device={device}
-              item={itemByDevice.get(device.id) ?? null}
-              available={availableFor(device)}
-              outNow={outNowMap?.get(device.id) ?? 0}
-              onAdd={() => handleAddDevice(device)}
-              onInc={(it) => changeQuantity(it, device, 1)}
-              onDec={(it) => changeQuantity(it, device, -1)}
-            />
+        <div className="space-y-5">
+          {groupedDevices.map((group) => (
+            <div key={group.id}>
+              <div
+                className="mb-2 flex items-center gap-2 rounded-md border-l-4 px-2.5 py-1.5"
+                style={{ borderLeftColor: group.color, backgroundColor: `${group.color}14` }}
+              >
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: group.color }} />
+                <span className="text-sm font-semibold" style={{ color: group.color }}>
+                  {group.name}
+                </span>
+                <span className="text-xs text-ink-faint">{group.devices.length}</span>
+              </div>
+              <div className="space-y-1.5">
+                {group.devices.map((device) => (
+                  <PlannerDeviceRow
+                    key={device.id}
+                    device={device}
+                    item={itemByDevice.get(device.id) ?? null}
+                    available={availableFor(device)}
+                    outNow={outNowMap?.get(device.id) ?? 0}
+                    onAdd={() => handleAddDevice(device)}
+                    onInc={(it) => changeQuantity(it, device, 1)}
+                    onDec={(it) => changeQuantity(it, device, -1)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}

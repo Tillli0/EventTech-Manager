@@ -1,15 +1,14 @@
 import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  ScanLine, Trash2, PackageCheck, PackageX, AlertTriangle, Undo2, MapPin, Check, ClipboardList, Camera,
+  ScanLine, PackageCheck, PackageX, AlertTriangle, Undo2, MapPin, Check, Camera, ListPlus, PackageOpen,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Dialog } from "@/components/ui/Dialog";
-import { PacklistPlanner } from "@/components/jobs/PacklistPlanner";
 import { CameraBarcodeScanner, useUsbScannerInput } from "@/components/barcode/BarcodeScanner";
 import {
-  useRemovePacklistItem,
   useMarkPacklistItemPickedUp,
   useReturnPacklistItem,
   useUndoPickup,
@@ -20,100 +19,77 @@ import { quantityStillOut, quantityNotYetPickedUp } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 
-type Stage = "planung" | "packen" | "rueckgabe";
+type Stage = "packen" | "rueckgabe";
 
 const STAGES: { key: Stage; label: string }[] = [
-  { key: "planung", label: "Planung" },
   { key: "packen", label: "Packen" },
   { key: "rueckgabe", label: "Rückgabe" },
 ];
 
 export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: boolean }) {
   const items = job.packlist_items ?? [];
-  const [stage, setStage] = useState<Stage>("planung");
+  const [stage, setStage] = useState<Stage>("packen");
 
-  // Fortschritts-Kennzahlen für die Stufen-Leiste.
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
   const pickedQty = items.reduce((s, i) => s + i.quantity_picked_up, 0);
   const outQty = items.reduce((s, i) => s + quantityStillOut(i), 0);
 
+  // Leere Packliste: klarer Call-to-Action zur Vollbild-Auswahl.
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-4 py-10 text-center">
+        <PackageOpen size={26} className="text-ink-faint" />
+        <p className="text-sm text-ink-muted">Noch keine Geräte auf der Packliste.</p>
+        {canEdit && (
+          <Link
+            to={`/jobs/${job.id}/packliste`}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+          >
+            <ListPlus size={16} />
+            Geräte auswählen
+          </Link>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
-      {/* Stufen-Umschalter */}
-      <div className="mb-4 flex gap-1 rounded-lg bg-bg-raised p-1">
-        {STAGES.map((s) => {
-          const active = stage === s.key;
-          return (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => setStage(s.key)}
-              className={cn(
-                "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                active ? "bg-accent text-white shadow-sm" : "text-ink-muted hover:text-ink",
-              )}
-            >
-              {s.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {stage === "planung" && <PlanungStage job={job} items={items} canEdit={canEdit} />}
-      {stage === "packen" && (
-        <PackenStage job={job} items={items} canEdit={canEdit} totalQty={totalQty} pickedQty={pickedQty} />
-      )}
-      {stage === "rueckgabe" && <RueckgabeStage job={job} items={items} canEdit={canEdit} outQty={outQty} />}
-    </div>
-  );
-}
-
-// ── Stufe 1: Planung ─────────────────────────────────────────────────────────
-
-function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]; canEdit: boolean }) {
-  const removeItem = useRemovePacklistItem();
-
-  return (
-    <div className="space-y-5">
-      {/* Aktuelle Packliste (kompakt) */}
-      <div>
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-muted">
-          <ClipboardList size={13} /> Geplant ({items.length})
-        </p>
-        {items.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-ink-muted">
-            Noch nichts geplant. Unten Geräte oder ein Set hinzufügen.
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {items.map((item) => (
-              <span
-                key={item.id}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-bg-surface py-1 pl-3 pr-1 text-sm text-ink"
-              >
-                {item.device?.name}
-                {item.quantity > 1 && <span className="font-mono text-xs text-accent">{item.quantity}×</span>}
-                {canEdit && item.quantity_picked_up === 0 && (
-                  <button
-                    type="button"
-                    onClick={() => removeItem.mutate({ id: item.id, jobId: job.id })}
-                    className="flex h-5 w-5 items-center justify-center rounded-full text-ink-faint hover:bg-bg-raised hover:text-status-defekt"
-                    aria-label="Entfernen"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+      {/* Kopf: Stufen-Umschalter + Vollbild-Auswahl */}
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-1 rounded-lg bg-bg-raised p-1">
+          {STAGES.map((s) => {
+            const active = stage === s.key;
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setStage(s.key)}
+                className={cn(
+                  "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                  active ? "bg-accent text-white shadow-sm" : "text-ink-muted hover:text-ink",
                 )}
-              </span>
-            ))}
-          </div>
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+        {canEdit && (
+          <Link
+            to={`/jobs/${job.id}/packliste`}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-bg-raised px-3 text-sm font-medium text-ink transition-colors hover:bg-bg-surface"
+          >
+            <ListPlus size={15} />
+            Geräte auswählen
+          </Link>
         )}
       </div>
 
-      {/* Inline-Picker */}
-      {canEdit && (
-        <div className="border-t border-border pt-4">
-          <PacklistPlanner job={job} items={items} />
-        </div>
+      {stage === "packen" ? (
+        <PackenStage job={job} items={items} canEdit={canEdit} totalQty={totalQty} pickedQty={pickedQty} />
+      ) : (
+        <RueckgabeStage job={job} items={items} canEdit={canEdit} outQty={outQty} />
       )}
     </div>
   );
