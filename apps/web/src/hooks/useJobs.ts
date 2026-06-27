@@ -22,9 +22,9 @@ export function useJobs() {
     queryFn: async (): Promise<Job[]> => {
       const { data, error } = await supabase
         .from("jobs")
-        // Zeitplan-Termine (nur `at`) mitladen, damit „komplett vergangen" auch
-        // Zeitplanpunkte nach dem Enddatum berücksichtigt.
-        .select("*, customer:customers(*), milestones:job_milestones(at)")
+        // Zeitplan-Termine mitladen — für „komplett vergangen" (Termine nach dem
+        // Enddatum) und die Zeitplan-Liste im Überblick (nächster Job).
+        .select("*, customer:customers(*), milestones:job_milestones(id, title, at)")
         .order("start_date", { ascending: true });
       if (error) throw error;
       return data as Job[];

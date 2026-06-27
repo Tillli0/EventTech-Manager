@@ -15,6 +15,7 @@ import {
   setImageUrl,
 } from "@/hooks/useDeviceSets";
 import { DEFAULT_SET_COLOR, type DeviceSet } from "@/types/database";
+import { cn } from "@/lib/cn";
 
 export function ManageSetsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: sets } = useDeviceSets();
@@ -124,19 +125,42 @@ export function SetCard({
 }) {
   return (
     <div
-      className="group relative overflow-hidden rounded-lg border-2 bg-bg-raised transition-shadow hover:shadow-md"
-      style={{ borderColor: set.color, boxShadow: selected ? `0 0 0 2px ${set.color}` : undefined }}
+      className={cn(
+        "group relative overflow-hidden rounded-lg border-2 bg-bg-raised transition-all hover:shadow-md",
+        selected && "scale-[1.02]",
+      )}
+      style={{
+        borderColor: set.color,
+        boxShadow: selected ? `0 0 0 3px ${set.color}, 0 6px 16px rgba(0,0,0,0.35)` : undefined,
+      }}
     >
+      {/* Deutlich sichtbarer Auswahl-Marker */}
+      {selected && (
+        <span
+          className="absolute left-1.5 top-1.5 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white shadow"
+          style={{ backgroundColor: set.color }}
+        >
+          <Check size={11} strokeWidth={3} />
+          Ausgewählt
+        </span>
+      )}
       <button type="button" onClick={onClick} className="block w-full text-left">
         {set.image_path ? (
-          <img src={setImageUrl(set.image_path)} alt="" className="h-24 w-full object-cover" />
+          <img
+            src={setImageUrl(set.image_path)}
+            alt=""
+            className={cn("h-24 w-full object-cover transition-opacity", !selected && "opacity-100")}
+          />
         ) : (
-          <div className="flex h-24 w-full items-center justify-center" style={{ backgroundColor: `${set.color}22` }}>
+          <div
+            className="flex h-24 w-full items-center justify-center"
+            style={{ backgroundColor: selected ? `${set.color}44` : `${set.color}22` }}
+          >
             <Boxes size={28} style={{ color: set.color }} />
           </div>
         )}
-        <div className="p-2.5">
-          <p className="truncate text-sm font-medium text-ink">{set.name}</p>
+        <div className="p-2.5" style={selected ? { backgroundColor: `${set.color}1f` } : undefined}>
+          <p className="truncate text-sm font-semibold text-ink">{set.name}</p>
           <p className="text-xs text-ink-muted">{setItemSummary(set)}</p>
         </div>
       </button>

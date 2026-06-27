@@ -439,6 +439,10 @@ function RueckgabeStage({
   const [scanMsg, setScanMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const outItems = items.filter((i) => quantityStillOut(i) > 0);
+  // Bereits (teilweise) zurückgegebene Posten — für die „Zurückgegeben"-Liste.
+  const returnedItems = items.filter(
+    (i) => i.quantity_returned_ok + i.quantity_damaged + i.quantity_missing > 0,
+  );
   // Lagerort ist bei der Rückgabe Pflicht — erst danach lässt sich zurückbuchen.
   const canReturn = !!locationId;
 
@@ -568,6 +572,39 @@ function RueckgabeStage({
             ))}
           </div>
         </>
+      )}
+
+      {/* Zurückgegeben: was wurde zurückgebucht und an welchem Lagerort */}
+      {returnedItems.length > 0 && (
+        <div className="space-y-2 border-t border-border pt-4">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-ink">
+            <PackageCheck size={15} className="text-status-verfuegbar" /> Zurückgegeben
+          </p>
+          {groupByLocation(returnedItems).map((group) => (
+            <div key={group.label} className="space-y-1.5">
+              <LocationHeader label={group.label} />
+              {group.items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg-surface px-4 py-2.5"
+                >
+                  <p className="min-w-0 flex-1 truncate text-sm text-ink">{item.device?.name}</p>
+                  <div className="flex shrink-0 items-center gap-2 text-xs font-medium">
+                    {item.quantity_returned_ok > 0 && (
+                      <span className="text-status-verfuegbar">{item.quantity_returned_ok}× OK</span>
+                    )}
+                    {item.quantity_damaged > 0 && (
+                      <span className="text-status-defekt">{item.quantity_damaged}× defekt</span>
+                    )}
+                    {item.quantity_missing > 0 && (
+                      <span className="text-ink-muted">{item.quantity_missing}× fehlend</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       )}
 
       {returnFor && (

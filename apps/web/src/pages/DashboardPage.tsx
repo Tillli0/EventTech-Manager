@@ -11,8 +11,8 @@ import { TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useAuth } from "@/auth/AuthProvider";
 import { DEVICE_STATUS_OPTIONS } from "@/types/database";
-import { formatDate } from "@/lib/format";
-import type { Job } from "@/types/database";
+import { formatDate, formatDateTime } from "@/lib/format";
+import type { Job, JobMilestone } from "@/types/database";
 
 function customerLabel(job: Job): string | null {
   const c = job.customer;
@@ -100,7 +100,10 @@ export function DashboardPage() {
             {!nextJob ? (
               <p className="py-4 text-center text-sm text-ink-faint">Kein kommender Job geplant.</p>
             ) : (
-              <JobRow job={nextJob} />
+              <div className="space-y-3">
+                <JobRow job={nextJob} />
+                <NextJobSchedule milestones={nextJob.milestones ?? []} />
+              </div>
             )}
           </CardBody>
         </Card>
@@ -192,6 +195,27 @@ export function DashboardPage() {
           </p>
         </CardBody>
       </Card>
+    </div>
+  );
+}
+
+/** Zeitplan-Punkte des nächsten Jobs im Überblick auflisten (zeitlich sortiert). */
+function NextJobSchedule({ milestones }: { milestones: JobMilestone[] }) {
+  if (milestones.length === 0) return null;
+  const sorted = [...milestones].sort((a, b) => a.at.localeCompare(b.at));
+  return (
+    <div className="rounded-md border border-border bg-bg-raised px-3 py-2.5">
+      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+        <CalendarClock size={12} /> Zeitplan
+      </p>
+      <ul className="space-y-1">
+        {sorted.map((m) => (
+          <li key={m.id} className="flex items-center justify-between gap-3 text-xs">
+            <span className="truncate text-ink">{m.title}</span>
+            <span className="shrink-0 text-ink-faint">{formatDateTime(m.at)}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
