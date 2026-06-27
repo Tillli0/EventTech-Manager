@@ -93,6 +93,24 @@ export function useOffersForCustomer(customerId: string | undefined) {
   });
 }
 
+/** Angebote, die mit einem bestimmten Job verknüpft sind. */
+export function useOffersForJob(jobId: string | undefined) {
+  return useQuery({
+    queryKey: [...OFFERS_KEY, "by-job", jobId],
+    enabled: !!jobId,
+    queryFn: async (): Promise<Offer[]> => {
+      if (!jobId) return [];
+      const { data, error } = await supabase
+        .from("offers")
+        .select("*, items:offer_items(*)")
+        .eq("job_id", jobId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Offer[];
+    },
+  });
+}
+
 export interface CreateOfferItemInput {
   device_id: string | null;
   description: string;
@@ -104,6 +122,7 @@ export interface CreateOfferItemInput {
 export interface CreateOfferInput {
   customer_id: string | null;
   inquiry_id?: string | null;
+  job_id?: string | null;
   title: string;
   event_date?: string | null;
   valid_until?: string | null;
@@ -177,6 +196,9 @@ export function useCreateOffer() {
       queryClient.invalidateQueries({ queryKey: ["inquiries"] });
       if (offer.customer_id) {
         queryClient.invalidateQueries({ queryKey: [...OFFERS_KEY, "by-customer", offer.customer_id] });
+      }
+      if (offer.job_id) {
+        queryClient.invalidateQueries({ queryKey: [...OFFERS_KEY, "by-job", offer.job_id] });
       }
     },
   });

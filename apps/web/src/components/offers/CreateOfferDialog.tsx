@@ -27,6 +27,7 @@ export function CreateOfferDialog({
   presetInquiryId,
   presetTitle,
   presetItems,
+  presetJobId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -35,6 +36,8 @@ export function CreateOfferDialog({
   presetTitle?: string;
   /** Vorbefüllte Positionen, z.B. aus einer Job-Packliste übernommen. */
   presetItems?: CreateOfferItemInput[];
+  /** Verknüpfter Job — das Angebot wird beim Job gespeichert. */
+  presetJobId?: string;
 }) {
   const { data: customers } = useCustomers();
   const { data: inquiries } = useInquiries();
@@ -133,6 +136,7 @@ export function CreateOfferDialog({
       await createOffer.mutateAsync({
         customer_id: customerId || null,
         inquiry_id: inquiryId || null,
+        job_id: presetJobId ?? null,
         title: title.trim(),
         valid_until: validUntil || null,
         tax_rate: parsedTax,

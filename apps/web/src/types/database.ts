@@ -421,6 +421,8 @@ export interface Offer {
   offer_number: string;
   customer_id: string | null;
   inquiry_id: string | null;
+  /** Optional verknüpfter Job (z.B. aus dessen Packliste erzeugt). */
+  job_id: string | null;
   title: string;
   status: OfferStatus;
   event_date: string | null;

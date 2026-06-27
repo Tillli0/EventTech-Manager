@@ -178,6 +178,7 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
           presetCustomerId={job.customer_id ?? undefined}
           presetTitle={job.title}
           presetItems={offerItems}
+          presetJobId={job.id}
         />
       )}
     </div>

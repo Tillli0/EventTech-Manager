@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, Printer } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Printer, FileText, Download } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LoadingState, ErrorState } from "@/components/ui/States";
+import { OfferStatusBadge } from "@/components/ui/StatusBadge";
 import { useJob, useUpdateJobStatus, useUpdateJob } from "@/hooks/useJobs";
-import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
-import { formatDateTime } from "@/lib/format";
+import { useOffersForJob, fetchOfferWithItems } from "@/hooks/useOffers";
+import { downloadOfferPdf } from "@/components/offers/OfferPdfDocument";
+import { JOB_STATUS_OPTIONS, offerTotals, type JobStatus } from "@/types/database";
+import { formatDateTime, formatCurrency } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";
 import { PacklistProgress } from "@/components/jobs/PacklistProgress";
 import { printPacklist } from "@/lib/printPacklist";
@@ -87,6 +91,8 @@ export function JobDetailPage() {
             </CardBody>
           </Card>
 
+          <JobOffersCard jobId={job.id} />
+
           <Card>
             <CardHeader>
               <h2 className="text-sm font-semibold text-ink">Aufgaben</h2>
@@ -162,6 +168,70 @@ export function JobDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Angebote, die zu diesem Job gehören (z.B. aus der Packliste erzeugt). */
+function JobOffersCard({ jobId }: { jobId: string }) {
+  const { data: offers } = useOffersForJob(jobId);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  async function handleDownload(offerId: string) {
+    setDownloadingId(offerId);
+    try {
+      const offer = await fetchOfferWithItems(offerId);
+      await downloadOfferPdf(offer);
+    } catch (err) {
+      console.error("PDF konnte nicht erzeugt werden:", err);
+      alert("Das PDF konnte nicht erzeugt werden.");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  if (!offers || offers.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+          <FileText size={14} />
+          Angebote
+        </h2>
+      </CardHeader>
+      <CardBody>
+        <div className="space-y-2">
+          {offers.map((offer) => {
+            const { gross } = offerTotals(offer.items ?? [], offer.tax_rate);
+            return (
+              <div
+                key={offer.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5"
+              >
+                <Link to="/angebote" className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-ink">{offer.title}</p>
+                  <p className="font-mono text-xs text-ink-muted">
+                    {offer.offer_number} · {formatCurrency(gross)}
+                  </p>
+                </Link>
+                <div className="flex shrink-0 items-center gap-2">
+                  <OfferStatusBadge status={offer.status} />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleDownload(offer.id)}
+                    disabled={downloadingId === offer.id}
+                  >
+                    <Download size={14} />
+                    {downloadingId === offer.id ? "…" : "PDF"}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 
