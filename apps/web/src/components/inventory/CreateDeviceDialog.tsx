@@ -34,6 +34,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   const [notes, setNotes] = useState("");
   const [stockQuantity, setStockQuantity] = useState("1");
   const [dailyRentalPrice, setDailyRentalPrice] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -81,6 +82,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
     setBarcodeTouched(false);
     setStockQuantity("1");
     setDailyRentalPrice("");
+    setPurchasePrice("");
     setPhotoFile(null); setPhotoPreview(null);
     setFormError(null);
   }
@@ -104,6 +106,11 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
     e.preventDefault();
     setFormError(null);
     if (!name.trim() || !trimmedBarcode) return;
+    // Lagerort ist Pflicht, sobald es überhaupt Lagerorte gibt — kein „Keiner" mehr.
+    if (locations && locations.length > 0 && !locationId) {
+      setFormError("Bitte einen Lagerort wählen.");
+      return;
+    }
     if (barcodeTaken) {
       setFormError(`Barcode „${trimmedBarcode}" ist bereits vergeben. Bitte einen anderen wählen.`);
       return;
@@ -121,6 +128,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
         autoBarcode: !barcodeTouched,
         stock_quantity: Math.max(1, parseInt(stockQuantity, 10) || 1),
         daily_rental_price: dailyRentalPrice.trim() ? Math.max(0, parseFloat(dailyRentalPrice.replace(",", "."))) || null : null,
+        purchase_price: purchasePrice.trim() ? Math.max(0, parseFloat(purchasePrice.replace(",", "."))) || null : null,
       });
 
       // Foto hochladen falls vorhanden
@@ -172,13 +180,13 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
         </div>
 
         <div>
-          <p className="mb-1.5 text-xs font-medium text-ink-muted">Lagerort</p>
+          <p className="mb-1.5 text-xs font-medium text-ink-muted">Lagerort *</p>
           {locations && locations.length > 0 ? (
             <PillSelect
-              allLabel="Keiner"
               options={locations.map((l) => ({ value: l.id, label: l.name, color: l.color }))}
               value={locationId}
               onChange={setLocationId}
+              allowClear={false}
             />
           ) : (
             <p className="text-xs text-ink-faint">Noch keine Lagerorte angelegt (im Inventar unter „Lagerorte").</p>
@@ -210,6 +218,18 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
             />
           </FormField>
         </div>
+
+        <FormField label="Kaufpreis (€)" hint="Anschaffungspreis netto. Optional, für die Inventarbewertung.">
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={purchasePrice}
+            onChange={(e) => setPurchasePrice(e.target.value)}
+            placeholder="z.B. 199"
+            className="w-32"
+          />
+        </FormField>
 
         <FormField label="Barcode *" hint="Wird automatisch als nächster freier Code vorgeschlagen, kann aber überschrieben werden.">
           <div className="flex items-center gap-2">

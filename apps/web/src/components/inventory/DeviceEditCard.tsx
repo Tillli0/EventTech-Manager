@@ -128,10 +128,10 @@ export function DeviceEditCard({ device, onDone }: { device: Device; onDone: () 
           <p className="mb-1.5 text-xs font-medium text-ink-muted">Lagerort</p>
           {locations && locations.length > 0 ? (
             <PillSelect
-              allLabel="Keiner"
               options={locations.map((l) => ({ value: l.id, label: l.name, color: l.color }))}
               value={locationId}
               onChange={setLocationId}
+              allowClear={false}
             />
           ) : (
             <p className="text-xs text-ink-faint">Noch keine Lagerorte angelegt (im Inventar unter „Lagerorte").</p>
