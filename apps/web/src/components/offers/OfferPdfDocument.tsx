@@ -1,8 +1,7 @@
-import { Document, Page, View, Text, StyleSheet, pdf } from "@react-pdf/renderer";
+import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import type { Offer } from "@/types/database";
 import { offerItemTotal, offerTotals } from "@/types/database";
 import { COMPANY_INFO, type CompanyInfo } from "@/lib/companyInfo";
-import { fetchCompanySettings } from "@/hooks/useCompanySettings";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 const styles = StyleSheet.create({
@@ -168,18 +167,4 @@ export function OfferPdfDocument({ offer, company = COMPANY_INFO }: { offer: Off
       </Page>
     </Document>
   );
-}
-
-/** Erzeugt das Angebots-PDF und löst den Download aus (Muster wie lib/ics.ts). */
-export async function downloadOfferPdf(offer: Offer) {
-  const company = await fetchCompanySettings();
-  const blob = await pdf(<OfferPdfDocument offer={offer} company={company} />).toBlob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Angebot-${offer.offer_number}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }

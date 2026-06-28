@@ -1,35 +1,41 @@
+import { lazy, Suspense, type ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { RequireAuth, RequireArea, RequireManager, RedirectIfAuthed } from "@/auth/guards";
-import { LoginPage } from "@/pages/LoginPage";
-import { DashboardPage } from "@/pages/DashboardPage";
-import { InventoryPage } from "@/pages/InventoryPage";
-import { DeviceDetailPage } from "@/pages/DeviceDetailPage";
-import { JobsPage } from "@/pages/JobsPage";
-import { JobDetailPage } from "@/pages/JobDetailPage";
-import { JobPacklistPage } from "@/pages/JobPacklistPage";
-import { CustomersPage } from "@/pages/CustomersPage";
-import { CustomerDetailPage } from "@/pages/CustomerDetailPage";
-import { OffersPage } from "@/pages/OffersPage";
-import { CalendarPage } from "@/pages/CalendarPage";
-import { ScanPage } from "@/pages/ScanPage";
-import { TasksPage } from "@/pages/TasksPage";
-import { AdminPage } from "@/pages/AdminPage";
+import { LoadingState } from "@/components/ui/States";
+
+// Seiten werden per Code-Splitting erst beim Aufruf geladen (kein 3,4-MB-Single-Bundle).
+const LoginPage = lazy(() => import("@/pages/LoginPage").then((m) => ({ default: m.LoginPage })));
+const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const InventoryPage = lazy(() => import("@/pages/InventoryPage").then((m) => ({ default: m.InventoryPage })));
+const DeviceDetailPage = lazy(() => import("@/pages/DeviceDetailPage").then((m) => ({ default: m.DeviceDetailPage })));
+const JobsPage = lazy(() => import("@/pages/JobsPage").then((m) => ({ default: m.JobsPage })));
+const JobDetailPage = lazy(() => import("@/pages/JobDetailPage").then((m) => ({ default: m.JobDetailPage })));
+const JobPacklistPage = lazy(() => import("@/pages/JobPacklistPage").then((m) => ({ default: m.JobPacklistPage })));
+const CustomersPage = lazy(() => import("@/pages/CustomersPage").then((m) => ({ default: m.CustomersPage })));
+const CustomerDetailPage = lazy(() => import("@/pages/CustomerDetailPage").then((m) => ({ default: m.CustomerDetailPage })));
+const OffersPage = lazy(() => import("@/pages/OffersPage").then((m) => ({ default: m.OffersPage })));
+const CalendarPage = lazy(() => import("@/pages/CalendarPage").then((m) => ({ default: m.CalendarPage })));
+const ScanPage = lazy(() => import("@/pages/ScanPage").then((m) => ({ default: m.ScanPage })));
+const TasksPage = lazy(() => import("@/pages/TasksPage").then((m) => ({ default: m.TasksPage })));
+const AdminPage = lazy(() => import("@/pages/AdminPage").then((m) => ({ default: m.AdminPage })));
+
+/** Suspense-Hülle für Routen außerhalb des AppShell (z.B. Login). */
+function lazyRoute(node: ReactNode): ReactNode {
+  return <Suspense fallback={<LoadingState label="Wird geladen …" />}>{node}</Suspense>;
+}
 
 export const router = createBrowserRouter([
   {
     path: "/login",
-    element: (
-      <RedirectIfAuthed>
-        <LoginPage />
-      </RedirectIfAuthed>
-    ),
+    element: <RedirectIfAuthed>{lazyRoute(<LoginPage />)}</RedirectIfAuthed>,
   },
   {
     path: "/",
     element: <RequireAuth />,
     children: [
       {
+        // AppShell umschließt den <Outlet/> bereits mit einer Suspense-Grenze.
         element: <AppShell />,
         children: [
           { index: true, element: <DashboardPage /> },

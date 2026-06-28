@@ -8,7 +8,7 @@ import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 import { useOffers, useDeleteOffer, fetchOfferWithItems } from "@/hooks/useOffers";
 import { offerTotals, type Offer } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { downloadOfferPdf } from "@/components/offers/OfferPdfDocument";
+import { downloadOfferPdf } from "@/lib/offerPdf";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
 import { useAuth } from "@/auth/AuthProvider";
 

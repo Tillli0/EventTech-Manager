@@ -8,7 +8,7 @@ import { LoadingState, ErrorState } from "@/components/ui/States";
 import { OfferStatusBadge } from "@/components/ui/StatusBadge";
 import { useJob, useUpdateJobStatus, useUpdateJob } from "@/hooks/useJobs";
 import { useOffersForJob, fetchOfferWithItems } from "@/hooks/useOffers";
-import { downloadOfferPdf } from "@/components/offers/OfferPdfDocument";
+import { downloadOfferPdf } from "@/lib/offerPdf";
 import { JOB_STATUS_OPTIONS, offerTotals, type JobStatus } from "@/types/database";
 import { formatDateTime, formatCurrency } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";

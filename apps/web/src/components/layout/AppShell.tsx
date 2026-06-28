@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Logo } from "@/components/layout/Logo";
+import { LoadingState } from "@/components/ui/States";
 
 export function AppShell() {
   return (
@@ -14,7 +16,9 @@ export function AppShell() {
         </header>
         <main className="flex-1 overflow-y-auto scrollbar-thin pb-20 md:pb-0">
           <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
-            <Outlet />
+            <Suspense fallback={<LoadingState label="Wird geladen …" />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>

@@ -18,7 +18,7 @@ import { useOffersForCustomer, fetchOfferWithItems } from "@/hooks/useOffers";
 import { CUSTOMER_SOURCE_LABELS, isStammkunde, offerTotals } from "@/types/database";
 import { formatDate, formatDateTime, formatCurrency } from "@/lib/format";
 import { JobStatusBadge, OfferStatusBadge, StammkundeBadge } from "@/components/ui/StatusBadge";
-import { downloadOfferPdf } from "@/components/offers/OfferPdfDocument";
+import { downloadOfferPdf } from "@/lib/offerPdf";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
 import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
