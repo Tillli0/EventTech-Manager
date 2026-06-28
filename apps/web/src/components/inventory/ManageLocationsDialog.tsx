@@ -4,6 +4,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Input, FormField } from "@/components/ui/Input";
 import { useLocations, useCreateLocation, useUpdateLocation, useDeleteLocation } from "@/hooks/useLocations";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { Location } from "@/types/database";
 
 const PRESET_COLORS = [
@@ -16,6 +17,7 @@ export function ManageLocationsDialog({ open, onClose }: { open: boolean; onClos
   const { data: locations } = useLocations();
   const createLocation = useCreateLocation();
   const deleteLocation = useDeleteLocation();
+  const confirm = useConfirm();
 
   const [name, setName] = useState("");
   const [color, setColor] = useState(PRESET_COLORS[0]);
@@ -28,7 +30,13 @@ export function ManageLocationsDialog({ open, onClose }: { open: boolean; onClos
   }
 
   async function handleDelete(id: string, locName: string) {
-    if (!confirm(`Lagerort „${locName}" wirklich löschen? Geräte behalten ihren Eintrag, verlieren aber die Zuordnung.`)) return;
+    const ok = await confirm({
+      title: "Lagerort löschen",
+      message: `Lagerort „${locName}" wirklich löschen? Geräte behalten ihren Eintrag, verlieren aber die Zuordnung.`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteLocation.mutateAsync(id);
   }
 

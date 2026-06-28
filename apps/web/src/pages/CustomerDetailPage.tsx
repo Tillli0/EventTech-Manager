@@ -19,6 +19,7 @@ import { CUSTOMER_SOURCE_LABELS, isStammkunde, offerTotals } from "@/types/datab
 import { formatDate, formatDateTime, formatCurrency } from "@/lib/format";
 import { JobStatusBadge, OfferStatusBadge, StammkundeBadge } from "@/components/ui/StatusBadge";
 import { downloadOfferPdf } from "@/lib/offerPdf";
+import { useToast } from "@/components/ui/Toast";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
 import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
@@ -35,6 +36,7 @@ export function CustomerDetailPage() {
   const { data: offers } = useOffersForCustomer(id);
   const addNote = useAddCustomerNote();
   const updateCustomer = useUpdateCustomer();
+  const toast = useToast();
   const [noteContent, setNoteContent] = useState("");
   const [createOfferOpen, setCreateOfferOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function CustomerDetailPage() {
       await downloadOfferPdf(offer);
     } catch (err) {
       console.error("PDF konnte nicht erzeugt werden:", err);
-      alert("Das PDF konnte nicht erzeugt werden.");
+      toast.error("Das PDF konnte nicht erzeugt werden.");
     } finally {
       setDownloadingId(null);
     }

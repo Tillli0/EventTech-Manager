@@ -9,6 +9,7 @@ import { OfferStatusBadge } from "@/components/ui/StatusBadge";
 import { useJob, useUpdateJobStatus, useUpdateJob } from "@/hooks/useJobs";
 import { useOffersForJob, fetchOfferWithItems } from "@/hooks/useOffers";
 import { downloadOfferPdf } from "@/lib/offerPdf";
+import { useToast } from "@/components/ui/Toast";
 import { JOB_STATUS_OPTIONS, offerTotals, type JobStatus } from "@/types/database";
 import { formatDateTime, formatCurrency } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";
@@ -174,6 +175,7 @@ export function JobDetailPage() {
 /** Angebote, die zu diesem Job gehören (z.B. aus der Packliste erzeugt). */
 function JobOffersCard({ jobId }: { jobId: string }) {
   const { data: offers } = useOffersForJob(jobId);
+  const toast = useToast();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function handleDownload(offerId: string) {
@@ -183,7 +185,7 @@ function JobOffersCard({ jobId }: { jobId: string }) {
       await downloadOfferPdf(offer);
     } catch (err) {
       console.error("PDF konnte nicht erzeugt werden:", err);
-      alert("Das PDF konnte nicht erzeugt werden.");
+      toast.error("Das PDF konnte nicht erzeugt werden.");
     } finally {
       setDownloadingId(null);
     }

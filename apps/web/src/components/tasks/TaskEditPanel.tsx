@@ -12,6 +12,7 @@ import {
   useCreateChecklistItem, useUpdateChecklistItem, useDeleteChecklistItem, useReorderChecklistItems,
 } from "@/hooks/useTasks";
 import { TASK_STATUS_OPTIONS, TASK_PRIORITY_OPTIONS, type TaskStatus, type TaskPriority, type TaskChecklistItem } from "@/types/database";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/lib/cn";
 
 interface Props {
@@ -32,6 +33,7 @@ const AUTOSAVE_DELAY = 600;
  */
 export function TaskEditPanel({ taskId, onDeleted }: Props) {
   const { data: task, isLoading } = useTask(taskId);
+  const confirm = useConfirm();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
   const updateStatus = useUpdateTaskStatus();
@@ -110,7 +112,13 @@ export function TaskEditPanel({ taskId, onDeleted }: Props) {
 
   async function handleDelete() {
     if (!task) return;
-    if (!confirm(`„${task.title}" wirklich löschen?`)) return;
+    const ok = await confirm({
+      title: "Aufgabe löschen",
+      message: `„${task.title}" wirklich löschen?`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteTask.mutateAsync(task.id);
     onDeleted?.();
   }

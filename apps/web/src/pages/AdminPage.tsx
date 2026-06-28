@@ -6,6 +6,8 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
 import { useCompanySettings, useUpdateCompanySettings } from "@/hooks/useCompanySettings";
+import { useToast } from "@/components/ui/Toast";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { LoadingState, ErrorState } from "@/components/ui/States";
 import {
   useAdminUsers,
@@ -46,20 +48,27 @@ export function AdminPage() {
   const setViewMode = useSetJobViewMode();
   const deleteUser = useDeleteUser();
   const resetPassword = useResetUserPassword();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
+  const [resetFor, setResetFor] = useState<string | null>(null);
+  const [resetPw, setResetPw] = useState("");
 
-  function handleResetPassword(userId: string) {
-    const pw = prompt("Neues Passwort (min. 6 Zeichen):");
-    if (!pw) return;
-    if (pw.length < 6) {
-      alert("Passwort muss mindestens 6 Zeichen haben.");
+  function submitReset() {
+    if (!resetFor) return;
+    if (resetPw.length < 6) {
+      toast.error("Passwort muss mindestens 6 Zeichen haben.");
       return;
     }
     resetPassword.mutate(
-      { userId, password: pw },
+      { userId: resetFor, password: resetPw },
       {
-        onSuccess: () => alert("Passwort wurde geändert."),
-        onError: (e) => alert(`Fehler: ${e.message}`),
+        onSuccess: () => {
+          toast.success("Passwort wurde geändert.");
+          setResetFor(null);
+          setResetPw("");
+        },
+        onError: (e) => toast.error(`Fehler: ${e.message}`),
       },
     );
   }
@@ -119,7 +128,7 @@ export function AdminPage() {
                       onChange={(e) =>
                         setViewMode.mutate(
                           { userId: user.id, mode: e.target.value as JobViewMode },
-                          { onError: (err) => alert(`Fehler: ${err.message}`) },
+                          { onError: (err) => toast.error(`Fehler: ${err.message}`) },
                         )
                       }
                       className="h-9 w-36"
@@ -157,16 +166,23 @@ export function AdminPage() {
                   )}
                   {isAdmin && (
                     <>
-                      <Button size="sm" variant="secondary" onClick={() => handleResetPassword(user.id)}>
+                      <Button size="sm" variant="secondary" onClick={() => { setResetFor(user.id); setResetPw(""); }}>
                         <KeyRound size={14} />
                         Passwort
                       </Button>
                       {!isMe && (
                         <button
                           type="button"
-                          onClick={() => {
-                            if (confirm(`Nutzer „${user.full_name || user.email}" wirklich löschen?`)) {
-                              deleteUser.mutate(user.id, { onError: (e) => alert(`Fehler: ${e.message}`) });
+                          onClick={async () => {
+                            if (
+                              await confirm({
+                                title: "Nutzer löschen",
+                                message: `Nutzer „${user.full_name || user.email}" wirklich löschen?`,
+                                confirmLabel: "Löschen",
+                                danger: true,
+                              })
+                            ) {
+                              deleteUser.mutate(user.id, { onError: (e) => toast.error(`Fehler: ${e.message}`) });
                             }
                           }}
                           className="flex h-9 w-9 items-center justify-center rounded-md text-ink-muted hover:text-status-defekt"
@@ -231,6 +247,35 @@ export function AdminPage() {
       </div>
 
       <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+
+      <Dialog
+        open={!!resetFor}
+        onClose={() => { setResetFor(null); setResetPw(""); }}
+        title="Passwort zurücksetzen"
+        maxWidth="max-w-sm"
+      >
+        <div className="space-y-4">
+          <FormField label="Neues Passwort (min. 6 Zeichen)">
+            <Input
+              type="password"
+              value={resetPw}
+              onChange={(e) => setResetPw(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && resetPw.length >= 6) submitReset();
+              }}
+            />
+          </FormField>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => { setResetFor(null); setResetPw(""); }}>
+              Abbrechen
+            </Button>
+            <Button onClick={submitReset} disabled={resetPw.length < 6 || resetPassword.isPending}>
+              {resetPassword.isPending ? "Speichert …" : "Passwort setzen"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

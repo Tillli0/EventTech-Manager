@@ -9,6 +9,7 @@ import { TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { TaskEditPanel } from "@/components/tasks/TaskEditPanel";
 import { useTasks, useUpdateTaskStatus, useDeleteTask, useCreateTask } from "@/hooks/useTasks";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
@@ -62,6 +63,7 @@ export function TasksPage() {
   const { data: tasks, isLoading, error } = useTasks();
   const updateStatus = useUpdateTaskStatus();
   const deleteTask = useDeleteTask();
+  const confirm = useConfirm();
 
   const { jobGroups, otherGroups, jobDone, otherDone } = useMemo(() => {
     const today = startOfDay(new Date());
@@ -131,8 +133,14 @@ export function TasksPage() {
       return next;
     });
   }
-  function handleDelete(task: TaskRecord) {
-    if (confirm(`„${task.title}" wirklich löschen?`)) {
+  async function handleDelete(task: TaskRecord) {
+    const ok = await confirm({
+      title: "Aufgabe löschen",
+      message: `„${task.title}" wirklich löschen?`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (ok) {
       collapse(task.id);
       deleteTask.mutate(task.id);
     }

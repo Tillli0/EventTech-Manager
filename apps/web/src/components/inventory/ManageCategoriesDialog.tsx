@@ -4,6 +4,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Input, FormField } from "@/components/ui/Input";
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from "@/hooks/useDevices";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { Category } from "@/types/database";
 
 const PRESET_COLORS = [
@@ -16,6 +17,7 @@ export function ManageCategoriesDialog({ open, onClose }: { open: boolean; onClo
   const { data: categories } = useCategories();
   const createCategory = useCreateCategory();
   const deleteCategory = useDeleteCategory();
+  const confirm = useConfirm();
 
   const [name, setName] = useState("");
   const [color, setColor] = useState(PRESET_COLORS[0]);
@@ -28,7 +30,13 @@ export function ManageCategoriesDialog({ open, onClose }: { open: boolean; onClo
   }
 
   async function handleDelete(id: string, catName: string) {
-    if (!confirm(`Kategorie „${catName}" wirklich löschen? Geräte bleiben erhalten, verlieren aber die Kategorie.`)) return;
+    const ok = await confirm({
+      title: "Kategorie löschen",
+      message: `Kategorie „${catName}" wirklich löschen? Geräte bleiben erhalten, verlieren aber die Kategorie.`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteCategory.mutateAsync(id);
   }
 

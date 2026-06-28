@@ -11,12 +11,16 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
 import { useAuth } from "@/auth/AuthProvider";
+import { useToast } from "@/components/ui/Toast";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 export function OffersPage() {
   const { canEdit } = useAuth();
   const mayEdit = canEdit("angebote");
   const { data: offers, isLoading, error } = useOffers();
   const deleteOffer = useDeleteOffer();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [editOffer, setEditOffer] = useState<Offer | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -28,7 +32,7 @@ export function OffersPage() {
       await downloadOfferPdf(offer);
     } catch (err) {
       console.error("PDF konnte nicht erzeugt werden:", err);
-      alert("Das PDF konnte nicht erzeugt werden.");
+      toast.error("Das PDF konnte nicht erzeugt werden.");
     } finally {
       setDownloadingId(null);
     }
@@ -128,8 +132,15 @@ export function OffersPage() {
                         {mayEdit && (
                           <button
                             type="button"
-                            onClick={() => {
-                              if (confirm(`Angebot ${offer.offer_number} wirklich löschen?`)) {
+                            onClick={async () => {
+                              if (
+                                await confirm({
+                                  title: "Angebot löschen",
+                                  message: `Angebot ${offer.offer_number} wirklich löschen?`,
+                                  confirmLabel: "Löschen",
+                                  danger: true,
+                                })
+                              ) {
                                 deleteOffer.mutate({ id: offer.id, customerId: offer.customer_id });
                               }
                             }}

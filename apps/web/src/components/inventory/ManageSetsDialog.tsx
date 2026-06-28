@@ -16,10 +16,13 @@ import {
 } from "@/hooks/useDeviceSets";
 import { DEFAULT_SET_COLOR, type DeviceSet } from "@/types/database";
 import { cn } from "@/lib/cn";
+import { useToast } from "@/components/ui/Toast";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 export function ManageSetsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: sets } = useDeviceSets();
   const deleteSet = useDeleteDeviceSet();
+  const confirm = useConfirm();
 
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [editingSet, setEditingSet] = useState<DeviceSet | null>(null);
@@ -31,7 +34,13 @@ export function ManageSetsDialog({ open, onClose }: { open: boolean; onClose: ()
   }
 
   async function handleDelete(set: DeviceSet) {
-    if (!confirm(`Set „${set.name}" wirklich löschen? Geräte selbst bleiben erhalten.`)) return;
+    const ok = await confirm({
+      title: "Set löschen",
+      message: `Set „${set.name}" wirklich löschen? Geräte selbst bleiben erhalten.`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteSet.mutateAsync(set.id);
   }
 
@@ -204,6 +213,7 @@ function SetEditor({
   const createSet = useCreateDeviceSet();
   const updateSet = useUpdateDeviceSet();
   const uploadImage = useUploadSetImage();
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(existingSet?.name ?? "");
@@ -246,7 +256,7 @@ function SetEditor({
       const path = await uploadImage.mutateAsync(file);
       setImagePath(path);
     } catch (e) {
-      alert(`Bild konnte nicht hochgeladen werden: ${e instanceof Error ? e.message : "Fehler"}`);
+      toast.error(`Bild konnte nicht hochgeladen werden: ${e instanceof Error ? e.message : "Fehler"}`);
     }
   }
 

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { TaskStatusBadge, TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { useJobTasks, useUpdateTaskStatus, useDeleteTask } from "@/hooks/useTasks";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
@@ -17,6 +18,7 @@ export function JobTasksSection({ jobId, jobTitle, jobColor }: JobTasksSectionPr
   const { data: tasks, isLoading } = useJobTasks(jobId);
   const updateStatus = useUpdateTaskStatus();
   const deleteTask = useDeleteTask();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
 
   return (
@@ -96,8 +98,15 @@ export function JobTasksSection({ jobId, jobTitle, jobColor }: JobTasksSectionPr
               </div>
 
               <button
-                onClick={() => {
-                  if (confirm(`„${task.title}" wirklich löschen?`)) {
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      title: "Aufgabe löschen",
+                      message: `„${task.title}" wirklich löschen?`,
+                      confirmLabel: "Löschen",
+                      danger: true,
+                    })
+                  ) {
                     deleteTask.mutate(task.id);
                   }
                 }}

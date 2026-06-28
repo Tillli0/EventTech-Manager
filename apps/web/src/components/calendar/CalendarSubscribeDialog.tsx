@@ -4,6 +4,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/States";
 import { useCalendarFeedToken, useRegenerateCalendarFeed, calendarFeedUrl } from "@/hooks/useCalendarFeed";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 /** Erkennt lokale/LAN-Adressen, die aus dem Internet (z. B. von Googles Servern)
  * nicht erreichbar sind — dann kann ein Online-Abo nicht funktionieren. */
@@ -33,6 +34,7 @@ function isPrivateUrl(url: string): boolean {
 export function CalendarSubscribeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: token, isLoading } = useCalendarFeedToken();
   const regenerate = useRegenerateCalendarFeed();
+  const confirm = useConfirm();
   const [copied, setCopied] = useState(false);
 
   const url = token ? calendarFeedUrl(token) : "";
@@ -55,9 +57,14 @@ export function CalendarSubscribeDialog({ open, onClose }: { open: boolean; onCl
   }
 
   async function handleRegenerate() {
-    if (!confirm("Neuen Abo-Link erzeugen? Bestehende Abos hören dann auf zu aktualisieren, bis du den neuen Link einträgst.")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Neuen Abo-Link erzeugen?",
+      message:
+        "Bestehende Abos hören dann auf zu aktualisieren, bis du den neuen Link einträgst.",
+      confirmLabel: "Neu erzeugen",
+      danger: true,
+    });
+    if (!ok) return;
     await regenerate.mutateAsync();
   }
 

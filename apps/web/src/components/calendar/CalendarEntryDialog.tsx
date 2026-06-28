@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { FormField, Input, Textarea, Label } from "@/components/ui/Input";
 import { DateRangeField } from "@/components/ui/DateRangeField";
 import { useCreateCalendarEntry, useUpdateCalendarEntry, useDeleteCalendarEntry } from "@/hooks/useCalendar";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useJob } from "@/hooks/useJobs";
 import type { CalendarEntry } from "@/types/database";
 import { formatDateTime, formatDate } from "@/lib/format";
@@ -24,6 +25,7 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
   const createEntry = useCreateCalendarEntry();
   const updateEntry = useUpdateCalendarEntry();
   const deleteEntry = useDeleteCalendarEntry();
+  const confirm = useConfirm();
   // Bei einem Termin, der zu einem Job gehört: dessen Zeitplan mitladen, damit
   // man direkt aus dem Kalender heraus den Programmablauf sieht.
   const { data: jobDetail } = useJob(existingEntry?.job_id ?? undefined);
@@ -104,7 +106,13 @@ export function CalendarEntryDialog({ open, onClose, existingEntry, prefillDate 
 
   async function handleDelete() {
     if (!existingEntry) return;
-    if (!confirm(`„${existingEntry.title}" wirklich löschen?`)) return;
+    const ok = await confirm({
+      title: "Termin löschen",
+      message: `„${existingEntry.title}" wirklich löschen?`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteEntry.mutateAsync(existingEntry.id);
     onClose();
   }

@@ -9,6 +9,7 @@ import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { DeviceAvailabilityBadge } from "@/components/ui/DeviceAvailabilityBadge";
 import { PillSelect } from "@/components/ui/PillSelect";
 import { LoadingState, ErrorState } from "@/components/ui/States";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useDeviceBookings, useDevicesOutNowMap } from "@/hooks/useJobs";
 import { useDeviceHistory } from "@/hooks/useDeviceHistory";
 import type { DeviceHistory } from "@/types/database";
@@ -37,6 +38,7 @@ export function DeviceDetailPage() {
   const { data: outNowMap } = useDevicesOutNowMap();
   const updateStatus = useUpdateDeviceStatus();
   const deleteDevice = useDeleteDevice();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
 
   if (isLoading) return <LoadingState label="Gerät wird geladen …" />;
@@ -46,7 +48,13 @@ export function DeviceDetailPage() {
   const primaryBarcode = device.barcodes?.find((b) => b.is_primary) ?? device.barcodes?.[0];
 
   async function handleDelete() {
-    if (!confirm(`„${device!.name}" wirklich endgültig löschen?`)) return;
+    const ok = await confirm({
+      title: "Gerät löschen",
+      message: `„${device!.name}" wirklich endgültig löschen?`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     await deleteDevice.mutateAsync(device!.id);
     navigate("/inventar");
   }
@@ -323,6 +331,7 @@ function DevicePhotosCard({ deviceId, canEdit }: { deviceId: string; canEdit: bo
   const uploadPhoto = useUploadDevicePhoto();
   const deletePhoto = useDeleteDevicePhoto();
   const setCover = useSetCoverPhoto();
+  const confirm = useConfirm();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Cover zuerst anzeigen, danach nach sort_order.
@@ -418,8 +427,8 @@ function DevicePhotosCard({ deviceId, canEdit }: { deviceId: string; canEdit: bo
                     type="button"
                     title="Foto löschen"
                     disabled={isBusy}
-                    onClick={() => {
-                      if (!confirm("Foto wirklich löschen?")) return;
+                    onClick={async () => {
+                      if (!(await confirm({ message: "Foto wirklich löschen?", confirmLabel: "Löschen", danger: true }))) return;
                       deletePhoto.mutate({ id: photo.id, storagePath: photo.storage_path, deviceId });
                     }}
                     className="flex h-6 w-6 items-center justify-center rounded-full bg-bg-surface/90 text-ink-muted shadow hover:text-status-defekt"
