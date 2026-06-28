@@ -12,9 +12,15 @@ export interface CompanySettings {
   tax_id: string | null;
   bank_line: string | null;
   payment_terms: string | null;
+  logo_path: string | null;
 }
 
 const KEY = ["company-settings"] as const;
+
+/** Öffentliche URL für ein im company-assets-Bucket gespeichertes Logo. */
+export function companyLogoUrl(path: string): string {
+  return supabase.storage.from("company-assets").getPublicUrl(path).data.publicUrl;
+}
 
 /** DB-Zeile in die PDF-Struktur (CompanyInfo) übersetzen; leere Felder fallen auf die Konstante zurück. */
 export function toCompanyInfo(s: CompanySettings | null | undefined): CompanyInfo {
@@ -28,6 +34,7 @@ export function toCompanyInfo(s: CompanySettings | null | undefined): CompanyInf
     taxId: s.tax_id ?? undefined,
     bankLine: s.bank_line ?? undefined,
     paymentTerms: s.payment_terms ?? undefined,
+    logoUrl: s.logo_path ? companyLogoUrl(s.logo_path) : undefined,
   };
 }
 
@@ -57,6 +64,45 @@ export function useUpdateCompanySettings() {
       const { error } = await supabase
         .from("company_settings")
         .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq("id", true);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+/** Lädt ein Firmenlogo hoch und speichert dessen Pfad in den Firmendaten. */
+export function useUploadCompanyLogo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const ext = file.name.split(".").pop() ?? "png";
+      const path = `logo-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("company-assets")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { error } = await supabase
+        .from("company_settings")
+        .update({ logo_path: path, updated_at: new Date().toISOString() })
+        .eq("id", true);
+      if (error) throw error;
+      return path;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+/** Entfernt das Firmenlogo wieder (Pfad zurücksetzen). */
+export function useRemoveCompanyLogo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (currentPath: string | null) => {
+      if (currentPath) await supabase.storage.from("company-assets").remove([currentPath]);
+      const { error } = await supabase
+        .from("company_settings")
+        .update({ logo_path: null, updated_at: new Date().toISOString() })
         .eq("id", true);
       if (error) throw error;
     },

@@ -16,6 +16,8 @@ export interface CompanyInfo {
   bankLine?: string;
   /** Standard-Zahlungsziel/Hinweistext unter dem Angebot. */
   paymentTerms?: string;
+  /** Öffentliche URL des Firmenlogos (für den PDF-Briefkopf). */
+  logoUrl?: string;
 }
 
 export const COMPANY_INFO: CompanyInfo = {

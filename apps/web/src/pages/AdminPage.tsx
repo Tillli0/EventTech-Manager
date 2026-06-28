@@ -1,11 +1,17 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2, KeyRound, ShieldCheck, User as UserIcon, Building2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, KeyRound, ShieldCheck, User as UserIcon, Building2, ImagePlus, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
-import { useCompanySettings, useUpdateCompanySettings } from "@/hooks/useCompanySettings";
+import {
+  useCompanySettings,
+  useUpdateCompanySettings,
+  useUploadCompanyLogo,
+  useRemoveCompanyLogo,
+  companyLogoUrl,
+} from "@/hooks/useCompanySettings";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { LoadingState, ErrorState } from "@/components/ui/States";
@@ -284,11 +290,36 @@ export function AdminPage() {
 function CompanySettingsCard() {
   const { data, isLoading } = useCompanySettings();
   const update = useUpdateCompanySettings();
+  const uploadLogo = useUploadCompanyLogo();
+  const removeLogo = useRemoveCompanyLogo();
+  const toast = useToast();
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     name: "", addressText: "", phone: "", email: "", website: "", tax_id: "", bank_line: "", payment_terms: "",
   });
   const [loaded, setLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (logoInputRef.current) logoInputRef.current.value = "";
+    if (!file) return;
+    try {
+      await uploadLogo.mutateAsync(file);
+      toast.success("Logo hochgeladen.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Logo konnte nicht hochgeladen werden.");
+    }
+  }
+
+  async function handleLogoRemove() {
+    try {
+      await removeLogo.mutateAsync(data?.logo_path ?? null);
+      toast.success("Logo entfernt.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Logo konnte nicht entfernt werden.");
+    }
+  }
 
   useEffect(() => {
     if (data && !loaded) {
@@ -341,6 +372,59 @@ function CompanySettingsCard() {
             <p className="text-xs text-ink-muted">
               Diese Daten erscheinen im Briefkopf und in der Fußzeile der Angebots-PDFs.
             </p>
+
+            <div>
+              <p className="mb-2 text-xs font-medium text-ink-muted">Logo (Briefkopf)</p>
+              <div className="flex items-center gap-4">
+                {data?.logo_path ? (
+                  <div className="relative inline-block">
+                    <img
+                      src={companyLogoUrl(data.logo_path)}
+                      alt="Firmenlogo"
+                      className="h-16 w-auto max-w-[180px] rounded border border-border bg-white object-contain p-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleLogoRemove}
+                      disabled={removeLogo.isPending}
+                      className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-status-defekt text-white shadow"
+                      title="Logo entfernen"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={uploadLogo.isPending}
+                    className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border text-ink-faint transition-colors hover:border-accent hover:text-accent"
+                  >
+                    <ImagePlus size={20} />
+                  </button>
+                )}
+                <div className="text-xs text-ink-faint">
+                  {uploadLogo.isPending ? (
+                    "Wird hochgeladen …"
+                  ) : (
+                    <>
+                      PNG/JPG, erscheint oben links im PDF.
+                      {data?.logo_path && (
+                        <button
+                          type="button"
+                          onClick={() => logoInputRef.current?.click()}
+                          className="ml-1 text-accent hover:underline"
+                        >
+                          Ersetzen
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+                <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+              </div>
+            </div>
+
             <FormField label="Firmenname">
               <Input value={form.name} onChange={(e) => set("name", e.target.value)} />
             </FormField>

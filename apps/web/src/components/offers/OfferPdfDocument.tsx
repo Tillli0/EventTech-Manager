@@ -1,4 +1,4 @@
-import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import type { Offer } from "@/types/database";
 import { offerItemTotal, offerTotals } from "@/types/database";
 import { COMPANY_INFO, type CompanyInfo } from "@/lib/companyInfo";
@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: "#1a1a1a", fontFamily: "Helvetica" },
   headerRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 28 },
+  logo: { maxHeight: 56, maxWidth: 180, marginBottom: 8, objectFit: "contain" },
   companyName: { fontSize: 14, fontFamily: "Helvetica-Bold", marginBottom: 4 },
   muted: { color: "#666" },
   metaBox: { textAlign: "right" },
@@ -79,6 +80,7 @@ export function OfferPdfDocument({ offer, company = COMPANY_INFO }: { offer: Off
       <Page size="A4" style={styles.page}>
         <View style={styles.headerRow}>
           <View>
+            {company.logoUrl && <Image src={company.logoUrl} style={styles.logo} />}
             <Text style={styles.companyName}>{company.name}</Text>
             {company.addressLines.map((line, i) => (
               <Text key={i} style={styles.muted}>
