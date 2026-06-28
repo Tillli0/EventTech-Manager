@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Plus, Trash2, KeyRound, ShieldCheck, User as UserIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Trash2, KeyRound, ShieldCheck, User as UserIcon, Building2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
-import { FormField, Input, Select } from "@/components/ui/Input";
+import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
+import { useCompanySettings, useUpdateCompanySettings } from "@/hooks/useCompanySettings";
 import { LoadingState, ErrorState } from "@/components/ui/States";
 import {
   useAdminUsers,
@@ -81,6 +82,12 @@ export function AdminPage() {
           ) : undefined
         }
       />
+
+      {isAdmin && (
+        <div className="mb-6">
+          <CompanySettingsCard />
+        </div>
+      )}
 
       {isLoading && <LoadingState label="Nutzer werden geladen …" />}
       {error && <ErrorState message={error.message} />}
@@ -225,6 +232,106 @@ export function AdminPage() {
 
       <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
+  );
+}
+
+/** Firmendaten für die Angebots-PDFs (Briefkopf/Fußzeile) — nur Admin. */
+function CompanySettingsCard() {
+  const { data, isLoading } = useCompanySettings();
+  const update = useUpdateCompanySettings();
+  const [form, setForm] = useState({
+    name: "", addressText: "", phone: "", email: "", website: "", tax_id: "", bank_line: "", payment_terms: "",
+  });
+  const [loaded, setLoaded] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (data && !loaded) {
+      setForm({
+        name: data.name ?? "",
+        addressText: (data.address_lines ?? []).join("\n"),
+        phone: data.phone ?? "",
+        email: data.email ?? "",
+        website: data.website ?? "",
+        tax_id: data.tax_id ?? "",
+        bank_line: data.bank_line ?? "",
+        payment_terms: data.payment_terms ?? "",
+      });
+      setLoaded(true);
+    }
+  }, [data, loaded]);
+
+  function set<K extends keyof typeof form>(k: K, v: string) {
+    setForm((f) => ({ ...f, [k]: v }));
+    setSaved(false);
+  }
+
+  async function handleSave() {
+    await update.mutateAsync({
+      name: form.name.trim(),
+      address_lines: form.addressText.split("\n").map((l) => l.trim()).filter(Boolean),
+      phone: form.phone.trim() || null,
+      email: form.email.trim() || null,
+      website: form.website.trim() || null,
+      tax_id: form.tax_id.trim() || null,
+      bank_line: form.bank_line.trim() || null,
+      payment_terms: form.payment_terms.trim() || null,
+    });
+    setSaved(true);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+          <Building2 size={15} />
+          Firmendaten (Angebots-PDF)
+        </h2>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        {isLoading && !loaded ? (
+          <p className="text-sm text-ink-faint">Wird geladen …</p>
+        ) : (
+          <>
+            <p className="text-xs text-ink-muted">
+              Diese Daten erscheinen im Briefkopf und in der Fußzeile der Angebots-PDFs.
+            </p>
+            <FormField label="Firmenname">
+              <Input value={form.name} onChange={(e) => set("name", e.target.value)} />
+            </FormField>
+            <FormField label="Adresse (eine Zeile pro Zeile)">
+              <Textarea value={form.addressText} onChange={(e) => set("addressText", e.target.value)} rows={2} />
+            </FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Telefon">
+                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+              </FormField>
+              <FormField label="E-Mail">
+                <Input value={form.email} onChange={(e) => set("email", e.target.value)} />
+              </FormField>
+              <FormField label="Website">
+                <Input value={form.website} onChange={(e) => set("website", e.target.value)} />
+              </FormField>
+              <FormField label="USt-IdNr.">
+                <Input value={form.tax_id} onChange={(e) => set("tax_id", e.target.value)} />
+              </FormField>
+            </div>
+            <FormField label="Bankverbindung (Fußzeile)">
+              <Input value={form.bank_line} onChange={(e) => set("bank_line", e.target.value)} />
+            </FormField>
+            <FormField label="Zahlungs-/Hinweistext unter dem Angebot">
+              <Textarea value={form.payment_terms} onChange={(e) => set("payment_terms", e.target.value)} rows={2} />
+            </FormField>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleSave} disabled={update.isPending}>
+                {update.isPending ? "Speichert …" : "Firmendaten speichern"}
+              </Button>
+              {saved && <span className="text-xs text-status-verfuegbar">Gespeichert.</span>}
+            </div>
+          </>
+        )}
+      </CardBody>
+    </Card>
   );
 }
 

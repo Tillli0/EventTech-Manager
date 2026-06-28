@@ -1,7 +1,8 @@
 import { Document, Page, View, Text, StyleSheet, pdf } from "@react-pdf/renderer";
 import type { Offer } from "@/types/database";
 import { offerItemTotal, offerTotals } from "@/types/database";
-import { COMPANY_INFO } from "@/lib/companyInfo";
+import { COMPANY_INFO, type CompanyInfo } from "@/lib/companyInfo";
+import { fetchCompanySettings } from "@/hooks/useCompanySettings";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 const styles = StyleSheet.create({
@@ -70,7 +71,7 @@ function customerBlock(offer: Offer): string[] {
   return lines.length > 0 ? lines : ["—"];
 }
 
-export function OfferPdfDocument({ offer }: { offer: Offer }) {
+export function OfferPdfDocument({ offer, company = COMPANY_INFO }: { offer: Offer; company?: CompanyInfo }) {
   const items = offer.items ?? [];
   const { net, tax, gross } = offerTotals(items, offer.tax_rate);
 
@@ -79,14 +80,14 @@ export function OfferPdfDocument({ offer }: { offer: Offer }) {
       <Page size="A4" style={styles.page}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.companyName}>{COMPANY_INFO.name}</Text>
-            {COMPANY_INFO.addressLines.map((line, i) => (
+            <Text style={styles.companyName}>{company.name}</Text>
+            {company.addressLines.map((line, i) => (
               <Text key={i} style={styles.muted}>
                 {line}
               </Text>
             ))}
-            {COMPANY_INFO.phone && <Text style={styles.muted}>{COMPANY_INFO.phone}</Text>}
-            {COMPANY_INFO.email && <Text style={styles.muted}>{COMPANY_INFO.email}</Text>}
+            {company.phone && <Text style={styles.muted}>{company.phone}</Text>}
+            {company.email && <Text style={styles.muted}>{company.email}</Text>}
           </View>
           <View style={styles.metaBox}>
             <Text style={styles.title}>Angebot</Text>
@@ -151,17 +152,17 @@ export function OfferPdfDocument({ offer }: { offer: Offer }) {
             <Text>{offer.notes}</Text>
           </View>
         )}
-        {COMPANY_INFO.paymentTerms && (
+        {company.paymentTerms && (
           <View style={styles.notes}>
-            <Text>{COMPANY_INFO.paymentTerms}</Text>
+            <Text>{company.paymentTerms}</Text>
           </View>
         )}
 
         <View style={styles.footer} fixed>
           <Text>
-            {COMPANY_INFO.name}
-            {COMPANY_INFO.taxId ? ` · USt-IdNr. ${COMPANY_INFO.taxId}` : ""}
-            {COMPANY_INFO.bankLine ? ` · ${COMPANY_INFO.bankLine}` : ""}
+            {company.name}
+            {company.taxId ? ` · USt-IdNr. ${company.taxId}` : ""}
+            {company.bankLine ? ` · ${company.bankLine}` : ""}
           </Text>
         </View>
       </Page>
@@ -171,7 +172,8 @@ export function OfferPdfDocument({ offer }: { offer: Offer }) {
 
 /** Erzeugt das Angebots-PDF und löst den Download aus (Muster wie lib/ics.ts). */
 export async function downloadOfferPdf(offer: Offer) {
-  const blob = await pdf(<OfferPdfDocument offer={offer} />).toBlob();
+  const company = await fetchCompanySettings();
+  const blob = await pdf(<OfferPdfDocument offer={offer} company={company} />).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
