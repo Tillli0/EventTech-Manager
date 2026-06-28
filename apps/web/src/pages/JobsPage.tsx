@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Briefcase, MapPin, Download, ChevronRight, History } from "lucide-react";
+import { Plus, Briefcase, MapPin, Download, ChevronRight, History, Trash2, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
-import { useJobs } from "@/hooks/useJobs";
+import { useJobs, useDeletedJobs, useRestoreJob, useHardDeleteJob } from "@/hooks/useJobs";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import {
   JOB_STATUS_OPTIONS,
   JOB_VIEW_MODE_OPTIONS,
@@ -34,9 +36,32 @@ export function JobsPage() {
   const mayEdit = canEdit("jobs");
   const setViewMode = useSetJobViewMode();
   const { data: jobs, isLoading, error } = useJobs();
+  const { data: deletedJobs } = useDeletedJobs();
+  const restoreJob = useRestoreJob();
+  const hardDeleteJob = useHardDeleteJob();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [statusFilter, setStatusFilter] = useState<JobStatus | "alle">("alle");
   const [createOpen, setCreateOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
+
+  async function handleRestore(job: Job) {
+    await restoreJob.mutateAsync(job.id);
+    toast.success(`„${job.title}" wiederhergestellt.`);
+  }
+
+  async function handleHardDelete(job: Job) {
+    const ok = await confirm({
+      title: "Job endgültig löschen?",
+      message: `„${job.title}" wird unwiderruflich gelöscht — samt Packliste, Zeitplan und zugehörigen Kalenderterminen. Das kann nicht rückgängig gemacht werden.`,
+      confirmLabel: "Endgültig löschen",
+      danger: true,
+    });
+    if (!ok) return;
+    await hardDeleteJob.mutateAsync(job.id);
+    toast.success("Job endgültig gelöscht.");
+  }
 
   const filteredJobs = useMemo(() => {
     if (!jobs) return [];
@@ -182,8 +207,77 @@ export function JobsPage() {
         </div>
       )}
 
+      {/* Papierkorb: in den Papierkorb verschobene Jobs (nur Bearbeiter) */}
+      {mayEdit && deletedJobs && deletedJobs.length > 0 && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setTrashOpen((v) => !v)}
+            className="flex w-full items-center gap-2 rounded-md border border-border bg-bg-surface px-4 py-3 text-left transition-colors hover:border-accent/40"
+          >
+            <ChevronRight
+              size={16}
+              className={cn("shrink-0 text-ink-muted transition-transform", trashOpen && "rotate-90")}
+            />
+            <Trash2 size={15} className="shrink-0 text-ink-muted" />
+            <span className="text-sm font-medium text-ink">Papierkorb</span>
+            <span className="text-xs text-ink-faint">
+              {deletedJobs.length} {deletedJobs.length === 1 ? "Job" : "Jobs"}
+            </span>
+          </button>
+          {trashOpen && (
+            <div className="mt-2 space-y-2">
+              {deletedJobs.map((job) => (
+                <TrashedJobCard
+                  key={job.id}
+                  job={job}
+                  onRestore={() => handleRestore(job)}
+                  onDelete={() => handleHardDelete(job)}
+                  busy={restoreJob.isPending || hardDeleteJob.isPending}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <CreateJobDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
+  );
+}
+
+/** Karte für einen Job im Papierkorb: wiederherstellen oder endgültig löschen. */
+function TrashedJobCard({
+  job,
+  onRestore,
+  onDelete,
+  busy,
+}: {
+  job: Job;
+  onRestore: () => void;
+  onDelete: () => void;
+  busy: boolean;
+}) {
+  return (
+    <Card className="flex items-center justify-between gap-3 px-5 py-3">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-ink-muted line-through">{job.title}</p>
+        <p className="text-xs text-ink-faint">
+          {formatDate(job.start_date)} – {formatDate(job.end_date)}
+          {job.deleted_at && <> · gelöscht am {formatDate(job.deleted_at)}</>}
+        </p>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button size="sm" variant="secondary" onClick={onRestore} disabled={busy}>
+          <RotateCcw size={14} />
+          Wiederherstellen
+        </Button>
+        <Button size="sm" variant="danger" onClick={onDelete} disabled={busy}>
+          <Trash2 size={14} />
+          Löschen
+        </Button>
+      </div>
+    </Card>
   );
 }
 

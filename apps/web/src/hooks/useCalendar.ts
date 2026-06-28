@@ -15,7 +15,8 @@ export function useCalendarEntries(rangeStart: string, rangeEnd: string) {
         .gt("end_at", rangeStart)
         .order("start_at", { ascending: true });
       if (error) throw error;
-      return data as CalendarEntry[];
+      // Termine von Jobs im Papierkorb ausblenden (interne Termine ohne Job bleiben).
+      return (data as CalendarEntry[]).filter((e) => !e.job || !e.job.deleted_at);
     },
   });
 }
@@ -89,7 +90,9 @@ export function useJobMilestonesInRange(rangeStart: string, rangeEnd: string) {
     queryFn: async (): Promise<(JobMilestone & { job: { id: string; title: string; color: string } })[]> => {
       const { data, error } = await supabase
         .from("job_milestones")
-        .select("*, job:jobs(id, title, color)")
+        // !inner + Filter: Zeitplan-Termine von Jobs im Papierkorb ausblenden.
+        .select("*, job:jobs!inner(id, title, color, deleted_at)")
+        .is("job.deleted_at", null)
         .gte("at", rangeStart)
         .lte("at", rangeEnd)
         .order("at", { ascending: true });

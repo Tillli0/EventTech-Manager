@@ -312,6 +312,8 @@ export interface Job {
   notes: string | null;
   color: string;
   created_by: string | null;
+  /** Im Papierkorb seit … (Soft-Delete). Null = aktiv. */
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
   customer?: Customer | null;

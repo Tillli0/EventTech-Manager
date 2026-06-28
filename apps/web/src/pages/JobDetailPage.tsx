@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, Printer, FileText, Download } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, MapPin, Calendar, Printer, FileText, Download, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LoadingState, ErrorState } from "@/components/ui/States";
 import { OfferStatusBadge } from "@/components/ui/StatusBadge";
-import { useJob, useUpdateJobStatus, useUpdateJob } from "@/hooks/useJobs";
+import { useJob, useUpdateJobStatus, useUpdateJob, useSoftDeleteJob } from "@/hooks/useJobs";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useOffersForJob, fetchOfferWithItems } from "@/hooks/useOffers";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { useToast } from "@/components/ui/Toast";
@@ -28,11 +29,29 @@ import { cn } from "@/lib/cn";
 
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { canEdit } = useAuth();
   const mayEdit = canEdit("jobs");
   const { data: job, isLoading, error } = useJob(id);
   const updateStatus = useUpdateJobStatus();
   const updateJob = useUpdateJob();
+  const softDeleteJob = useSoftDeleteJob();
+  const confirm = useConfirm();
+  const toast = useToast();
+
+  async function handleMoveToTrash() {
+    if (!job) return;
+    const ok = await confirm({
+      title: "In den Papierkorb verschieben?",
+      message: `„${job.title}" wird in den Papierkorb verschoben. Du kannst ihn dort wiederherstellen oder endgültig löschen.`,
+      confirmLabel: "In den Papierkorb",
+      danger: true,
+    });
+    if (!ok) return;
+    await softDeleteJob.mutateAsync(job.id);
+    toast.success("Job in den Papierkorb verschoben.");
+    navigate("/jobs");
+  }
 
   if (isLoading) return <LoadingState label="Job wird geladen …" />;
   if (error) return <ErrorState message={error.message} />;
@@ -73,10 +92,18 @@ export function JobDetailPage() {
           </span>
         }
         actions={
-          <Button variant="secondary" onClick={() => printPacklist(job)}>
-            <Printer size={16} />
-            Packliste drucken
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => printPacklist(job)}>
+              <Printer size={16} />
+              Packliste drucken
+            </Button>
+            {mayEdit && (
+              <Button variant="ghost" onClick={handleMoveToTrash} disabled={softDeleteJob.isPending}>
+                <Trash2 size={16} />
+                Papierkorb
+              </Button>
+            )}
+          </>
         }
       />
 

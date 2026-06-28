@@ -25,6 +25,7 @@ export function useJobs() {
         // Zeitplan-Termine mitladen — für „komplett vergangen" (Termine nach dem
         // Enddatum) und die Zeitplan-Liste im Überblick (nächster Job).
         .select("*, customer:customers(*), milestones:job_milestones(id, title, at)")
+        .is("deleted_at", null)
         .order("start_date", { ascending: true });
       if (error) throw error;
       return data as Job[];
@@ -47,6 +48,70 @@ export function useJob(id: string | undefined) {
         .single();
       if (error) throw error;
       return data as Job;
+    },
+  });
+}
+
+/** Jobs im Papierkorb (Soft-Delete), zuletzt gelöschte zuerst. */
+export function useDeletedJobs() {
+  return useQuery({
+    queryKey: [...JOBS_KEY, "deleted"],
+    queryFn: async (): Promise<Job[]> => {
+      const { data, error } = await supabase
+        .from("jobs")
+        .select("*, customer:customers(*)")
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false });
+      if (error) throw error;
+      return data as Job[];
+    },
+  });
+}
+
+/** Job in den Papierkorb verschieben (Soft-Delete). */
+export function useSoftDeleteJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("jobs")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: JOBS_KEY });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
+/** Job aus dem Papierkorb wiederherstellen. */
+export function useRestoreJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("jobs").update({ deleted_at: null }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: JOBS_KEY });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
+/** Job endgültig löschen (inkl. abhängiger Daten via FK-Cascade). */
+export function useHardDeleteJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("jobs").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: JOBS_KEY });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }

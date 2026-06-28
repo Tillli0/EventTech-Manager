@@ -79,6 +79,7 @@ export function useCustomerJobs(customerId: string | undefined) {
         .from("jobs")
         .select("*")
         .eq("customer_id", customerId)
+        .is("deleted_at", null)
         .order("start_date", { ascending: false });
       if (error) throw error;
       return data;
