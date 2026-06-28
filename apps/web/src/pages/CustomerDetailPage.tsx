@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, MapPin, Send, Plus, Download, FileText } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Send, Plus, Download, FileText, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +21,7 @@ import { JobStatusBadge, OfferStatusBadge, StammkundeBadge } from "@/components/
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { useToast } from "@/components/ui/Toast";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
+import { CreateCustomerDialog } from "@/components/customers/CreateCustomerDialog";
 import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
 
@@ -39,6 +40,7 @@ export function CustomerDetailPage() {
   const toast = useToast();
   const [noteContent, setNoteContent] = useState("");
   const [createOfferOpen, setCreateOfferOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   if (isLoading) return <LoadingState label="Kunde wird geladen …" />;
@@ -210,8 +212,14 @@ export function CustomerDetailPage() {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-ink">Kontaktdaten</h2>
+              {mayEditCustomers && (
+                <Button size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
+                  <Pencil size={14} />
+                  Bearbeiten
+                </Button>
+              )}
             </CardHeader>
             <CardBody className="space-y-3 text-sm">
               {customer.email && (
@@ -290,6 +298,8 @@ export function CustomerDetailPage() {
         onClose={() => setCreateOfferOpen(false)}
         presetCustomerId={customer.id}
       />
+
+      <CreateCustomerDialog open={editOpen} onClose={() => setEditOpen(false)} editCustomer={customer} />
     </div>
   );
 }
