@@ -764,3 +764,43 @@ export function useDeleteJobMilestone() {
     },
   });
 }
+
+/** Öffentliche URL für ein im job-photos-Bucket gespeichertes Zeitplan-Foto. */
+export function milestonePhotoUrl(path: string): string {
+  return supabase.storage.from("job-photos").getPublicUrl(path).data.publicUrl;
+}
+
+/** Lädt ein Foto zu einem Zeitplan-Programmpunkt hoch und speichert dessen Pfad. */
+export function useUploadMilestonePhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, jobId, file }: { id: string; jobId: string; file: File }) => {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${jobId}/${id}-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("job-photos").upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { error } = await supabase.from("job_milestones").update({ photo_path: path }).eq("id", id);
+      if (error) throw error;
+      return jobId;
+    },
+    onSuccess: (jobId) => {
+      queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, jobId] });
+    },
+  });
+}
+
+/** Entfernt das Foto eines Zeitplan-Programmpunkts wieder. */
+export function useRemoveMilestonePhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, jobId, photoPath }: { id: string; jobId: string; photoPath: string | null }) => {
+      if (photoPath) await supabase.storage.from("job-photos").remove([photoPath]);
+      const { error } = await supabase.from("job_milestones").update({ photo_path: null }).eq("id", id);
+      if (error) throw error;
+      return jobId;
+    },
+    onSuccess: (jobId) => {
+      queryClient.invalidateQueries({ queryKey: [...JOBS_KEY, jobId] });
+    },
+  });
+}

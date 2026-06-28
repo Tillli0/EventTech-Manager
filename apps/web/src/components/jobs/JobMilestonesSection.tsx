@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Trash2, Pencil, Check, X, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { DateTimeField } from "@/components/ui/DateTimeField";
@@ -7,6 +7,9 @@ import {
   useCreateJobMilestone,
   useUpdateJobMilestone,
   useDeleteJobMilestone,
+  useUploadMilestonePhoto,
+  useRemoveMilestonePhoto,
+  milestonePhotoUrl,
 } from "@/hooks/useJobs";
 import type { JobMilestone } from "@/types/database";
 import { toDate } from "@/lib/datetime";
@@ -93,10 +96,20 @@ export function JobMilestonesSection({
 function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: JobMilestone; jobId: string }) {
   const updateMilestone = useUpdateJobMilestone();
   const deleteMilestone = useDeleteJobMilestone();
+  const uploadPhoto = useUploadMilestonePhoto();
+  const removePhoto = useRemoveMilestonePhoto();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(milestone.title);
   const [at, setAt] = useState<Date | null>(toDate(milestone.at));
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!file) return;
+    uploadPhoto.mutate({ id: milestone.id, jobId, file });
+  }
 
   function save() {
     if (!title.trim() || !at) return;
@@ -122,6 +135,19 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{milestone.title}</span>
         <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadPhoto.isPending}
+          className={cn(
+            "shrink-0 hover:text-ink disabled:opacity-50",
+            milestone.photo_path ? "text-accent" : "text-ink-faint",
+          )}
+          aria-label={milestone.photo_path ? "Foto ersetzen" : "Foto hinzufügen"}
+          title={milestone.photo_path ? "Foto ersetzen" : "Foto hinzufügen"}
+        >
+          <ImagePlus size={14} />
+        </button>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+        <button
           onClick={() => setEditing((v) => !v)}
           className="shrink-0 text-ink-faint hover:text-ink"
           aria-label="Programmpunkt bearbeiten"
@@ -136,6 +162,30 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
           <Trash2 size={14} />
         </button>
       </div>
+
+      {/* Foto-Vorschau (falls vorhanden) */}
+      {milestone.photo_path && (
+        <div className="px-3 pb-2.5">
+          <div className="relative inline-block">
+            <a href={milestonePhotoUrl(milestone.photo_path)} target="_blank" rel="noopener noreferrer">
+              <img
+                src={milestonePhotoUrl(milestone.photo_path)}
+                alt={milestone.title}
+                className="max-h-40 rounded-md border border-border object-contain"
+              />
+            </a>
+            <button
+              type="button"
+              onClick={() => removePhoto.mutate({ id: milestone.id, jobId, photoPath: milestone.photo_path })}
+              disabled={removePhoto.isPending}
+              className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-status-defekt text-white shadow"
+              aria-label="Foto entfernen"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bearbeiten: Titel + Zeitpunkt */}
       {editing && (

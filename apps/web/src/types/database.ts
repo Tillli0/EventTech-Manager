@@ -325,6 +325,8 @@ export interface JobMilestone {
   job_id: string;
   title: string;
   at: string;
+  /** Optionales Foto (Storage-Pfad im Bucket job-photos), z.B. Bühnenplan. */
+  photo_path: string | null;
   created_at: string;
 }
 
