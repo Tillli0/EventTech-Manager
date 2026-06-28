@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Minus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight, ScanLine, MapPin, ArrowLeft, Check } from "lucide-react";
+import { Plus, Minus, Search, Tag, Settings2, Boxes, Image as ImageIcon, Download, Upload, ChevronUp, ChevronDown, ChevronRight, ScanLine, MapPin, ArrowLeft, Check, ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -20,7 +20,7 @@ import {
 } from "@/hooks/useJobs";
 import { useDeviceSets, useAddDeviceSetToJob } from "@/hooks/useDeviceSets";
 import { ManageLocationsDialog } from "@/components/inventory/ManageLocationsDialog";
-import { DEVICE_STATUS_OPTIONS, type DeviceStatus, type Device, type Job, type PacklistItem } from "@/types/database";
+import { DEVICE_STATUS_OPTIONS, inspectionStatus, type DeviceStatus, type Device, type Job, type PacklistItem } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 import { CreateDeviceDialog } from "@/components/inventory/CreateDeviceDialog";
 import { ManageCategoriesDialog } from "@/components/inventory/ManageCategoriesDialog";
@@ -296,6 +296,18 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
     return counts;
   }, [devices]);
 
+  // DGUV-V3-Erinnerung: fällige (≤30 Tage) und überfällige Prüfungen zählen.
+  const inspectionReminder = useMemo(() => {
+    let overdue = 0;
+    let soon = 0;
+    devices?.forEach((d) => {
+      const s = inspectionStatus(d.next_inspection_date);
+      if (s === "overdue") overdue++;
+      else if (s === "soon") soon++;
+    });
+    return { overdue, soon };
+  }, [devices]);
+
   return (
     <div>
       {selectMode && packlistJob && (
@@ -390,6 +402,23 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
               <p className="mt-1 text-2xl font-semibold text-ink">{statusCounts[opt.value] ?? 0}</p>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* DGUV-V3-Erinnerung */}
+      {!selectMode && (inspectionReminder.overdue > 0 || inspectionReminder.soon > 0) && (
+        <div className="mb-6 flex items-start gap-2.5 rounded-lg border border-status-wartung/40 bg-status-wartung-bg px-4 py-3 text-sm">
+          <ShieldAlert size={18} className="mt-0.5 shrink-0 text-status-wartung" />
+          <div>
+            <p className="font-medium text-ink">DGUV-V3-Prüfungen fällig</p>
+            <p className="text-ink-muted">
+              {inspectionReminder.overdue > 0 && (
+                <span className="text-status-defekt">{inspectionReminder.overdue} überfällig</span>
+              )}
+              {inspectionReminder.overdue > 0 && inspectionReminder.soon > 0 && " · "}
+              {inspectionReminder.soon > 0 && <span>{inspectionReminder.soon} in den nächsten 30 Tagen</span>}
+            </p>
+          </div>
         </div>
       )}
 

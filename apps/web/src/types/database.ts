@@ -123,6 +123,10 @@ export interface Device {
   defective_quantity: number;
   /** Netto-Tagesmietpreis in EUR. Vorbelegung für Angebotspositionen. Null = nicht gepflegt. */
   daily_rental_price: number | null;
+  /** Letzte DGUV-V3-Elektroprüfung (Datum). Null = nicht gepflegt / nicht prüfpflichtig. */
+  last_inspection_date: string | null;
+  /** Nächste fällige DGUV-V3-Prüfung (Datum). Basis für die Erinnerung. */
+  next_inspection_date: string | null;
   created_at: string;
   updated_at: string;
   // Joins (optional, je nach Query)
@@ -162,6 +166,34 @@ export function deviceBreakdown(
 export function isQuantityDevice(device: Pick<Device, "stock_quantity">): boolean {
   return device.stock_quantity > 1;
 }
+
+/** Status der DGUV-V3-Prüffälligkeit anhand des nächsten Prüfdatums. */
+export type InspectionStatus = "none" | "ok" | "soon" | "overdue";
+
+/**
+ * Leitet aus dem nächsten Prüfdatum den Fälligkeits-Status ab.
+ * „soon" = innerhalb der nächsten `soonDays` Tage fällig (Default 30).
+ */
+export function inspectionStatus(
+  nextDate: string | null | undefined,
+  soonDays = 30,
+): InspectionStatus {
+  if (!nextDate) return "none";
+  const next = new Date(`${nextDate}T00:00:00`);
+  if (Number.isNaN(next.getTime())) return "none";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((next.getTime() - today.getTime()) / 86_400_000);
+  if (diffDays < 0) return "overdue";
+  if (diffDays <= soonDays) return "soon";
+  return "ok";
+}
+
+export const INSPECTION_STATUS_LABELS: Record<Exclude<InspectionStatus, "none">, string> = {
+  ok: "Prüfung gültig",
+  soon: "Prüfung bald fällig",
+  overdue: "Prüfung überfällig",
+};
 
 /** Standardfarbe für neue Sets (entspricht dem DB-Default). */
 export const DEFAULT_SET_COLOR = "#6366f1";

@@ -41,7 +41,21 @@ export function DeviceEditCard({ device, onDone }: { device: Device; onDone: () 
   const [purchaseDate, setPurchaseDate] = useState(device.purchase_date ?? "");
   const [weight, setWeight] = useState(device.weight_kg != null ? String(device.weight_kg) : "");
   const [power, setPower] = useState(device.power_watts != null ? String(device.power_watts) : "");
+  const [lastInspection, setLastInspection] = useState(device.last_inspection_date ?? "");
+  const [nextInspection, setNextInspection] = useState(device.next_inspection_date ?? "");
   const [notes, setNotes] = useState(device.notes ?? "");
+
+  /** Beim Setzen der letzten Prüfung das nächste Datum (+1 Jahr) vorschlagen, solange leer. */
+  function handleLastInspectionChange(value: string) {
+    setLastInspection(value);
+    if (value && !nextInspection) {
+      const d = new Date(`${value}T00:00:00`);
+      if (!Number.isNaN(d.getTime())) {
+        d.setFullYear(d.getFullYear() + 1);
+        setNextInspection(d.toISOString().slice(0, 10));
+      }
+    }
+  }
 
   const rootCategories = (categories ?? []).filter((c) => !c.parent_id);
 
@@ -66,6 +80,8 @@ export function DeviceEditCard({ device, onDone }: { device: Device; onDone: () 
       purchase_date: purchaseDate || null,
       weight_kg: num(weight),
       power_watts: power.trim() ? Math.round(num(power) ?? 0) : null,
+      last_inspection_date: lastInspection || null,
+      next_inspection_date: nextInspection || null,
       notes: notes.trim() || null,
     });
 
@@ -173,6 +189,18 @@ export function DeviceEditCard({ device, onDone }: { device: Device; onDone: () 
           <FormField label="Leistung (W)">
             <Input type="number" min={0} value={power} onChange={(e) => setPower(e.target.value)} />
           </FormField>
+        </div>
+
+        <div className="rounded-lg border border-border bg-bg-raised/40 p-3">
+          <p className="mb-2 text-xs font-medium text-ink-muted">DGUV V3 — Elektroprüfung</p>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Letzte Prüfung">
+              <Input type="date" value={lastInspection} onChange={(e) => handleLastInspectionChange(e.target.value)} />
+            </FormField>
+            <FormField label="Nächste Prüfung" hint="Vorschlag: 1 Jahr nach der letzten Prüfung.">
+              <Input type="date" value={nextInspection} onChange={(e) => setNextInspection(e.target.value)} />
+            </FormField>
+          </div>
         </div>
 
         <FormField label="Notizen">

@@ -23,7 +23,12 @@ import {
   useSetCoverPhoto,
   devicePhotoUrl,
 } from "@/hooks/useDevices";
-import { DEVICE_STATUS_OPTIONS, type DeviceStatus } from "@/types/database";
+import {
+  DEVICE_STATUS_OPTIONS,
+  inspectionStatus,
+  INSPECTION_STATUS_LABELS,
+  type DeviceStatus,
+} from "@/types/database";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { BarcodeLabel, printBarcodeLabels } from "@/components/barcode/BarcodeLabel";
 import { useAuth } from "@/auth/AuthProvider";
@@ -187,6 +192,21 @@ export function DeviceDetailPage() {
             </CardBody>
           </Card>
 
+          {(device.last_inspection_date || device.next_inspection_date) && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-sm font-semibold text-ink">DGUV V3 — Elektroprüfung</h2>
+              </CardHeader>
+              <CardBody className="space-y-3 text-sm">
+                <InspectionBadge nextDate={device.next_inspection_date} />
+                <div className="grid grid-cols-2 gap-4">
+                  <DataField label="Letzte Prüfung" value={formatDate(device.last_inspection_date)} />
+                  <DataField label="Nächste Prüfung" value={formatDate(device.next_inspection_date)} />
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
           {primaryBarcode && (
             <Card>
               <CardHeader>
@@ -323,6 +343,23 @@ function DataField({ label, value, mono }: { label: string; value: string | null
       <p className="text-xs text-ink-faint">{label}</p>
       <p className={cn("mt-0.5 text-ink", mono && "font-mono text-sm")}>{value || "—"}</p>
     </div>
+  );
+}
+
+/** Farbiger Status-Hinweis zur DGUV-V3-Prüffälligkeit. */
+function InspectionBadge({ nextDate }: { nextDate: string | null }) {
+  const status = inspectionStatus(nextDate);
+  if (status === "none") return null;
+  const cls =
+    status === "overdue"
+      ? "bg-status-defekt-bg text-status-defekt"
+      : status === "soon"
+        ? "bg-status-wartung-bg text-status-wartung"
+        : "bg-status-verfuegbar-bg text-status-verfuegbar";
+  return (
+    <span className={cn("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium", cls)}>
+      {INSPECTION_STATUS_LABELS[status]}
+    </span>
   );
 }
 
