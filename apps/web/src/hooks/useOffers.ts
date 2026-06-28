@@ -204,6 +204,64 @@ export function useCreateOffer() {
   });
 }
 
+export interface UpdateOfferInput extends CreateOfferInput {
+  id: string;
+  status: OfferStatus;
+}
+
+/**
+ * Aktualisiert ein bestehendes Angebot: Kopfdaten + Status, und ersetzt die
+ * Positionen komplett (löschen + neu einfügen — einfacher und konsistent zur
+ * Anlage). Die Angebotsnummer bleibt unverändert.
+ */
+export function useUpdateOffer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateOfferInput): Promise<Offer> => {
+      const { id, items, inquiry_id, ...offerFields } = input;
+
+      const { data, error } = await supabase
+        .from("offers")
+        .update({ ...offerFields, inquiry_id: inquiry_id ?? null })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      const offer = data as Offer;
+
+      // Positionen ersetzen.
+      const { error: delError } = await supabase.from("offer_items").delete().eq("offer_id", id);
+      if (delError) throw delError;
+      if (items.length > 0) {
+        const { error: insError } = await supabase.from("offer_items").insert(
+          items.map((item, index) => ({
+            offer_id: id,
+            device_id: item.device_id,
+            description: item.description,
+            quantity: item.quantity,
+            rental_days: item.rental_days,
+            unit_price: item.unit_price,
+            sort_order: index,
+          })),
+        );
+        if (insError) throw insError;
+      }
+
+      return offer;
+    },
+    onSuccess: (offer) => {
+      queryClient.invalidateQueries({ queryKey: OFFERS_KEY });
+      queryClient.invalidateQueries({ queryKey: [...OFFERS_KEY, offer.id] });
+      if (offer.customer_id) {
+        queryClient.invalidateQueries({ queryKey: [...OFFERS_KEY, "by-customer", offer.customer_id] });
+      }
+      if (offer.job_id) {
+        queryClient.invalidateQueries({ queryKey: [...OFFERS_KEY, "by-job", offer.job_id] });
+      }
+    },
+  });
+}
+
 export function useUpdateOfferStatus() {
   const queryClient = useQueryClient();
   return useMutation({

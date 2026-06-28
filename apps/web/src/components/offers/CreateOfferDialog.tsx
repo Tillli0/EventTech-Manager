@@ -6,8 +6,8 @@ import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateField";
 import { useCustomers, useInquiries } from "@/hooks/useCustomers";
 import { useDevices } from "@/hooks/useDevices";
-import { useCreateOffer, type CreateOfferItemInput } from "@/hooks/useOffers";
-import { offerTotals } from "@/types/database";
+import { useCreateOffer, useUpdateOffer, type CreateOfferItemInput } from "@/hooks/useOffers";
+import { offerTotals, OFFER_STATUS_OPTIONS, type Offer, type OfferStatus } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 
 interface DraftItem extends CreateOfferItemInput {
@@ -28,6 +28,7 @@ export function CreateOfferDialog({
   presetTitle,
   presetItems,
   presetJobId,
+  editOffer,
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,11 +39,15 @@ export function CreateOfferDialog({
   presetItems?: CreateOfferItemInput[];
   /** Verknüpfter Job — das Angebot wird beim Job gespeichert. */
   presetJobId?: string;
+  /** Wenn gesetzt: bestehendes Angebot bearbeiten statt neu anlegen. */
+  editOffer?: Offer;
 }) {
   const { data: customers } = useCustomers();
   const { data: inquiries } = useInquiries();
   const { data: devices } = useDevices();
   const createOffer = useCreateOffer();
+  const updateOffer = useUpdateOffer();
+  const isEdit = !!editOffer;
 
   const [customerId, setCustomerId] = useState(presetCustomerId ?? "");
   const [inquiryId, setInquiryId] = useState(presetInquiryId ?? "");
@@ -50,6 +55,7 @@ export function CreateOfferDialog({
   const [validUntil, setValidUntil] = useState("");
   const [taxRate, setTaxRate] = useState("19");
   const [notes, setNotes] = useState("");
+  const [status, setStatus] = useState<OfferStatus>("entwurf");
   const [items, setItems] = useState<DraftItem[]>([]);
   const [deviceToAdd, setDeviceToAdd] = useState("");
   const [bulkDays, setBulkDays] = useState("");
@@ -61,19 +67,41 @@ export function CreateOfferDialog({
   }
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    if (editOffer) {
+      setCustomerId(editOffer.customer_id ?? "");
+      setInquiryId(editOffer.inquiry_id ?? "");
+      setTitle(editOffer.title);
+      setValidUntil(editOffer.valid_until ?? "");
+      setTaxRate(String(editOffer.tax_rate ?? 19));
+      setNotes(editOffer.notes ?? "");
+      setStatus(editOffer.status);
+      setItems(
+        [...(editOffer.items ?? [])]
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((it) => ({
+            key: nextKey(),
+            device_id: it.device_id,
+            description: it.description,
+            quantity: it.quantity,
+            rental_days: it.rental_days,
+            unit_price: it.unit_price,
+          })),
+      );
+    } else {
       setCustomerId(presetCustomerId ?? "");
       setInquiryId(presetInquiryId ?? "");
       setTitle(presetTitle ?? "");
       setValidUntil("");
       setTaxRate("19");
       setNotes("");
+      setStatus("entwurf");
       setItems(presetItems ? presetItems.map((it) => ({ ...it, key: nextKey() })) : []);
-      setDeviceToAdd("");
-      setBulkDays("");
-      setFormError(null);
     }
-  }, [open, presetCustomerId, presetInquiryId, presetTitle, presetItems]);
+    setDeviceToAdd("");
+    setBulkDays("");
+    setFormError(null);
+  }, [open, editOffer, presetCustomerId, presetInquiryId, presetTitle, presetItems]);
 
   const customerInquiries = useMemo(
     () => (inquiries ?? []).filter((inq) => inq.customer_id === customerId),
@@ -132,25 +160,44 @@ export function CreateOfferDialog({
       return;
     }
 
+    const payloadItems = items.map(({ key: _key, ...rest }) => ({ ...rest, description: rest.description.trim() }));
+
     try {
-      await createOffer.mutateAsync({
-        customer_id: customerId || null,
-        inquiry_id: inquiryId || null,
-        job_id: presetJobId ?? null,
-        title: title.trim(),
-        valid_until: validUntil || null,
-        tax_rate: parsedTax,
-        notes: notes.trim() || null,
-        items: items.map(({ key: _key, ...rest }) => ({ ...rest, description: rest.description.trim() })),
-      });
+      if (editOffer) {
+        await updateOffer.mutateAsync({
+          id: editOffer.id,
+          customer_id: customerId || null,
+          inquiry_id: inquiryId || null,
+          job_id: editOffer.job_id ?? null,
+          title: title.trim(),
+          valid_until: validUntil || null,
+          tax_rate: parsedTax,
+          notes: notes.trim() || null,
+          status,
+          items: payloadItems,
+        });
+      } else {
+        await createOffer.mutateAsync({
+          customer_id: customerId || null,
+          inquiry_id: inquiryId || null,
+          job_id: presetJobId ?? null,
+          title: title.trim(),
+          valid_until: validUntil || null,
+          tax_rate: parsedTax,
+          notes: notes.trim() || null,
+          items: payloadItems,
+        });
+      }
       onClose();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Angebot konnte nicht gespeichert werden.");
     }
   }
 
+  const isPending = createOffer.isPending || updateOffer.isPending;
+
   return (
-    <Dialog open={open} onClose={onClose} title="Angebot erstellen" maxWidth="max-w-3xl">
+    <Dialog open={open} onClose={onClose} title={isEdit ? "Angebot bearbeiten" : "Angebot erstellen"} maxWidth="max-w-3xl">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Kunde">
@@ -198,6 +245,18 @@ export function CreateOfferDialog({
             <Input type="number" min={0} step="0.1" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
           </FormField>
         </div>
+
+        {isEdit && (
+          <FormField label="Status">
+            <Select value={status} onChange={(e) => setStatus(e.target.value as OfferStatus)}>
+              {OFFER_STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+        )}
 
         {/* Positionen */}
         <div>
@@ -332,8 +391,8 @@ export function CreateOfferDialog({
           <Button type="button" variant="secondary" onClick={onClose}>
             Abbrechen
           </Button>
-          <Button type="submit" disabled={createOffer.isPending}>
-            {createOffer.isPending ? "Wird gespeichert …" : "Angebot speichern"}
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Wird gespeichert …" : isEdit ? "Änderungen speichern" : "Angebot speichern"}
           </Button>
         </div>
       </form>

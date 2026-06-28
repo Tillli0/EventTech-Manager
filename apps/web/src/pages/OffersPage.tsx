@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Plus, FileText, Download, Trash2 } from "lucide-react";
+import { Plus, FileText, Download, Trash2, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { OfferStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 import { useOffers, useDeleteOffer, fetchOfferWithItems } from "@/hooks/useOffers";
-import { offerTotals } from "@/types/database";
+import { offerTotals, type Offer } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadOfferPdf } from "@/components/offers/OfferPdfDocument";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
@@ -18,6 +18,7 @@ export function OffersPage() {
   const { data: offers, isLoading, error } = useOffers();
   const deleteOffer = useDeleteOffer();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOffer, setEditOffer] = useState<Offer | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function handleDownload(id: string) {
@@ -116,6 +117,17 @@ export function OffersPage() {
                         {mayEdit && (
                           <button
                             type="button"
+                            onClick={() => setEditOffer(offer)}
+                            className="flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:text-accent"
+                            aria-label="Angebot bearbeiten"
+                            title="Bearbeiten"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {mayEdit && (
+                          <button
+                            type="button"
                             onClick={() => {
                               if (confirm(`Angebot ${offer.offer_number} wirklich löschen?`)) {
                                 deleteOffer.mutate({ id: offer.id, customerId: offer.customer_id });
@@ -138,6 +150,11 @@ export function OffersPage() {
       )}
 
       <CreateOfferDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateOfferDialog
+        open={!!editOffer}
+        onClose={() => setEditOffer(null)}
+        editOffer={editOffer ?? undefined}
+      />
     </div>
   );
 }
