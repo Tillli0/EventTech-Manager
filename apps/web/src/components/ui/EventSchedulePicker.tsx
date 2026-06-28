@@ -19,6 +19,7 @@ export function EventSchedulePicker({
   defaultEndTime = "18:00",
   autoOpen = false,
   allDay = false,
+  defaultSingleDay = false,
 }: {
   onChange: (start: Date | null, end: Date | null) => void;
   initialStart?: Date | null;
@@ -29,6 +30,8 @@ export function EventSchedulePicker({
   autoOpen?: boolean;
   /** Ganztägig: Uhrzeiten ausblenden (Start 00:00, Ende 23:59). */
   allDay?: boolean;
+  /** Ohne vorhandenen Zeitraum mit „Eintägig" starten (z.B. für Jobs). */
+  defaultSingleDay?: boolean;
 }) {
   const pad = (n: number) => String(n).padStart(2, "0");
   const asTime = (d?: Date | null, fallback?: string) =>
@@ -39,7 +42,7 @@ export function EventSchedulePicker({
   const [multiDay, setMultiDay] = useState(() => {
     // Standard: Start → Ende (damit sich nach dem Startdatum das Enddatum öffnet).
     if (initialStart && initialEnd) return !sameDay(initialStart, initialEnd);
-    return true;
+    return !defaultSingleDay;
   });
   const [day, setDay] = useState<Date | null>(initialStart ?? null);
   const [startDay, setStartDay] = useState<Date | null>(initialStart ?? null);

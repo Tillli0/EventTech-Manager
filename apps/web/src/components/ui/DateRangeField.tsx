@@ -28,12 +28,15 @@ export function DateRangeField({
   initialStart,
   initialEnd,
   allDay = false,
+  defaultSingleDay = false,
   placeholder = "Zeitraum festlegen",
 }: {
   onChange: (start: Date | null, end: Date | null) => void;
   initialStart?: Date | null;
   initialEnd?: Date | null;
   allDay?: boolean;
+  /** Ohne vorhandenen Zeitraum mit „Eintägig" starten (z.B. für Jobs). */
+  defaultSingleDay?: boolean;
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -72,6 +75,7 @@ export function DateRangeField({
           <EventSchedulePicker
             autoOpen
             allDay={allDay}
+            defaultSingleDay={defaultSingleDay}
             initialStart={start}
             initialEnd={end}
             onChange={(s, e) => {

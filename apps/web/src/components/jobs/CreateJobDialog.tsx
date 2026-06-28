@@ -4,7 +4,8 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Label } from "@/components/ui/Input";
 import { DateRangeField } from "@/components/ui/DateRangeField";
-import { useCreateJob } from "@/hooks/useJobs";
+import { useCreateJob, useJobs } from "@/hooks/useJobs";
+import { JobsMiniCalendar } from "@/components/jobs/JobsMiniCalendar";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
 import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -14,6 +15,7 @@ import { randomJobColor } from "@/types/database";
 export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createJob = useCreateJob();
   const setAssignees = useSetJobAssignees();
+  const { data: jobs } = useJobs();
   const { data: customers } = useCustomers();
   const { data: allProfiles } = useProfiles();
   const profiles = assignableProfiles(allProfiles);
@@ -105,7 +107,10 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
 
         <div>
           <Label>Zeitraum *</Label>
-          <DateRangeField allDay onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
+          <DateRangeField allDay defaultSingleDay onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
+          <div className="mt-2">
+            <JobsMiniCalendar jobs={jobs} selectedStart={startDate} selectedEnd={endDate} />
+          </div>
         </div>
 
         {profiles && profiles.length > 0 && (
