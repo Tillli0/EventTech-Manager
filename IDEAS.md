@@ -33,6 +33,18 @@
 - [ ] **Lead-Notizen** — interne Notiz pro Website-Anfrage vor dem Konvertieren. · S · ★ · Freigabe
 - [ ] **Dubletten-Check auch bei manueller Kundenanlage** (nicht nur bei Lead-Konvertierung). · S · ★★ · Freigabe
 
+## 🎨 Design-Update (läuft — Freigabe erteilt)
+
+Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente Animationen
+(Mockups abgestimmt). Token-first, Seite für Seite.
+
+- [x] Akzent global auf Indigo (`tailwind.config.js`).
+- [x] **Überblick/Dashboard** neu: Kennzahlen-Karten (Hochzähl-Effekt), Auslastungs-Ring,
+      Gerätestatus-Balken, „Neue Anfragen"-Panel, gestraffte Job-/Aufgaben-Zeilen.
+- [ ] Basis-Komponenten zentral nachziehen (Button, Card, Dialog, Tabs, Badge, Input).
+- [ ] Weitere Seiten: Inventar, Jobs/Job-Detail, Kunden, Kalender, Angebote, Aufgaben.
+- [ ] Optional: Akzentfarbe final bestätigen, evtl. Light-Mode-Toggle.
+
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
 - Quick Wins (2026-06-29): ESLint-Warnung in `useJobs.ts` behoben; globaler Badge mit Anzahl

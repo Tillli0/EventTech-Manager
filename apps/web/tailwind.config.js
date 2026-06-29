@@ -20,9 +20,9 @@ export default {
           faint: "#5B6273",
         },
         accent: {
-          DEFAULT: "#3B82F6",
-          hover: "#2563EB",
-          soft: "#1E3A6B",
+          DEFAULT: "#6366F1",
+          hover: "#4F46E5",
+          soft: "#1E2147",
         },
         status: {
           verfuegbar: "#22C55E",
