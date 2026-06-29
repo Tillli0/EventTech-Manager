@@ -1,11 +1,14 @@
-import { Globe, Mail, Phone, Building2, Calendar, UserPlus, X } from "lucide-react";
+import { useState } from "react";
+import { Globe, Mail, Phone, Building2, Calendar, UserPlus, CalendarPlus, X } from "lucide-react";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { CreateJobDialog } from "@/components/jobs/CreateJobDialog";
 import {
   useWebsiteLeads,
   useConvertLeadToCustomer,
+  useCreateCustomerFromLead,
   useUpdateWebsiteLeadStatus,
 } from "@/hooks/useWebsiteLeads";
 import type { WebsiteLead, WebsiteLeadStatus } from "@/types/database";
@@ -24,9 +27,12 @@ export function WebsiteLeadsView() {
   const mayEdit = canEdit("kunden");
   const { data: leads, isLoading, error } = useWebsiteLeads();
   const convert = useConvertLeadToCustomer();
+  const createForJob = useCreateCustomerFromLead();
   const updateStatus = useUpdateWebsiteLeadStatus();
   const toast = useToast();
   const confirm = useConfirm();
+  // Lead, für den gerade der vorbefüllte Job-Dialog offen ist (inkl. frisch angelegtem Kunden).
+  const [jobDialog, setJobDialog] = useState<{ lead: WebsiteLead; customerId: string } | null>(null);
 
   if (isLoading) return <LoadingState label="Website-Anfragen werden geladen …" />;
   if (error) return <ErrorState message={error.message} />;
@@ -50,6 +56,21 @@ export function WebsiteLeadsView() {
     try {
       await convert.mutateAsync(lead);
       toast.success("Kunde und Anfrage angelegt.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Konnte nicht angelegt werden.");
+    }
+  }
+
+  async function handleMakeJob(lead: WebsiteLead) {
+    const ok = await confirm({
+      title: "Zu Job machen?",
+      message: `„${lead.name}" wird als Kunde angelegt; anschließend öffnet sich der Job-Dialog vorbefüllt mit den Anfrage-Daten.`,
+      confirmLabel: "Weiter",
+    });
+    if (!ok) return;
+    try {
+      const customer = await createForJob.mutateAsync(lead);
+      setJobDialog({ lead, customerId: customer.id });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Konnte nicht angelegt werden.");
     }
@@ -124,10 +145,19 @@ export function WebsiteLeadsView() {
             )}
 
             {mayEdit && lead.status === "neu" && (
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => handleConvert(lead)} disabled={convert.isPending}>
                   <UserPlus size={15} />
                   Zu Kunde machen
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleMakeJob(lead)}
+                  disabled={createForJob.isPending}
+                >
+                  <CalendarPlus size={15} />
+                  Zu Job machen
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDiscard(lead)}>
                   <X size={15} />
@@ -138,6 +168,19 @@ export function WebsiteLeadsView() {
           </div>
         );
       })}
+
+      {jobDialog && (
+        <CreateJobDialog
+          open
+          onClose={() => setJobDialog(null)}
+          initialCustomerId={jobDialog.customerId}
+          initialTitle={jobDialog.lead.event_type || "Website-Anfrage"}
+          initialStart={jobDialog.lead.event_date ? new Date(jobDialog.lead.event_date) : null}
+          initialEnd={jobDialog.lead.event_date ? new Date(jobDialog.lead.event_date) : null}
+          initialNotes={jobDialog.lead.message}
+          onCreated={() => toast.success("Job aus Anfrage angelegt.")}
+        />
+      )}
     </div>
   );
 }

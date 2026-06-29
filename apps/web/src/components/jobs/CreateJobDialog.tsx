@@ -4,6 +4,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Label } from "@/components/ui/Input";
 import { DateRangeField } from "@/components/ui/DateRangeField";
+import type { Job } from "@/types/database";
 import { useCreateJob, useJobs } from "@/hooks/useJobs";
 import { JobsMiniCalendar } from "@/components/jobs/JobsMiniCalendar";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
@@ -12,7 +13,32 @@ import { useCustomers } from "@/hooks/useCustomers";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { randomJobColor } from "@/types/database";
 
-export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+interface CreateJobDialogProps {
+  open: boolean;
+  onClose: () => void;
+  /** Vorbelegung (z.B. wenn ein Job aus einer Website-Anfrage entsteht). */
+  initialTitle?: string;
+  initialCustomerId?: string;
+  initialLocation?: string;
+  initialStart?: Date | null;
+  initialEnd?: Date | null;
+  /** Wird als Job-Notiz übernommen (z.B. die Nachricht aus der Website-Anfrage). */
+  initialNotes?: string | null;
+  /** Wird nach erfolgreicher Anlage mit dem neuen Job aufgerufen. */
+  onCreated?: (job: Job) => void;
+}
+
+export function CreateJobDialog({
+  open,
+  onClose,
+  initialTitle,
+  initialCustomerId,
+  initialLocation,
+  initialStart,
+  initialEnd,
+  initialNotes,
+  onCreated,
+}: CreateJobDialogProps) {
   const createJob = useCreateJob();
   const setAssignees = useSetJobAssignees();
   const { data: jobs } = useJobs();
@@ -28,9 +54,17 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [color, setColor] = useState(() => randomJobColor());
 
-  // Bei jedem Öffnen des Dialogs eine neue zufällige Farbe vorschlagen.
+  // Beim Öffnen frische Farbe + etwaige Vorbelegung übernehmen.
   useEffect(() => {
-    if (open) setColor(randomJobColor());
+    if (!open) return;
+    setColor(randomJobColor());
+    setTitle(initialTitle ?? "");
+    setCustomerId(initialCustomerId ?? "");
+    setLocation(initialLocation ?? "");
+    setStartDate(initialStart ?? null);
+    setEndDate(initialEnd ?? null);
+    setAssigneeIds([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   function reset() {
@@ -66,6 +100,7 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
       // Jobs sind tagesbasiert (keine Uhrzeit): Start = Tagesbeginn, Ende = Tagesende.
       start_date: startOfDay(startDate).toISOString(),
       end_date: endOfDay(endDate).toISOString(),
+      notes: initialNotes?.trim() || null,
       color,
       customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
     });
@@ -75,6 +110,7 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
     }
 
     reset();
+    onCreated?.(job);
     onClose();
   }
 
@@ -107,7 +143,7 @@ export function CreateJobDialog({ open, onClose }: { open: boolean; onClose: () 
 
         <div>
           <Label>Zeitraum *</Label>
-          <DateRangeField allDay defaultSingleDay onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
+          <DateRangeField allDay defaultSingleDay initialStart={startDate} initialEnd={endDate} onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
           <div className="mt-2">
             <JobsMiniCalendar jobs={jobs} selectedStart={startDate} selectedEnd={endDate} />
           </div>
