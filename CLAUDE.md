@@ -15,9 +15,9 @@ git push
 - Nicht sammeln: lieber kleine, in sich abgeschlossene Commits pro Teilaufgabe als ein großer.
 - Vor dem Commit immer erst verifizieren (tsc + eslint + build). Nie roten Stand pushen.
 
-## Weiterentwicklungs-Modus: Nachricht beginnt mit „+"
+## Weiterentwicklungs-Modus: Standard bei jeder Anfrage — „+" schaltet ihn AUS
 
-Beginnt eine Nutzer-Nachricht mit **`+`**, ist „Weiterentwicklung" gewünscht. Dann:
+**Standard (Nachricht OHNE führendes `+`):** die App proaktiv weiterentwickeln. Dann:
 
 1. **Etwaige konkrete Aufgabe** in der Nachricht zuerst erledigen.
 2. **Kleine, risikoarme Verbesserungen eigenständig umsetzen** und nach der üblichen
@@ -31,6 +31,9 @@ Beginnt eine Nutzer-Nachricht mit **`+`**, ist „Weiterentwicklung" gewünscht.
    umgesetzt" verschieben.
 4. **Immer berichten:** kurz auflisten, was umgesetzt & gepusht wurde (mit Commit-Bezug),
    und welche größeren Ideen zur Auswahl anstehen.
+
+**Beginnt die Nachricht mit `+`:** NUR die genannte Aufgabe erledigen — **keine**
+eigenständige Weiterentwicklung, nichts darüber hinaus umsetzen/pushen.
 
 ## Projekt-Orientierung
 

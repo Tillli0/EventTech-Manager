@@ -1,9 +1,10 @@
 # Ideen & Weiterentwicklung — EventTech-Manager
 
-> **Wie das hier funktioniert:** Beginnt eine Nachricht an Claude mit **`+`**, schaltet
-> der „Weiterentwicklungs-Modus" ein (siehe `CLAUDE.md`). Claude setzt dann **kleine,
-> risikoarme** Verbesserungen selbst um (verifiziert, committet, gepusht), **schlägt
-> Größeres erst vor**, pflegt diese Datei und **berichtet jedes Mal**, was passiert ist.
+> **Wie das hier funktioniert:** „Weiterentwicklung" ist der **Standard bei jeder Anfrage**
+> (siehe `CLAUDE.md`) — ein **`+` am Anfang schaltet sie aus** (dann nur die genannte Aufgabe).
+> Im Normalfall setzt Claude **kleine, risikoarme** Verbesserungen selbst um (verifiziert,
+> committet, gepusht), **schlägt Größeres erst vor**, pflegt diese Datei und **berichtet
+> jedes Mal**, was passiert ist.
 >
 > Legende — **Aufwand** S/M/L · **Wirkung** ★–★★★ · **Auto** = Claude darf eigenständig
 > umsetzen (klein/risikoarm) / **Freigabe** = vorher fragen.
