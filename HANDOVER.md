@@ -1,182 +1,158 @@
 # Übergabe an eine neue Session — EventTech-Manager
 
 > **Du bist neu hier und kennst das Projekt nicht.** Lies dieses Dokument zuerst ganz durch,
-> verschaffe dir dann selbst einen Überblick über den Code, und **stelle Rückfragen**,
-> bevor du mit der Umsetzung startest. Dieses Dokument ist „der Plan", auf den sich der Nutzer bezieht
-> (Kopie liegt auch unter `C:\Users\lnu\.claude\plans\cozy-sprouting-coral.md`).
+> verschaffe dir dann selbst einen Überblick über den Code (`README.md`, `WORKFLOW.md`,
+> `DEPLOY.md`, `CLAUDE.md`), und **stelle Rückfragen**, bevor du mit der Umsetzung startest.
 >
 > **Reihenfolge:** (1) einarbeiten, (2) Rückfragen stellen, (3) den Abschnitt
-> **„JETZT umsetzen: Release-Vorbereitung"** abarbeiten. Die „Backlog"-Punkte kommen
-> irgendwann später, in unbekannter Zeit — nicht ungefragt anfangen.
+> **„JETZT umsetzen: Website-Kontaktformular → System"** abarbeiten. Die „Backlog"-Punkte
+> kommen später, nicht ungefragt anfangen.
 
 ---
 
 ## 1. Was ist das Projekt?
 
-**EventTech-Manager** — interne Web-App für einen Eventtechnik-Verleih (Inventar, Jobs/Packlisten,
-Kunden, Angebote, Kalender, Aufgaben). Deutschsprachig, Dark-Theme.
+**EventTech-Manager** — Web-App für einen Eventtechnik-Verleih (Inventar, Jobs/Packlisten,
+Kunden, Angebote, Kalender, Aufgaben). Deutschsprachig, Dark-Theme, mit Login & Rollen.
+Funktionsüberblick: siehe `README.md`.
 
-- **Monorepo (pnpm).** Web-App unter `apps/web` (`@eventtech/web`): Vite + React + TypeScript +
-  TanStack Query + Tailwind. Backend unter `supabase/` (selbst-gehostetes Supabase via CLI in Docker).
-- **Grundsatz: „Backend (RLS) ist die Wahrheit".** Rechte werden in Postgres-RLS-Policies erzwungen
-  (`has_area(...)`/`can_edit_area(...)`/`is_admin()`, siehe `supabase/migrations/0012_...sql`); die UI
-  blendet nur zusätzlich aus.
-- **Sicherheits-Kontext (wichtig):** Der lokale Stack nutzt **Default-/Shared-JWT-Secrets** →
-  das ganze Backend darf **niemals öffentlich** exponiert werden. Fernzugriff läuft daher über
-  **Tailscale-VPN** (PC `lnu06`, Tailscale-IP `100.84.122.27`, MagicDNS `lnu06.tail41b62a.ts.net`;
-  Handy im selben Tailnet). Service-Role-Key nur serverseitig (Edge Functions).
+- **Monorepo (pnpm).** Web-App `apps/web` (`@eventtech/web`): Vite + React + TypeScript +
+  TanStack Query + Tailwind. Backend `supabase/`.
+- **„Das Backend (RLS) ist die Wahrheit."** Rechte per Postgres-RLS
+  (`has_area()`/`can_edit_area()`/`is_admin()`, Muster in `supabase/migrations/0012_*`); die
+  UI blendet nur zusätzlich aus. `anon` hat keine Tabellenrechte (Härtung `0030`).
 
-## 2. Arbeitsweise (verbindlich — steht auch in `CLAUDE.md` im Repo-Root)
+### WICHTIG: seit Kurzem öffentlich deployt (zwei Umgebungen)
+- **Lokal (Entwicklung):** selbst-gehostetes Supabase via Docker (`localhost:54321`).
+- **Produktion (live):** Frontend auf **Cloudflare Pages** (`eventtech-web.pages.dev`, eigene
+  Domain `manage.eventtechnik-fk.de`), Backend auf **Supabase Cloud**
+  (Projekt-Ref `pcyhumjbkdtzgjwuvyal`, Region eu-central-1). Der Laptop ist für den Betrieb
+  nicht mehr nötig.
+- Das Frontend wählt das Backend automatisch über `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`
+  (lokal `apps/web/.env`, Cloud aus den Pages-Env-Variablen). **Service-Role-Key nur
+  serverseitig** (Edge Functions), nie im Frontend.
+- Details: `DEPLOY.md` (Einrichtung), `WORKFLOW.md` (Alltag), Memory `public-deployment.md`.
 
-- **Nach jeder fertigen, verifizierten Teilaufgabe direkt auf `main` committen und pushen.** Kleine,
-  in sich abgeschlossene Commits. Commit-Trailer `Co-Authored-By: Claude <noreply@anthropic.com>`.
-  Commit-Nachrichten auf Deutsch, knapp (was + warum). **Tipp:** Umlaute/Anführungszeichen in
-  PowerShell-Here-Strings für `git commit -m` vermeiden (ASCII nutzen) — doppelte `"..."` haben
-  Commits zerschossen.
+## 2. Arbeitsweise (verbindlich — auch in `CLAUDE.md`)
+
+- **Nach jeder fertigen, verifizierten Teilaufgabe direkt auf `main` committen und pushen.**
+  Kleine Commits, Trailer `Co-Authored-By: Claude <noreply@anthropic.com>`, deutsche
+  Nachrichten. **Tipp:** in PowerShell-Here-Strings für `git commit -m` Umlaute/`"` meiden (ASCII).
 - **Vor jedem Commit verifizieren** (nie roten Stand pushen):
-  `cd apps/web` dann `npx tsc --noEmit`, `npx eslint <geänderte Dateien>`, `npx vite build`.
-  - Es gibt **eine vorbestehende** ESLint-Warnung in `apps/web/src/hooks/useJobs.ts:732`
-    (ungenutztes `jobId`) — kein Fehler, nicht von neuen Änderungen; darf bleiben (oder bei
-    Gelegenheit aufräumen).
-- **Migrationen:** non-destruktiv und fortlaufend nummeriert in `supabase/migrations/`. Die
-  Migrations-Tracking-Tabelle hängt zurück (nur bis ~0015 getrackt) → **NICHT** `supabase migration up`
-  nutzen, sondern **manuell** auf die laufende DB anwenden:
-  `docker exec -i supabase_db_eventtech-manager psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/<datei>.sql`
-  Nach DDL `notify pgrst, 'reload schema';` absetzen. Neueste vorhandene Migration: `0024_offers_job_link.sql`.
-- **Neue Tabellen brauchen explizite GRANTs** (`grant ... to authenticated, service_role`) — es gibt
-  kein Auto-Expose, sonst stille leere Daten / 403. RLS-Policies am Bereichsmuster aus `0012` orientieren.
-- **Neue/geänderte Edge Functions** werden erst nach `supabase stop && supabase start` aktiv.
-- Es gibt einen Projekt-Skill **`eventtech-dev`** (lokale Umgebung hochfahren/reparieren, Migrationen
-  anwenden, Admin bootstrappen) — bei Umgebungs-/„geht nicht"-Problemen nutzen.
+  `cd apps/web` → `npx tsc --noEmit` → `npx eslint <dateien>` → `npx vite build`.
+  - Vorbestehende ESLint-Warnung in `apps/web/src/hooks/useJobs.ts` (ungenutztes `jobId`) — ok.
+- **Push deployt automatisch:** Frontend → Cloudflare Pages baut & deployt; DB-Migrationen →
+  GitHub-Action `.github/workflows/db-migrate.yml` spielt sie in die Cloud (**sofern die 3
+  GitHub-Secrets gesetzt sind** — `SUPABASE_PROJECT_REF`/`SUPABASE_DB_PASSWORD`/
+  `SUPABASE_ACCESS_TOKEN`; sonst manuell `supabase db push`). **Vorher mit dem Nutzer klären,
+  ob die Secrets schon gesetzt sind.**
+- **Migrationen:** non-destruktiv, fortlaufend nummeriert. **Letzte vorhandene: `0030`** →
+  nächste freie ist **`0031`**. Tracking-Tabelle hängt zurück → **NICHT** `supabase migration up`;
+  lokal manuell anwenden:
+  `docker exec -i supabase_db_eventtech-manager psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/migrations/0031_*.sql`
+  danach `notify pgrst, 'reload schema';`. In die Cloud via Push/Action bzw. `supabase db push`.
+- **Neue Tabellen:** RLS an + Policies nach Muster `0012`, GRANTs an `authenticated, service_role`
+  — **nicht** an `anon` (Härtung `0030`).
+- **Edge Functions** deployen nicht automatisch beim Push: lokal erst nach
+  `supabase stop && supabase start` aktiv; in die Cloud mit `supabase functions deploy <name>`.
+  Standard-Secrets (`SUPABASE_URL`/`ANON_KEY`/`SERVICE_ROLE_KEY`) spritzt die Plattform ein.
+- Projekt-Skill **`eventtech-dev`** für lokale Umgebung (Docker/Stack/Migrationen/Admin-Bootstrap).
 
 ## 3. Aktueller Stand (Branch `main`)
 
-Zuletzt umgesetzt und gepusht (jeweils tsc/eslint/build grün):
-- Großes Inventar-Update (Lagerorte als Tabelle + Pillen, abgeleitete Verfügbarkeit
-  `available = Bestand − defekt − in aktiven Jobs`, Geräte-/Job-Historie, Packlisten-Workflow
-  Packen/Rückgabe mit Scanner, Geräte-Bearbeitungsmodus, Pillen statt Dropdowns).
-- Überblick: „Nächster Job" (mit Zeitplan) statt „Heute"; Logo als Startseiten-Link; Mobile-Header.
-- Inventar: Bestand immer „N×"; Geräte-Verlauf mit Filter (Jobs/Lagerort/Andere).
-- Jobs: „Vergangen"-Ordner (komplett vergangene Jobs); Packliste nach Lagerort→Kategorie sortiert
-  (mit Lagerort-Überschriften); Set-Überbuchung behoben; Set-Abwahl + klare Auswahl-Markierung;
-  Rückgabe als Liste mit Pflicht-Lagerort.
-- Angebote: „Als Angebot" aus der Packliste (vorbefüllter Dialog, Mietdauer = Job-Dauer); Angebote
-  werden am Job gespeichert und auf der Job-Seite angezeigt (Migration `0024`, `offers.job_id`).
+Zuletzt umgesetzt & gepusht (tsc/eslint/build grün):
+- **Inventar:** Kaufpreis beim Anlegen, Lagerort verpflichtend (kein „Keiner" mehr);
+  DGUV-V3-Elektroprüfung (letzte/nächste Prüfung + Fälligkeits-Erinnerung); Barcode-Scan
+  springt direkt zum Gerät; Scan-Knopf mittig in der Mobil-Navigation.
+- **Kunden:** bearbeiten (Dialog inkl. Adresse).
+- **Angebote:** Firmenlogo hochladen (Admin) und im PDF-Briefkopf anzeigen.
+- **Jobs:** Zeitplan-Foto an Programmpunkten; Anlage standardmäßig eintägig + Mini-Kalender
+  (andere Jobs) bei Zeitraumwahl; **Papierkorb** (Soft-Delete, Wiederherstellen, endgültig
+  löschen mit Warnung).
+- **Deployment:** öffentlich live (Cloudflare Pages + Supabase Cloud), Auto-Deploy aus GitHub,
+  `_redirects` (SPA), Härtung `0030` (anon ohne Rechte), `WORKFLOW.md`/`DEPLOY.md`.
 
-**Noch NICHT umgesetzt:** alles unter „JETZT umsetzen" und „Backlog" unten.
-
----
-
-## 4. JETZT umsetzen: Release-Vorbereitung
-
-**Kontext:** Dieser Stand soll die **erste Release-Version** werden. Vier Punkte sind dafür mit dem
-Nutzer beschlossen. RLS ist bereits sauber (0012 reaktiviert RLS+Policies für alle Domänentabellen;
-`0006_disable_rls_local_dev.sql` war nur lokaler No-Login-Stand und wird durch 0012 ersetzt) — **kein
-Blocker.** A–D je als eigener Commit.
-
-### A) Angebote bearbeiten + Status ändern
-Aktuell kann man Angebote nur anlegen/löschen/als PDF — **nicht bearbeiten**, und den **Status nicht
-ändern** (kein UI-Element dafür).
-- `apps/web/src/hooks/useOffers.ts`: neuer `useUpdateOffer` — aktualisiert Angebotsfelder (title,
-  customer_id, inquiry_id, job_id, valid_until, tax_rate, notes, **status**) und **ersetzt die
-  Positionen** (`offer_items` des Angebots löschen + neu einfügen, Muster wie `useCreateOffer`).
-  Invalidiert `OFFERS_KEY`, `[…,id]`, `by-customer`, `by-job`.
-- `apps/web/src/components/offers/CreateOfferDialog.tsx`: optionales Prop `editOffer?: Offer`. Im
-  `open`-Effekt bei gesetztem `editOffer` alle Felder + Positionen aus `editOffer.items` vorbefüllen,
-  Titel „Angebot bearbeiten", zusätzliches **Status-Feld** (`Select` mit `OFFER_STATUS_OPTIONS`,
-  aus `types/database.ts`), Submit → `useUpdateOffer`; sonst unverändert anlegen.
-- `apps/web/src/pages/OffersPage.tsx`: Bearbeiten-Button (Pencil, nur `mayEdit`) pro Zeile öffnet den
-  Dialog mit `editOffer`. `useOffers` lädt `items` bereits mit.
-
-### B) Echte Firmendaten als Einstellungsseite (Admin)
-Die Angebots-PDFs tragen **Platzhalter** (Musterbank/IBAN/Adresse in
-`apps/web/src/lib/companyInfo.ts`, `COMPANY_INFO`) — dürfen so nicht an Kunden.
-- Migration `0025_company_settings.sql`: Einzelzeilen-Tabelle `company_settings`
-  (`id boolean primary key default true check (id)`, `name`, `address_lines text[]`, `phone`, `email`,
-  `website`, `tax_id`, `bank_line`, `payment_terms`, `updated_at`). **RLS:** select = `authenticated`
-  (PDF braucht es), insert/update = `is_admin()`. **GRANTs** an authenticated + service_role. Seed-Zeile
-  mit den heutigen `COMPANY_INFO`-Werten. `notify pgrst`. Manuell via psql anwenden.
-- `apps/web/src/hooks/useCompanySettings.ts` (neu): `useCompanySettings()` (read),
-  `useUpdateCompanySettings()` (admin), `fetchCompanySettings()` (für die PDF-Erzeugung).
-- `apps/web/src/components/offers/OfferPdfDocument.tsx`: `OfferPdfDocument`/`downloadOfferPdf`
-  bekommen `company: CompanyInfo` (Default = `COMPANY_INFO` als Fallback). `downloadOfferPdf` lädt vor
-  dem Rendern `fetchCompanySettings()` und reicht es durch — **Aufrufer (OffersPage, CustomerDetailPage,
-  JobDetailPage) bleiben unverändert.** `lib/companyInfo.ts` bleibt als Typ + Fallback.
-- `apps/web/src/pages/AdminPage.tsx`: Abschnitt „Firmendaten" (nur Admin) zum Bearbeiten.
-
-### C) Code-Splitting (schnellerer Erststart)
-Aktuell **ein** ~3,4-MB-JS-Bundle → langsamer Erststart, v.a. mobil/über Tailscale.
-- `apps/web/src/router.tsx`: Seiten-Komponenten auf `React.lazy(() => import(...))` (Guards/AppShell
-  eager). In `apps/web/src/components/layout/AppShell.tsx` den `<Outlet/>` in
-  `<Suspense fallback={<LoadingState .../>}>` einhüllen; Login-Route ebenso.
-- Schwere PDF-Lib `@react-pdf/renderer` aus dem Initial-Bundle halten: `downloadOfferPdf` das
-  PDF-Modul **dynamisch** importieren lassen (neue schlanke `apps/web/src/lib/offerPdf.ts`, die intern
-  `OfferPdfDocument` per `await import(...)` lädt; Aufrufer importieren `downloadOfferPdf` aus dieser
-  Datei). So zieht react-pdf erst beim ersten PDF.
-- `apps/web/vite.config.ts`: optional `build.chunkSizeWarningLimit` anheben. Ziel: kein
-  3,4-MB-Single-Chunk mehr; react-pdf nicht im Initial-Chunk.
-
-### D) Einheitliche Dialoge & Toasts statt `confirm()/alert()`
-21 native `confirm()/alert()` in 13 Dateien — sehen überall anders aus, passen nicht ins Dark-Theme,
-werden in mancher mobilen PWA **unterdrückt** (dann lässt sich z.B. nichts löschen).
-- Neu `apps/web/src/components/ui/Toast.tsx`: `ToastProvider` + `useToast()`
-  (`toast.success/error/info`), fixierter Container; in `App.tsx` mounten.
-- Neu `apps/web/src/components/ui/ConfirmDialog.tsx`: `ConfirmProvider` + `useConfirm()` (Promise-basiert,
-  über die vorhandene `components/ui/Dialog.tsx`); in `App.tsx` mounten.
-- Alle 21 Stellen ersetzen (u.a. `AdminPage` [6, inkl. `prompt()` für Passwort-Reset → kleiner
-  Eingabedialog], `OffersPage` [2], `DeviceDetailPage` [2], `ManageSetsDialog` [2], sowie je 1 in
-  CustomerDetailPage, JobDetailPage, TasksPage, CalendarEntryDialog, CalendarSubscribeDialog,
-  JobTasksSection, ManageCategoriesDialog, TaskEditPanel, ManageLocationsDialog): Löschen → `useConfirm`,
-  Erfolg/Fehler → `useToast`.
-
-**Verifikation Release-Vorbereitung:** pro A–D tsc+eslint+build grün → commit+push. Build hat mehrere
-Chunks (react-pdf nicht initial). Migration 0025 angewandt; select als authenticated, schreiben nur
-Admin. Manuell: Angebot bearbeiten (Felder+Positionen+Status) speichert; Admin ändert Firmendaten →
-neues PDF zeigt echte Daten; Seiten laden mit Suspense-Fallback; Löschen per In-App-Dialog, Meldungen
-als Toast; auf Mobile/PWA funktioniert Löschen zuverlässig.
+**Noch NICHT umgesetzt:** „JETZT umsetzen" + „Backlog" unten.
 
 ---
 
-## 5. Backlog — irgendwann, in unbekannter Zeit (nicht ungefragt starten)
+## 4. JETZT umsetzen: Website-Kontaktformular → System
 
-### Website-Kontaktformular → System (durchdacht, noch nicht umgesetzt)
-Auf der Firmen-Website (gebaut mit **Lovable**) ein Kontaktformular, das Anfragen **direkt in den
-EventTech-Manager** schickt — nicht umgekehrt (kein Einbetten des Systems in die Website). Voller
-Plan + Begründung in der Memory-Datei
-`C:\Users\lnu\.claude\projects\C--Users-lnu-Documents-eventtech-manager\memory\website-lead-form.md`.
-Kern:
-- Neue Tabelle `website_leads` (nicht direkt `customer_inquiries`, das braucht Pflicht-`customer_id`);
-  Einsendungen landen als Rohdaten zur manuellen Sichtung (keine Kunden-Dubletten).
-- Felder: Name, E-Mail, Telefon, Firma, Event-Datum, Budget-Schätzung, Nachricht.
-- Technik 1:1 wie der bestehende Kalender-Feed: neue Edge Function `public-lead` mit
-  `verify_jwt = false`, schreibt per Service-Role-Key (RLS-Bypass) — sonst wird nichts exponiert.
-  CORS + einfacher Rate-Limit nötig (Route ohne Login).
-- UI: dritter Tab „Website-Anfragen" auf `CustomersPage.tsx` mit „Zu Kunde machen" / „Verwerfen".
-- **Bewusst offen:** wie die Funktion öffentlich erreichbar wird (Cloudflare-Tunnel-Pfad erweitern
-  wie beim Kalender-Feed, oder andere Lösung). Migration wäre die nächste freie Nummer (Liste vorher prüfen).
+**Ziel des Nutzers:** Auf der Firmen-Website (gebaut mit **Lovable**) ein **Kontaktformular**,
+dessen Einsendungen **automatisch im EventTech-Manager landen** — nicht umgekehrt (das System
+wird nicht in die Website eingebettet). Der Nutzer will Web-Leads nicht mehr abtippen.
 
-### Weitere offene Punkte
-- **Deployment-Härtung (kritisch vor echtem Produktivbetrieb, Ops):** eigene JWT-Secrets + anon/service-
-  Keys statt der Default-/Shared-Secrets generieren; Service-Role nur serverseitig; Backend nicht
-  öffentlich exponieren (Tailscale bleibt). Siehe Memory `calendar-remote-access.md`.
-- **Öffentlicher Kalender-Feed für Google/Apple** über Cloudflare named Tunnel — technisch getestet,
-  offen ist nur die Domain-Entscheidung. Details in Memory `calendar-remote-access.md` + Ordner `tunnel/`.
-- **DB-Backups** für die selbst-gehostete DB (regelmäßiger `pg_dump`).
-- **Globale Suche + Änderungsprotokoll** — lange geplant, größeres Feature.
-- **Automatisierte Tests** fehlen komplett — zumindest Smoke-Tests (Login, Packliste, Angebot).
-- **Rechnungsstellung** — das Dashboard verweist bereits darauf als künftiges Feature.
-- Kleinigkeiten: Angebot-Feld `event_date` wird im Dialog nicht gepflegt; ESLint-Warnung
-  `useJobs.ts:732`.
+**Gute Nachricht durch den Cloud-Umzug:** Der früher offene Punkt „wie wird die Funktion
+öffentlich erreichbar?" ist **gelöst** — Supabase-Cloud-Edge-Functions sind bereits öffentliche
+HTTPS-Endpunkte (`https://pcyhumjbkdtzgjwuvyal.supabase.co/functions/v1/<name>`). **Kein
+Tunnel/Tailscale mehr nötig.**
+
+### 4.1 Datenbank — Migration `0031_website_leads.sql`
+- Neue eigene Tabelle **`website_leads`** (bewusst NICHT direkt `customer_inquiries`, das braucht
+  einen Pflicht-`customer_id` → würde Kunden-Dubletten/Zwang erzeugen). Rohdaten zur manuellen Sichtung.
+- Felder (Vorschlag): `id uuid pk default gen_random_uuid()`, `name text`, `email text`,
+  `phone text`, `company text`, `event_date date`, `budget_estimate numeric`, `message text`,
+  `status text not null default 'neu' check (status in ('neu','bearbeitet','verworfen'))`,
+  `created_at timestamptz not null default now()`.
+- **RLS an.** SELECT/UPDATE/DELETE nur für berechtigte Innen-Nutzer (Muster `0012`: `has_area('kunden')`
+  / `can_edit_area('kunden')`). **Kein INSERT-Recht für `anon`/`authenticated`** — Einsendungen
+  kommen ausschließlich über die Edge Function (Service-Role, RLS-Bypass).
+- GRANTs an `authenticated, service_role` (nicht `anon`). `notify pgrst`.
+- Lokal per psql anwenden; in die Cloud via Push/Action bzw. `supabase db push`.
+
+### 4.2 Edge Function `public-lead` (öffentlich, ohne Login)
+- Neu `supabase/functions/public-lead/index.ts`, Muster wie `calendar-feed` (öffentlich):
+  - In `supabase/config.toml` einen Block `[functions.public-lead]` mit `verify_jwt = false`.
+  - **CORS** setzen (OPTIONS-Preflight beantworten; `Access-Control-Allow-Origin` = die
+    Lovable-Domain, vorerst ggf. `*`).
+  - Nur **POST** akzeptieren, JSON validieren (Pflicht: Name + (E-Mail oder Telefon); Felder trimmen,
+    Längen begrenzen).
+  - Einfacher **Spam-/Rate-Limit-Schutz**: Honeypot-Feld (z.B. verstecktes `website`-Feld → wenn
+    befüllt, still 200 zurückgeben ohne Insert) und/oder simple IP-Drosselung.
+  - Mit **Service-Role-Key** (`SUPABASE_SERVICE_ROLE_KEY`, von der Plattform injiziert) in
+    `website_leads` schreiben (RLS-Bypass). Saubere Fehler/Status-Codes.
+- Lokal testen: `supabase stop && supabase start`, dann `curl -X POST .../functions/v1/public-lead`.
+- In die Cloud: `supabase functions deploy public-lead`.
+
+### 4.3 Frontend — Tab „Website-Anfragen" auf der Kunden-Seite
+- `apps/web/src/pages/CustomersPage.tsx`: dritter Tab/Ansicht **„Website-Anfragen"** (neben
+  Kundenliste + Anfragen-Pipeline). Liste der `website_leads` (neue zuerst), je Eintrag:
+  **„Zu Kunde machen"** (legt `customers`-Zeile aus den Lead-Daten an, optional gleich eine
+  `customer_inquiries`-Karte; Lead-Status → `bearbeitet`) und **„Verwerfen"** (Status `verworfen`).
+- Neuer Hook `apps/web/src/hooks/useWebsiteLeads.ts` (Liste/Status-Update/„zu Kunde machen"),
+  Typ in `types/database.ts`. Bestätigungen/Meldungen über vorhandene `useConfirm`/`useToast`.
+- Badge mit Anzahl „neuer" Leads am Tab ist ein netter Zusatz.
+
+### 4.4 Lovable-Website (durch den Nutzer)
+- Du lieferst dem Nutzer ein **fetch/POST-Snippet** für das Lovable-Formular, das gegen
+  `https://pcyhumjbkdtzgjwuvyal.supabase.co/functions/v1/public-lead` postet (JSON, Honeypot-Feld
+  inklusive). Mit `verify_jwt = false` ist **kein** Auth-Header nötig.
+- Mit dem Nutzer klären: exakte Formularfelder und die **CORS-Origin** (Domain der Lovable-Seite).
+
+**Verifikation:** Migration `0031` lokal + Cloud drin; Function lokal (curl) und nach Deploy in der
+Cloud erreichbar; Test-POST landet als Lead; Tab zeigt ihn; „Zu Kunde machen"/„Verwerfen" wirken;
+RLS getestet (anon kann NICHT lesen/schreiben). tsc/eslint/build grün, pro Teilstück commit+push.
 
 ---
+
+## 5. Backlog — später, nicht ungefragt starten
+- **Rechnungsstellung** — größter offener Baustein (Rechnung aus Job/Angebot, Status-Workflow,
+  PDF). Dashboard verweist bereits darauf.
+- **DB-Backups** der Cloud-DB (regelmäßiger `pg_dump`).
+- **Globale Suche + Änderungsprotokoll** — größeres Feature.
+- **Automatisierte Tests** (Smoke: Login, Packliste, Angebot) fehlen komplett.
+- **Öffentlicher Kalender-Feed** für Google/Apple (Function `calendar-feed` existiert; mit der
+  Cloud-URL jetzt direkt nutzbar — Abo-Link/`VITE_CALENDAR_FEED_BASE_URL` prüfen).
+- Kleinigkeit: ESLint-Warnung `useJobs.ts` (`jobId`).
 
 ## 6. Wichtige Referenzen
-- **Dieses Handover / der Plan:** `HANDOVER.md` (Repo-Root) bzw.
-  `C:\Users\lnu\.claude\plans\cozy-sprouting-coral.md`.
-- **Projekt-Regeln:** `CLAUDE.md` im Repo-Root.
-- **Memory (projektübergreifendes Wissen):**
-  `C:\Users\lnu\.claude\projects\C--Users-lnu-Documents-eventtech-manager\memory\` — u.a.
-  `website-lead-form.md`, `calendar-remote-access.md`, `service-role-grants.md`, `edge-function-restart.md`
-  (Index in `MEMORY.md`).
-- **RLS-Muster:** `supabase/migrations/0012_auth_roles_and_access.sql`.
-- **DB-Container:** `supabase_db_eventtech-manager`. **Dev:** `pnpm dev`. **Skill:** `eventtech-dev`.
+- **Dokumente:** `README.md`, `WORKFLOW.md` (Feature-Ablauf), `DEPLOY.md` (Cloud-Einrichtung),
+  `CLAUDE.md` (Regeln), dieses `HANDOVER.md`.
+- **Memory:** `C:\Users\lnu\.claude\projects\C--Users-lnu-Documents-eventtech-manager\memory\`
+  — u.a. `public-deployment.md`, `website-lead-form.md`, `service-role-grants.md`,
+  `edge-function-restart.md`, `calendar-remote-access.md` (Index in `MEMORY.md`).
+- **RLS-Muster:** `supabase/migrations/0012_auth_roles_and_access.sql`. **Öffentliche Function als
+  Vorbild:** `supabase/functions/calendar-feed/`.
+- **Cloud:** Supabase-Ref `pcyhumjbkdtzgjwuvyal`; Live-URL `manage.eventtechnik-fk.de` /
+  `eventtech-web.pages.dev`. **Lokal:** DB-Container `supabase_db_eventtech-manager`,
+  `pnpm dev`, Skill `eventtech-dev`.

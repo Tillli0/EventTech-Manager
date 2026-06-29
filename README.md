@@ -1,245 +1,123 @@
 # EventTech Manager
 
-Business-Software für ein kleines Veranstaltungstechnik-Unternehmen (2–3 Personen).
-Deckt den kompletten Ablauf ab: Kunde → Anfrage → Job → Packliste per Barcode →
-Kalender (automatisch) → Ausgabe/Rückgabe → (Rechnung, noch offen). Läuft
-selbst-gehostet, komplett auf Deutsch, **ohne Login** (bewusst — siehe unten).
+Business-Software für einen kleinen Veranstaltungstechnik-Verleih. Deckt den kompletten
+Arbeitsablauf ab: **Kunde → Anfrage → Angebot → Job → Packliste (per Barcode) → Kalender →
+Ausgabe/Rückgabe**. Deutschsprachig, Dark-Theme, mit Login & Rollen.
 
-## Status
+> **Live:** das Frontend läuft öffentlich auf **Cloudflare Pages**
+> (`eventtech-web.pages.dev`, eigene Domain `manage.eventtechnik-fk.de`), das Backend auf
+> **Supabase Cloud**. Lokal wird gegen ein **selbst-gehostetes Supabase** (Docker) entwickelt.
+> Den genauen Entwicklungs-/Deploy-Ablauf beschreibt **`WORKFLOW.md`**, die einmalige
+> Cloud-Einrichtung **`DEPLOY.md`**.
 
-**Grundgerüst + mehrere Ausbaustufen fertig.** Inventar, Jobs, Kunden/CRM und
-Kalender sind mit echter Supabase-Anbindung umgesetzt, inklusive:
+## Funktionsumfang
 
-- Barcode-Scanning (Kamera + USB-Scanner) und Packlisten mit Ausgabe/Rückgabe-Tracking
-  (inkl. Schadensvermerk)
-- Dashboard mit Tages-/anstehenden Jobs, Gerätestatus, fälligen Aufgaben
-- Kalender mit Monats-/Wochen-/Tagesansicht, automatischem Eintrag bei Job-Anlage,
-  ganztägigen/mehrtägigen Balken, Unterevents (Milestones) und
-  Doppelbuchungs-Warnung direkt in der Packliste
-- Aufgabenverwaltung (Notizen oder Checkliste, abhakbar, Drag-to-reorder, Lock-Modus)
-- Foto-Upload bei Geräten (beim Anlegen)
-- Kategorien-Verwaltung im UI (anlegen/löschen)
+- **Inventar** — Geräte mit Kategorien, Lagerorten (als Pillen), Fotos, Stückzahlen,
+  abgeleiteter Verfügbarkeit (`Bestand − defekt − in aktiven Jobs`), Kauf-/Tagesmietpreis,
+  Geräte-/Lagerort-Historie, CSV-Import/-Export, Geräte-Sets/Pakete.
+- **DGUV-V3-Elektroprüfung** — letzte/nächste Prüfung pro Gerät, Fälligkeits-Erinnerung.
+- **Barcode** — Kamera- & USB-Scanner, interne ETM-Codes, Etiketten-Druck; Scan springt
+  direkt zum Gerät.
+- **Jobs** — Packlisten mit Packen/Rückgabe-Tracking (Pflicht-Lagerort, Schadensvermerk),
+  Zeitplan/Programmpunkte (mit Foto), Personal-/Geräte-Zuweisung, Job-Farben,
+  „Vergangen"-Ordner und **Papierkorb** (Soft-Delete mit Wiederherstellen).
+- **Kunden/CRM** — Stammdaten (bearbeitbar), Notizen, Anfragen-Pipeline (Kanban),
+  automatische Stammkunden-Erkennung.
+- **Angebote** — Positionen, MwSt, Status, **PDF-Export** mit Firmenkopf & **Logo**;
+  direkt aus einer Packliste erzeugbar; am Job/Kunden gespeichert; bearbeitbar.
+- **Kalender** — Monats-/Wochen-/Tagesansicht, automatischer Eintrag bei Job-Anlage,
+  ganztägige/mehrtägige Balken, Zeitplan-Termine, Doppelbuchungs-Warnung, Abo-Link
+  (iCal/Google/Apple, read-only).
+- **Aufgaben** — Notiz- oder Checklisten-Aufgaben, abhakbar, Job-bezogen.
+- **Verwaltung (Admin)** — Benutzer/Rollen/Bereichszugriffe, Firmendaten & Logo,
+  Passwort-Reset.
 
-**Bewusst kein Login/Auth.** Die App läuft nur mit dem `anon`-Key, Row Level
-Security ist dauerhaft deaktiviert (Migration `0006`). Das ist für den
-Solo-/Kleinteam-Betrieb auf einem selbst kontrollierten Server gedacht — nicht
-für öffentliches Internet ohne zusätzlichen Schutz (z. B. VPN, Reverse-Proxy
-mit Basic-Auth).
+## Architektur & Sicherheit
 
-**Noch nicht gebaut:**
+- **Monorepo (pnpm).** Web-App `apps/web` (`@eventtech/web`): Vite + React + TypeScript +
+  TanStack Query + Tailwind. Backend: Supabase (`supabase/`).
+- **„Das Backend ist die Wahrheit."** Rechte werden per **RLS** in Postgres erzwungen
+  (Rollen `admin`/`verwaltung`/`mitarbeiter`, Bereichszugriffe über
+  `has_area()`/`can_edit_area()`/`is_admin()`, siehe `supabase/migrations/0012_*`). Die UI
+  blendet nur zusätzlich aus. `anon` hat keine Tabellenrechte (Härtung `0030`).
+- **Zwei Umgebungen:** lokal Docker-Supabase (`localhost:54321`), Produktion Supabase Cloud.
+  Das Frontend wählt das Backend automatisch über `VITE_SUPABASE_URL` /
+  `VITE_SUPABASE_ANON_KEY` — lokal aus `apps/web/.env`, in der Cloud aus den Pages-Env-Variablen.
+- **Service-Role-Key nur serverseitig** (Edge Functions: `admin-users`, `calendar-feed`) — nie im Frontend.
+- Wrapper für **Desktop (Tauri)** / **Android (Capacitor)** sind konfiguriert, aber ungetestet.
 
-- **Rechnungsstellung** — kein Schema, kein UI. Das Dashboard zeigt dafür
-  bewusst einen ehrlichen Platzhalter statt erfundener Zahlen.
-- **Angebot als echtes Dokument** — die Anfragen-Pipeline kennt den Status
-  „Angebot gesendet", aber es wird kein PDF/Dokument erzeugt.
-- Foto-/Dokument-Upload **nachträglich** an bereits angelegten Geräten (aktuell
-  nur beim Anlegen möglich)
-- Service Worker / echte PWA-Offlinefähigkeit
-- Google-Calendar-Sync
-- Tauri/Capacitor sind konfiguriert, aber nie gebaut/getestet (fehlende
-  Toolchains in der Entwicklungsumgebung)
+## Lokale Entwicklung
 
-## Architektur
-
-Eine React/TypeScript-Codebase (`apps/web`), perspektivisch von drei Wrappern
-nutzbar:
-
-- **Browser**: läuft direkt aus `apps/web`, das ist der aktuell genutzte Weg
-- **Desktop (Windows/Linux)**: Tauri v2, Konfiguration in `apps/web/src-tauri` (ungetestet)
-- **Android**: Capacitor v6, Konfiguration in `apps/web/capacitor.config.ts` (ungetestet)
-
-Backend: Supabase, lokal via Docker (Supabase CLI). Schema in `supabase/migrations`,
-8 Migrationen, 13 Tabellen (Geräte, Barcodes, Fotos/Dokumente, Kunden, Anfragen,
-Jobs, Packliste, Kalender, Aufgaben + Checklisten, Job-Milestones).
-
-## Setup auf einem neuen Rechner
-
-Du hast die Dependencies (`pnpm install`) bereits installiert. Es fehlen noch:
-Supabase CLI + Docker, das lokale Backend starten, und die `.env`-Datei.
-
-### 1. Voraussetzungen
-
-- **Docker** (Docker Desktop oder Docker Engine) muss laufen — Supabase startet
-  seine Dienste (Postgres, Auth, Storage, PostgREST …) als Container.
-- **Supabase CLI** installieren, falls noch nicht vorhanden:
-
-  ```bash
-  npm install -g supabase
-  # oder: brew install supabase/tap/supabase  (macOS)
-  ```
-
-### 2. Lokales Supabase-Backend starten
-
-Im Ordner `eventtech-manager` (Repo-Root):
+Voraussetzungen: **Docker Desktop** + **Supabase CLI** + **Node ≥ 22** + **pnpm**.
 
 ```bash
+# 1. Lokales Backend starten (Repo-Wurzel)
 supabase start
+
+# 2. Dev-Server (Repo-Wurzel)
+pnpm dev            # http://localhost:5173
 ```
 
-Das zieht beim ersten Mal die Docker-Images (kann etwas dauern) und spielt
-automatisch alle Migrationen aus `supabase/migrations/` ein. Am Ende gibt die
-CLI eine Übersicht aus — wichtig sind:
+- `apps/web/.env` ist bewusst minimal: ohne `VITE_SUPABASE_URL` leitet die App die
+  Backend-Adresse automatisch vom Hostnamen ab (`localhost`/LAN-IP) — läuft so out of the box.
+- **Erst-Admin lokal** anlegen: siehe Skill `eventtech-dev` bzw. `supabase/BOOTSTRAP_ADMIN.md`.
+- Bei „geht nicht"/Umgebungsproblemen: **Skill `eventtech-dev`** (Docker/Stack/Migrationen/Admin).
 
-```
-API URL: http://127.0.0.1:54321
-anon key: eyJ...
-```
-
-Diese beiden Werte brauchst du für die `.env`-Datei (Schritt 3).
-
-> **Tipp:** Falls du dir die Werte später noch einmal anzeigen lassen willst,
-> ohne neu zu starten: `supabase status`.
-
-### 3. Umgebungsvariablen setzen
+Verifikation vor jedem Commit (nie roten Stand pushen):
 
 ```bash
-cd apps/web
-cp .env.example .env
+cd apps/web && npx tsc --noEmit && npx eslint src && npx vite build
 ```
 
-`.env` mit den Werten aus Schritt 2 befüllen:
+## Datenbank / Migrationen
 
-```bash
-VITE_SUPABASE_URL=http://127.0.0.1:54321
-VITE_SUPABASE_ANON_KEY=<der anon key aus "supabase start">
-```
+- SQL-Schema in `supabase/migrations/NNNN_*.sql` (aktuell bis **0030**), fortlaufend, non-destruktiv.
+- **Lokal anwenden** (die Tracking-Tabelle hängt zurück — nicht `supabase migration up`):
+  ```bash
+  docker exec -i supabase_db_eventtech-manager psql -U postgres -d postgres \
+    -v ON_ERROR_STOP=1 < supabase/migrations/NNNN_name.sql
+  # nach DDL: notify pgrst, 'reload schema';
+  ```
+- **In die Cloud** kommen Migrationen automatisch beim Push (GitHub-Action
+  `.github/workflows/db-migrate.yml`) bzw. manuell via `supabase db push`.
+- Neue Tabellen: RLS an + Policies nach Muster `0012`, GRANTs an `authenticated, service_role`
+  (nicht `anon`).
 
-### 4. (Optional) Beispieldaten laden
+## Deployment (Kurzfassung)
 
-Verbindungsdaten zur lokalen DB anzeigen lassen:
-
-```bash
-supabase status
-```
-
-Dort steht eine `DB URL` (Standard lokal: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`).
-Damit die Seed-Daten einspielen:
-
-```bash
-psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/seed/seed.sql
-```
-
-(Passwort und Port können abweichen, falls in `supabase/config.toml` angepasst —
-dann die `DB URL` aus `supabase status` verwenden statt der Beispiel-URL oben.)
-
-### 5. Entwicklungsserver starten
-
-Im Repo-Root:
-
-```bash
-pnpm dev
-```
-
-Läuft auf **http://localhost:5173**.
-
-### Bei jedem weiteren Arbeitstag
-
-Docker-Container laufen nicht permanent im Hintergrund — vor der Arbeit kurz:
-
-```bash
-supabase start   # falls die Container nicht schon laufen
-pnpm dev
-```
-
-Zum Beenden: `supabase stop` (Daten bleiben erhalten, solange du nicht
-`supabase stop --no-backup` oder `db reset` nutzt).
-
-### Troubleshooting
-
-- **„permission denied" nach `supabase db reset`**: sollte durch Migration
-  `0006_disable_rls_local_dev.sql` nicht mehr auftreten, da sie automatisch
-  mit eingespielt wird. Falls doch: PostgREST-Schema-Cache ist veraltet →
-  `supabase stop && supabase start`, oder per SQL: `NOTIFY pgrst, 'reload schema';`
-- **Ports schon belegt**: `supabase start` nutzt feste Ports (54321 API, 54322
-  DB, 54323 Studio …). Falls ein anderes lokales Supabase-Projekt läuft,
-  vorher `supabase stop` in dessen Ordner ausführen.
-- **`pnpm dev` findet `.env` nicht**: Die Datei muss in `apps/web/.env` liegen,
-  nicht im Repo-Root.
-
-## Build pro Plattform
-
-### Web
-
-```bash
-pnpm build
-# Output in apps/web/dist
-```
-
-Für echte PWA-Installierbarkeit fehlt noch ein Service Worker (z. B. via
-vite-plugin-pwa) — aktuell ist nur das Manifest vorhanden.
-
-### Desktop (Tauri) — ungetestet
-
-Voraussetzung: Rust-Toolchain (rustup) plus Tauri-Systemabhängigkeiten für
-Linux (webkit2gtk etc.) bzw. Windows.
-
-```bash
-cd apps/web
-pnpm tauri build
-```
-
-Icons in `src-tauri/icons/` fehlen noch — vor dem ersten Release-Build mit
-`pnpm tauri icon <pfad-zu-logo.png>` generieren.
-
-### Android (Capacitor) — ungetestet
-
-Voraussetzung: Android Studio + Android SDK.
-
-```bash
-cd apps/web
-pnpm build
-npx cap add android
-npx cap sync android
-npx cap open android
-```
+- **Frontend:** Cloudflare Pages, mit dem GitHub-Repo verbunden → jeder Push auf `main`
+  baut & deployt automatisch (`pnpm install && pnpm --filter @eventtech/web build`, Output
+  `apps/web/dist`, `NODE_VERSION=22`).
+- **Backend:** Supabase Cloud (Projekt-Ref `pcyhumjbkdtzgjwuvyal`).
+- Vollständige Einrichtung & Secrets: **`DEPLOY.md`**. Alltäglicher Feature-Ablauf: **`WORKFLOW.md`**.
 
 ## Projektstruktur
 
 ```
 eventtech-manager/
-├── apps/web/
+├── apps/web/                 Vite/React-App (@eventtech/web)
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── ui/            Basis-UI (Button, Card, Dialog, Input, Badges)
-│   │   │   ├── layout/        Sidebar, BottomNav, AppShell, PageHeader
-│   │   │   ├── barcode/       Kamera-Scanner, USB-Scanner-Hook, Label-Druck
-│   │   │   ├── inventory/     Geräte-/Kategorien-Komponenten
-│   │   │   ├── jobs/          Job-spezifische Komponenten (Packliste, Milestones, Farbe)
-│   │   │   ├── customers/     CRM-Komponenten (Liste, Kanban-Pipeline)
-│   │   │   ├── calendar/      Monats-/Wochen-/Tagesansicht, Termin-Dialog
-│   │   │   └── tasks/         Aufgaben-Dialoge (Anlegen, Detail mit Lock-Modus)
-│   │   ├── pages/             Hauptseiten (Dashboard, Inventar, Jobs, Kunden, Kalender, Aufgaben, Scan) + Detailseiten
-│   │   ├── hooks/             TanStack Query Hooks (1 Datei pro Domäne)
-│   │   ├── lib/               Supabase-Client, Formatierung, iCal-Export, Utilities
-│   │   └── types/             TypeScript-Typen, spiegeln das DB-Schema
-│   ├── src-tauri/             Tauri Desktop-Wrapper (Rust, ungetestet)
-│   └── capacitor.config.ts    Android-Wrapper-Konfiguration (ungetestet)
-└── supabase/
-    ├── migrations/            SQL-Schema (Tabellen, ENUMs, RLS-Deaktivierung, Storage)
-    └── seed/                  Beispieldaten für lokale Entwicklung
+│   │   ├── components/       ui/ layout/ barcode/ inventory/ jobs/ customers/ calendar/ tasks/ offers/
+│   │   ├── pages/            Dashboard, Inventar, Jobs, Kunden, Kalender, Aufgaben, Angebote, Scan, Admin + Details
+│   │   ├── hooks/            TanStack-Query-Hooks (1 Datei pro Domäne)
+│   │   ├── lib/              Supabase-Client, Formatierung, PDF, iCal, Utilities
+│   │   ├── auth/             AuthProvider + Router-Guards
+│   │   └── types/            TypeScript-Typen (spiegeln das DB-Schema)
+│   ├── public/_redirects     SPA-Routing für Cloudflare Pages
+│   ├── src-tauri/            Desktop-Wrapper (ungetestet)
+│   └── capacitor.config.ts   Android-Wrapper (ungetestet)
+├── supabase/
+│   ├── migrations/           SQL-Schema (bis 0030)
+│   └── functions/            Edge Functions (admin-users, calendar-feed)
+├── .github/workflows/        db-migrate.yml (Cloud-Migrationen bei Push)
+├── CLAUDE.md  WORKFLOW.md  DEPLOY.md  HANDOVER.md
 ```
 
-## Bekannte Lücken / nächste Schritte
+## Offene Punkte / Backlog
 
-In Reihenfolge der Mission (Anfrage → Job → Technik → Geld):
-
-1. **Tagesmietpreis bei Geräten** — fehlt als Feld, ist aber Voraussetzung
-   dafür, dass Angebote/Rechnungen Beträge automatisch vorschlagen können.
-2. **Rechnungsstellung** — größter offener Baustein. Geplant: Generierung aus
-   der Packliste eines Jobs, Status-Workflow (Entwurf → versendet → bezahlt),
-   PDF-Export.
-3. **Angebot als echtes Dokument** — aus einer Anfrage heraus erzeugen,
-   bei Annahme in einen Job + Rechnungsvorlage überführen.
-4. **Foto-/Dokument-Upload nachträglich** an bestehenden Geräten (aktuell nur
-   beim Neuanlegen möglich).
-5. **Google Calendar Sync** — `calendar_source`-ENUM ist vorbereitet, aber es
-   gibt noch keine Edge Function/OAuth-Flow. Token-Refresh und
-   Konflikt-Auflösung bei beidseitigen Änderungen brauchen einen eigenen
-   Design-Pass.
-6. **Service Worker für PWA**.
-7. **Tauri-Icons** fehlen (Platzhalter-Pfade in `tauri.conf.json`).
-
-Weitere, noch nicht terminierte Ideen (Auslastungs-Übersicht, Geräte-Sets/Pakete,
-Wartungshistorie, Rückgabe-Reminder im Dashboard, Druckansicht für Packlisten)
-sind besprochen, aber noch nicht eingeplant.
-
+- **Rechnungsstellung** (größter offener Baustein; Dashboard verweist bereits darauf).
+- **Website-Kontaktformular → System** (durchdacht, siehe Memory `website-lead-form.md`).
+- **DB-Backups** (regelmäßiger `pg_dump` der Cloud-DB).
+- **Globale Suche + Änderungsprotokoll**.
+- **Automatisierte Tests** (zumindest Smoke-Tests: Login, Packliste, Angebot).
+- Kleinigkeit: vorbestehende ESLint-Warnung in `apps/web/src/hooks/useJobs.ts` (ungenutztes `jobId`).
