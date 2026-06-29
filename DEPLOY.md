@@ -96,6 +96,39 @@ Migration `0030` keinerlei Tabellenrechte mehr).
 
 ---
 
+## Teil C — Alltag: lokal testen → pushen → live
+
+Es gibt **zwei getrennte Welten**, die App entscheidet allein über Env-Variablen, mit
+welchem Backend sie spricht — du musst nichts umstellen:
+
+| | Lokal (dein Rechner) | Produktion (Cloudflare) |
+|---|---|---|
+| Backend | Docker-Supabase (`localhost:54321`) | Supabase Cloud |
+| Frontend | `pnpm dev` | Cloudflare Pages |
+| Env | `apps/web/.env` (lokaler anon-Key, URL wird automatisch abgeleitet) | Pages-Env (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) |
+
+**Der Ablauf:**
+1. Lokales Supabase läuft (siehe `eventtech-dev`-Skill) → `pnpm dev` → Feature bauen & testen.
+2. `git add -A && git commit && git push` auf `main`.
+3. **Frontend** wird automatisch deployt — sobald das Pages-Projekt per *Connect to Git*
+   mit dem Repo verbunden ist (einmalige Einrichtung, Teil B). Jeder Push → neuer Build → live.
+4. **Datenbank**: Enthält der Push eine neue Datei unter `supabase/migrations/**`, spielt der
+   GitHub-Action `.github/workflows/db-migrate.yml` sie automatisch in die Cloud-DB.
+
+> **Wichtig — Schema-Gleichlauf:** Neue Spalten/Tabellen immer als Migration unter
+> `supabase/migrations/` anlegen (nie nur per Hand in der lokalen DB), sonst kennt die Cloud
+> sie nicht und die Live-App bricht. Lokal wie bisher anwenden, in die Cloud kommt sie über
+> den Action automatisch.
+
+**Einmalige GitHub-Secrets** für den DB-Action (Repo → Settings → Secrets and variables → Actions):
+- `SUPABASE_ACCESS_TOKEN` — Supabase-Account → Access Tokens
+- `SUPABASE_DB_PASSWORD` — DB-Passwort des Cloud-Projekts
+- `SUPABASE_PROJECT_REF` — Projekt-Ref
+Solange diese fehlen, läuft der Action grün durch und überspringt die Migration.
+
+> Hinweis: Der `service_role`-Key wird hier NICHT gebraucht und gehört auch nicht in
+> GitHub-Secrets fürs Frontend — nur in die Edge-Function-Secrets (Teil A).
+
 ## Checkliste „geht live"
 
 - [ ] `supabase db push` lief durch; im Cloud-Dashboard sind Tabellen + Buckets da.
