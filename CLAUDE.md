@@ -15,6 +15,23 @@ git push
 - Nicht sammeln: lieber kleine, in sich abgeschlossene Commits pro Teilaufgabe als ein großer.
 - Vor dem Commit immer erst verifizieren (tsc + eslint + build). Nie roten Stand pushen.
 
+## Weiterentwicklungs-Modus: Nachricht beginnt mit „+"
+
+Beginnt eine Nutzer-Nachricht mit **`+`**, ist „Weiterentwicklung" gewünscht. Dann:
+
+1. **Etwaige konkrete Aufgabe** in der Nachricht zuerst erledigen.
+2. **Kleine, risikoarme Verbesserungen eigenständig umsetzen** und nach der üblichen
+   Verifikation (tsc + eslint + build) committen & pushen. Klein/risikoarm = reines
+   Frontend ohne Schema-Änderung, UI-Politur, Copy/Texte, offensichtliche Fixes,
+   ESLint-Aufräumen. **Nicht** eigenständig: Migrationen/neue Tabellen, Edge Functions,
+   Auth/RLS, Datenmigrationen, bereichsübergreifende Refactors, irgendetwas
+   nach-außen-Wirkendes (Cloud-Function-Deploy, Secrets, Mails). Solche **größeren**
+   Features werden **vorgeschlagen, nicht ungefragt umgesetzt**.
+3. **`IDEAS.md` pflegen:** neue Ideen ergänzen, priorisieren, Umgesetztes in „Kürzlich
+   umgesetzt" verschieben.
+4. **Immer berichten:** kurz auflisten, was umgesetzt & gepusht wurde (mit Commit-Bezug),
+   und welche größeren Ideen zur Auswahl anstehen.
+
 ## Projekt-Orientierung
 
 - **Monorepo (pnpm):** Web-App unter `apps/web` (`@eventtech/web`, Vite + React + TypeScript + TanStack Query + Tailwind, Dark-Theme). Supabase-Projekt unter `supabase/`.
