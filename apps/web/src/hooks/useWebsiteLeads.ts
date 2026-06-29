@@ -80,6 +80,29 @@ async function markLeadProcessed(id: string): Promise<void> {
 }
 
 /**
+ * Sucht einen bestehenden Kunden mit gleicher E-Mail (case-insensitive) oder
+ * Telefonnummer — für die Dubletten-Erkennung beim Konvertieren eines Leads.
+ */
+export async function findCustomerByContact(
+  email: string | null,
+  phone: string | null,
+): Promise<Customer | null> {
+  const filters: string[] = [];
+  if (email?.trim()) filters.push(`email.ilike.${email.trim()}`);
+  if (phone?.trim()) filters.push(`phone.eq.${phone.trim()}`);
+  if (filters.length === 0) return null;
+  const { data, error } = await supabase.from("customers").select("*").or(filters.join(",")).limit(1);
+  if (error) throw error;
+  return (data?.[0] as Customer) ?? null;
+}
+
+interface LeadConvertArgs {
+  lead: WebsiteLead;
+  /** Wenn gesetzt, wird dieser bestehende Kunde verwendet statt einen neuen anzulegen (Dubletten-Erkennung). */
+  existingCustomer?: Customer | null;
+}
+
+/**
  * Macht aus einem Website-Lead einen echten Kunden samt Anfrage-Karte in der
  * Pipeline und markiert den Lead als "bearbeitet". Damit landet die Web-Anfrage
  * direkt im normalen Kunden-/Anfragen-Workflow.
@@ -87,8 +110,8 @@ async function markLeadProcessed(id: string): Promise<void> {
 export function useConvertLeadToCustomer() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (lead: WebsiteLead): Promise<Customer> => {
-      const customer = await insertCustomerFromLead(lead);
+    mutationFn: async ({ lead, existingCustomer }: LeadConvertArgs): Promise<Customer> => {
+      const customer = existingCustomer ?? (await insertCustomerFromLead(lead));
 
       const { error: inqErr } = await supabase.from("customer_inquiries").insert({
         customer_id: customer.id,
@@ -117,8 +140,8 @@ export function useConvertLeadToCustomer() {
 export function useCreateCustomerFromLead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (lead: WebsiteLead): Promise<Customer> => {
-      const customer = await insertCustomerFromLead(lead);
+    mutationFn: async ({ lead, existingCustomer }: LeadConvertArgs): Promise<Customer> => {
+      const customer = existingCustomer ?? (await insertCustomerFromLead(lead));
       await markLeadProcessed(lead.id);
       return customer;
     },
