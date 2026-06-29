@@ -4,12 +4,14 @@ import { ScanLine, LogOut, Settings } from "lucide-react";
 import { NAV_ITEMS } from "@/lib/nav";
 import { Logo } from "@/components/layout/Logo";
 import { useAuth } from "@/auth/AuthProvider";
+import { useNewWebsiteLeadCount } from "@/hooks/useWebsiteLeads";
 import { AccountDialog } from "@/components/account/AccountDialog";
 import { cn } from "@/lib/cn";
 
 export function Sidebar() {
   const { profile, user, isAdmin, isManager, hasArea, signOut } = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
+  const newLeads = useNewWebsiteLeadCount();
   const visibleItems = NAV_ITEMS.filter(
     (item) => (!item.managerOnly || isManager) && (!item.area || hasArea(item.area)),
   );
@@ -47,6 +49,14 @@ export function Sidebar() {
                     />
                     <item.icon size={18} strokeWidth={isActive ? 2.25 : 2} />
                     {item.label}
+                    {item.to === "/kunden" && newLeads > 0 && (
+                      <span
+                        className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-white"
+                        title={`${newLeads} neue Website-Anfrage${newLeads === 1 ? "" : "n"}`}
+                      >
+                        {newLeads}
+                      </span>
+                    )}
                   </>
                 )}
               </NavLink>

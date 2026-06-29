@@ -794,7 +794,8 @@ export function useUpdateJobMilestone() {
   return useMutation({
     mutationFn: async ({
       id,
-      jobId,
+      // jobId nur hier herausgelöst, damit es nicht im DB-Update landet (genutzt in onSuccess).
+      jobId: _jobId,
       ...fields
     }: { id: string; jobId: string } & Partial<Pick<JobMilestone, "title" | "at">>) => {
       const { data, error } = await supabase

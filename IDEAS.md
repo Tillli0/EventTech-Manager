@@ -11,10 +11,6 @@
 
 ## 🔧 Quick Wins (Auto — kann Claude eigenständig erledigen)
 
-- [ ] **ESLint-Warnung beheben** in `apps/web/src/hooks/useJobs.ts` (ungenutztes `jobId`). · S · ★ · Auto
-- [ ] **Globaler „neue Anfragen"-Badge** in der Navigation/Sidebar (nicht nur am Kunden-Tab),
-      damit man neue Website-Leads überall sieht. · S · ★★ · Auto
-- [ ] **„Verworfen rückgängig"** im Website-Anfragen-Tab (verworfenen Lead wieder auf „neu"). · S · ★ · Auto
 - [ ] **Leere-Zustände/Ladezustände** vereinheitlichen, wo noch nicht (Konsistenz-Pass). · S · ★ · Auto
 
 ## 🚀 Größere Features (Freigabe nötig — Claude schlägt vor)
@@ -39,6 +35,9 @@
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- Quick Wins (2026-06-29): ESLint-Warnung in `useJobs.ts` behoben; globaler Badge mit Anzahl
+  neuer Website-Anfragen am „Kunden"-Eintrag der Sidebar; „Wiederherstellen" für verworfene
+  Anfragen im Website-Anfragen-Tab.
 - Website-Kontaktformular → System: Tabelle `website_leads`, öffentliche Edge Function `public-lead`,
   Tab „Website-Anfragen" (Filter + Zähler), „Zu Kunde/Job machen" mit Dubletten-Erkennung,
   Spam-Härtung (Honeypot + IP-Rate-Limit), optionale E-Mail-Benachrichtigung (Resend, Zieladresse

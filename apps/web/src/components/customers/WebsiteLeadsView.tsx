@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Globe, Mail, Phone, Building2, Calendar, UserPlus, CalendarPlus, X } from "lucide-react";
+import { Globe, Mail, Phone, Building2, Calendar, UserPlus, CalendarPlus, X, RotateCcw } from "lucide-react";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -127,6 +127,15 @@ export function WebsiteLeadsView() {
     }
   }
 
+  async function handleRestore(lead: WebsiteLead) {
+    try {
+      await updateStatus.mutateAsync({ id: lead.id, status: "neu" });
+      toast.success("Anfrage wiederhergestellt.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Konnte nicht wiederhergestellt werden.");
+    }
+  }
+
   const filterOptions: { value: LeadFilter; label: string; count: number }[] = [
     { value: "neu", label: "Neu", count: counts.neu },
     { value: "bearbeitet", label: "Bearbeitet", count: counts.bearbeitet },
@@ -223,6 +232,15 @@ export function WebsiteLeadsView() {
                 <Button size="sm" variant="ghost" onClick={() => handleDiscard(lead)}>
                   <X size={15} />
                   Verwerfen
+                </Button>
+              </div>
+            )}
+
+            {mayEdit && lead.status === "verworfen" && (
+              <div className="mt-3">
+                <Button size="sm" variant="ghost" onClick={() => handleRestore(lead)}>
+                  <RotateCcw size={15} />
+                  Wiederherstellen
                 </Button>
               </div>
             )}
