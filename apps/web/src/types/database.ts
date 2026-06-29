@@ -298,6 +298,22 @@ export interface CustomerNote {
   created_at: string;
 }
 
+export type WebsiteLeadStatus = "neu" | "bearbeitet" | "verworfen";
+
+/** Roh-Einsendung des öffentlichen Kontaktformulars der Website (Tabelle website_leads). */
+export interface WebsiteLead {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  event_date: string | null;
+  event_type: string | null;
+  message: string | null;
+  status: WebsiteLeadStatus;
+  created_at: string;
+}
+
 export interface Job {
   id: string;
   title: string;
