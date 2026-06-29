@@ -13,6 +13,8 @@ export interface CompanySettings {
   bank_line: string | null;
   payment_terms: string | null;
   logo_path: string | null;
+  /** Empfänger für Benachrichtigungen bei neuen Website-Anfragen (optional). */
+  lead_notify_email: string | null;
 }
 
 const KEY = ["company-settings"] as const;

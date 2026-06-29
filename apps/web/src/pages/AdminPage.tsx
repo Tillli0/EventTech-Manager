@@ -296,6 +296,7 @@ function CompanySettingsCard() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     name: "", addressText: "", phone: "", email: "", website: "", tax_id: "", bank_line: "", payment_terms: "",
+    lead_notify_email: "",
   });
   const [loaded, setLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -332,6 +333,7 @@ function CompanySettingsCard() {
         tax_id: data.tax_id ?? "",
         bank_line: data.bank_line ?? "",
         payment_terms: data.payment_terms ?? "",
+        lead_notify_email: data.lead_notify_email ?? "",
       });
       setLoaded(true);
     }
@@ -352,6 +354,7 @@ function CompanySettingsCard() {
       tax_id: form.tax_id.trim() || null,
       bank_line: form.bank_line.trim() || null,
       payment_terms: form.payment_terms.trim() || null,
+      lead_notify_email: form.lead_notify_email.trim() || null,
     });
     setSaved(true);
   }
@@ -450,6 +453,17 @@ function CompanySettingsCard() {
             </FormField>
             <FormField label="Zahlungs-/Hinweistext unter dem Angebot">
               <Textarea value={form.payment_terms} onChange={(e) => set("payment_terms", e.target.value)} rows={2} />
+            </FormField>
+            <FormField
+              label="E-Mail für Website-Anfragen"
+              hint="Bei neuen Anfragen über das Website-Kontaktformular geht eine Benachrichtigung an diese Adresse (nur aktiv, wenn ein Resend-Key hinterlegt ist). Leer = keine Benachrichtigung."
+            >
+              <Input
+                type="email"
+                value={form.lead_notify_email}
+                onChange={(e) => set("lead_notify_email", e.target.value)}
+                placeholder="anfragen@firma.de"
+              />
             </FormField>
             <div className="flex items-center gap-3">
               <Button onClick={handleSave} disabled={update.isPending}>

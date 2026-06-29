@@ -74,20 +74,35 @@ async function sha256Hex(input: string): Promise<string> {
 // Max. Einsendungen pro IP und Stunde (Spam-Drosselung zusätzlich zum Honeypot).
 const RATE_LIMIT_PER_HOUR = 8;
 
-// Best-effort-Benachrichtigung per Resend, wenn RESEND_API_KEY + LEAD_NOTIFY_TO
-// als Function-Secrets gesetzt sind. Fehler brechen die Lead-Annahme NICHT ab.
-async function notifyNewLead(lead: {
-  name: string;
-  email: string | null;
-  phone: string | null;
-  company: string | null;
-  event_date: string | null;
-  event_type: string | null;
-  message: string | null;
-}): Promise<void> {
+// deno-lint-ignore no-explicit-any
+type Admin = any;
+
+// Best-effort-Benachrichtigung per Resend. Voraussetzung: Secret RESEND_API_KEY
+// gesetzt UND eine Empfänger-Adresse in company_settings.lead_notify_email
+// gepflegt (Admin → Firmendaten). Fehler brechen die Lead-Annahme NICHT ab.
+async function notifyNewLead(
+  admin: Admin,
+  lead: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    company: string | null;
+    event_date: string | null;
+    event_type: string | null;
+    message: string | null;
+  },
+): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
-  const to = Deno.env.get("LEAD_NOTIFY_TO");
-  if (!apiKey || !to) return;
+  if (!apiKey) return;
+
+  const { data: settings } = await admin
+    .from("company_settings")
+    .select("lead_notify_email")
+    .eq("id", true)
+    .maybeSingle();
+  const to = settings?.lead_notify_email?.trim();
+  if (!to) return;
+
   const from = Deno.env.get("LEAD_NOTIFY_FROM") || "EventTech Anfragen <onboarding@resend.dev>";
 
   const rows: [string, string | null][] = [
@@ -189,6 +204,6 @@ Deno.serve(async (req) => {
     return json({ error: "Konnte nicht gespeichert werden." }, 500, origin);
   }
 
-  await notifyNewLead(lead);
+  await notifyNewLead(admin, lead);
   return json({ ok: true }, 200, origin);
 });
