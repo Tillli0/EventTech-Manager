@@ -47,6 +47,16 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Job-Status-Workflow erweitert** (2026-06-30, Migration 0034): neue Status `planung`,
+  `packen`, `rueckgabe` zwischen `bestaetigt`/`laeuft`/`abgeschlossen` eingefügt
+  (Reihenfolge: Anfrage → Bestätigt → Planung → Packen → Läuft → Rückgabe → Abgeschlossen,
+  Storniert weiterhin jederzeit). Packliste auf `JobDetailPage` folgt jetzt direkt dem
+  Status statt manuellem Stufen-Umschalter: Planung = Geräte zusammenstellen/Mengen
+  anpassen/entfernen; Packen + Läuft = Ausgabe-Stufe (scannen/ausgeben), in Läuft weiterhin
+  Geräte ergänzbar; Rückgabe = Rücknahme-Stufe; davor/danach nur Lese-Ansicht. Eigene
+  Job-Statusfarben in Tailwind, Geräte-Verfügbarkeits-/„aktuell draußen"-Abfragen
+  berücksichtigen die neuen Zwischenstatus als aktiv/blockierend.
+
 - Quick Wins (2026-06-29): ESLint-Warnung in `useJobs.ts` behoben; globaler Badge mit Anzahl
   neuer Website-Anfragen am „Kunden"-Eintrag der Sidebar; „Wiederherstellen" für verworfene
   Anfragen im Website-Anfragen-Tab.

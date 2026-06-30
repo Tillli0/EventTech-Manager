@@ -40,7 +40,10 @@ export function DeviceStatusBadge({ status }: { status: DeviceStatus }) {
 const jobDotClasses: Record<JobStatus, string> = {
   anfrage: "bg-job-anfrage",
   bestaetigt: "bg-job-bestaetigt",
+  planung: "bg-job-planung",
+  packen: "bg-job-packen",
   laeuft: "bg-job-laeuft",
+  rueckgabe: "bg-job-rueckgabe",
   abgeschlossen: "bg-job-abgeschlossen",
   storniert: "bg-job-storniert",
 };
@@ -48,7 +51,10 @@ const jobDotClasses: Record<JobStatus, string> = {
 const jobTextClasses: Record<JobStatus, string> = {
   anfrage: "text-job-anfrage",
   bestaetigt: "text-job-bestaetigt",
+  planung: "text-job-planung",
+  packen: "text-job-packen",
   laeuft: "text-job-laeuft",
+  rueckgabe: "text-job-rueckgabe",
   abgeschlossen: "text-job-abgeschlossen",
   storniert: "text-job-storniert",
 };

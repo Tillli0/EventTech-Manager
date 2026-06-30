@@ -37,7 +37,10 @@ export default {
         job: {
           anfrage: "#8B92A3",
           bestaetigt: "#3B82F6",
-          laeuft: "#F59E0B",
+          planung: "#8B5CF6",
+          packen: "#F59E0B",
+          laeuft: "#F97316",
+          rueckgabe: "#14B8A6",
           abgeschlossen: "#22C55E",
           storniert: "#EF4444",
         },

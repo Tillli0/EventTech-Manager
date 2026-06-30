@@ -3,7 +3,15 @@
 
 export type DeviceStatus = "verfuegbar" | "ausgeliehen" | "defekt" | "wartung";
 
-export type JobStatus = "anfrage" | "bestaetigt" | "laeuft" | "abgeschlossen" | "storniert";
+export type JobStatus =
+  | "anfrage"
+  | "bestaetigt"
+  | "planung"
+  | "packen"
+  | "laeuft"
+  | "rueckgabe"
+  | "abgeschlossen"
+  | "storniert";
 
 export type CustomerSource =
   | "whatsapp"
@@ -536,10 +544,36 @@ export const DEVICE_STATUS_OPTIONS: StatusOption<DeviceStatus>[] = [
 export const JOB_STATUS_OPTIONS: StatusOption<JobStatus>[] = [
   { value: "anfrage", label: "Anfrage", colorVar: "job-anfrage" },
   { value: "bestaetigt", label: "Bestätigt", colorVar: "job-bestaetigt" },
+  { value: "planung", label: "Planung", colorVar: "job-planung" },
+  { value: "packen", label: "Packen", colorVar: "job-packen" },
   { value: "laeuft", label: "Läuft", colorVar: "job-laeuft" },
+  { value: "rueckgabe", label: "Rückgabe", colorVar: "job-rueckgabe" },
   { value: "abgeschlossen", label: "Abgeschlossen", colorVar: "job-abgeschlossen" },
   { value: "storniert", label: "Storniert", colorVar: "job-storniert" },
 ];
+
+// ============================================================
+// Job-Status ↔ Packlisten-Fortschritt
+//
+// Der Status spiegelt den Packlisten-Fortschritt: Planung (Geräte werden
+// ausgewählt) → Packen (Geräte werden ausgegeben) → Läuft (gepackt, Geräte
+// dürfen noch ergänzt werden) → Rückgabe (Geräte werden zurückgenommen).
+// ============================================================
+
+/** In diesen Status dürfen Geräte zur Packliste hinzugefügt/entfernt werden. */
+export function canEditPacklistDevices(status: JobStatus): boolean {
+  return status === "planung" || status === "packen" || status === "laeuft";
+}
+
+/** In diesen Status ist die Ausgabe-/Scan-Stufe ("Packen") aktiv. */
+export function isPackenStage(status: JobStatus): boolean {
+  return status === "packen" || status === "laeuft";
+}
+
+/** Nur im Status "Rückgabe" ist die Rückgabe-/Scan-Stufe aktiv. */
+export function isRueckgabeStage(status: JobStatus): boolean {
+  return status === "rueckgabe";
+}
 
 export const INQUIRY_PIPELINE_OPTIONS: StatusOption<InquiryPipelineStatus>[] = [
   { value: "neu", label: "Neu", colorVar: "ink-muted" },

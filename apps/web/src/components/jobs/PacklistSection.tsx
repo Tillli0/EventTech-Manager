@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ScanLine, PackageCheck, PackageX, AlertTriangle, Undo2, MapPin, Check, Camera, ListPlus, PackageOpen, FileText,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
@@ -14,11 +15,13 @@ import {
   useMarkPacklistItemPickedUp,
   useReturnPacklistItem,
   useUndoPickup,
+  useUpdatePacklistItemQuantity,
+  useRemovePacklistItem,
 } from "@/hooks/useJobs";
 import { useLocations } from "@/hooks/useLocations";
 import { useAuth } from "@/auth/AuthProvider";
 import type { Job, PacklistItem } from "@/types/database";
-import { quantityStillOut, quantityNotYetPickedUp } from "@/types/database";
+import { quantityStillOut, quantityNotYetPickedUp, canEditPacklistDevices, isPackenStage, isRueckgabeStage } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 
@@ -27,13 +30,6 @@ function jobDurationDays(job: Job): number {
   const ms = new Date(job.end_date).getTime() - new Date(job.start_date).getTime();
   return Math.max(1, Math.round(ms / (24 * 60 * 60 * 1000)) + 1);
 }
-
-type Stage = "packen" | "rueckgabe";
-
-const STAGES: { key: Stage; label: string }[] = [
-  { key: "packen", label: "Packen" },
-  { key: "rueckgabe", label: "Rückgabe" },
-];
 
 /**
  * Packliste nach Lagerort, dann Kategorie, dann Gerätename sortieren — so liegt
@@ -81,12 +77,23 @@ function LocationHeader({ label }: { label: string }) {
   );
 }
 
+/**
+ * Packliste eines Jobs — die angezeigte Stufe folgt direkt dem Job-Status:
+ * Planung (Geräte zusammenstellen) → Packen (ausgeben) → Läuft (gepackt,
+ * weiterhin ergänzbar) → Rückgabe (zurücknehmen). Davor/danach (Anfrage,
+ * Bestätigt, Abgeschlossen, Storniert) ist die Liste nur informativ/read-only.
+ */
 export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: boolean }) {
   const items = sortPacklistItems(job.packlist_items ?? []);
-  const [stage, setStage] = useState<Stage>("packen");
   const [offerOpen, setOfferOpen] = useState(false);
   const { canEdit: canEditArea } = useAuth();
   const mayCreateOffer = canEditArea("angebote");
+
+  const status = job.status;
+  const planning = status === "planung";
+  const packenActive = isPackenStage(status);
+  const rueckgabeActive = isRueckgabeStage(status);
+  const devicesEditable = canEdit && canEditPacklistDevices(status);
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
   const pickedQty = items.reduce((s, i) => s + i.quantity_picked_up, 0);
@@ -101,13 +108,14 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
     unit_price: it.device?.daily_rental_price ?? 0,
   }));
 
-  // Leere Packliste: klarer Call-to-Action zur Vollbild-Auswahl.
+  // Leere Packliste: klarer Call-to-Action zur Vollbild-Auswahl — oder ein
+  // status-abhängiger Hinweis, solange noch nicht editiert werden darf.
   if (items.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-4 py-10 text-center">
-        <PackageOpen size={26} className="text-ink-faint" />
-        <p className="text-sm text-ink-muted">Noch keine Geräte auf der Packliste.</p>
-        {canEdit && (
+    if (devicesEditable) {
+      return (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-4 py-10 text-center">
+          <PackageOpen size={26} className="text-ink-faint" />
+          <p className="text-sm text-ink-muted">Noch keine Geräte auf der Packliste.</p>
           <Link
             to={`/jobs/${job.id}/packliste`}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
@@ -115,33 +123,27 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
             <ListPlus size={16} />
             Geräte auswählen
           </Link>
-        )}
-      </div>
-    );
+        </div>
+      );
+    }
+    const hint =
+      status === "anfrage" || status === "bestaetigt"
+        ? "Die Packliste wird erstellt, sobald der Job in Planung ist."
+        : "Für diesen Job wurden keine Geräte gepackt.";
+    return <EmptyHint text={hint} />;
   }
 
   return (
     <div>
-      {/* Kopf: Stufen-Umschalter + Vollbild-Auswahl */}
+      {/* Kopf: Hinweis zur aktuellen Stufe + Vollbild-Auswahl */}
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-1 rounded-lg bg-bg-raised p-1">
-          {STAGES.map((s) => {
-            const active = stage === s.key;
-            return (
-              <button
-                key={s.key}
-                type="button"
-                onClick={() => setStage(s.key)}
-                className={cn(
-                  "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
-                  active ? "bg-accent text-white shadow-sm" : "text-ink-muted hover:text-ink",
-                )}
-              >
-                {s.label}
-              </button>
-            );
-          })}
-        </div>
+        <p className="text-sm text-ink-muted">
+          {planning && "Stelle die Geräte für diesen Job zusammen."}
+          {status === "packen" && "Geräte werden ausgegeben."}
+          {status === "laeuft" && "Job läuft — Geräte können bei Bedarf noch ergänzt werden."}
+          {rueckgabeActive && "Geräte werden zurückgenommen."}
+          {!planning && !packenActive && !rueckgabeActive && "Packliste (Übersicht)."}
+        </p>
         <div className="flex gap-2">
           {mayCreateOffer && (
             <button
@@ -153,7 +155,7 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
               Als Angebot
             </button>
           )}
-          {canEdit && (
+          {devicesEditable && (
             <Link
               to={`/jobs/${job.id}/packliste`}
               className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-border bg-bg-raised px-3 text-sm font-medium text-ink transition-colors hover:bg-bg-surface"
@@ -165,11 +167,12 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
         </div>
       </div>
 
-      {stage === "packen" ? (
+      {planning && <PlanungStage job={job} items={items} canEdit={devicesEditable} />}
+      {packenActive && (
         <PackenStage job={job} items={items} canEdit={canEdit} totalQty={totalQty} pickedQty={pickedQty} />
-      ) : (
-        <RueckgabeStage job={job} items={items} canEdit={canEdit} outQty={outQty} />
       )}
+      {rueckgabeActive && <RueckgabeStage job={job} items={items} canEdit={canEdit} outQty={outQty} />}
+      {!planning && !packenActive && !rueckgabeActive && <ReadOnlyStage items={items} />}
 
       {mayCreateOffer && (
         <CreateOfferDialog
@@ -181,6 +184,98 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
           presetJobId={job.id}
         />
       )}
+    </div>
+  );
+}
+
+// ── Stufe 1: Planung ─────────────────────────────────────────────────────────
+
+function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]; canEdit: boolean }) {
+  const updateQuantity = useUpdatePacklistItemQuantity();
+  const removeItem = useRemovePacklistItem();
+
+  return (
+    <div className="space-y-3">
+      {groupByLocation(items).map((group) => (
+        <div key={group.label} className="space-y-2">
+          <LocationHeader label={group.label} />
+          {group.items.map((item) => (
+            <PlanungRow
+              key={item.id}
+              item={item}
+              canEdit={canEdit}
+              onQuantityChange={(quantity) => updateQuantity.mutate({ id: item.id, jobId: job.id, quantity })}
+              onRemove={() => removeItem.mutate({ id: item.id, jobId: job.id })}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PlanungRow({
+  item,
+  canEdit,
+  onQuantityChange,
+  onRemove,
+}: {
+  item: PacklistItem;
+  canEdit: boolean;
+  onQuantityChange: (quantity: number) => void;
+  onRemove: () => void;
+}) {
+  const [quantity, setQuantity] = useState(String(item.quantity));
+
+  function commit() {
+    const n = Math.max(1, parseInt(quantity, 10) || item.quantity);
+    setQuantity(String(n));
+    if (n !== item.quantity) onQuantityChange(n);
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg-surface px-4 py-3">
+      <p className="min-w-0 flex-1 truncate font-medium text-ink">{item.device?.name}</p>
+      {canEdit ? (
+        <div className="flex shrink-0 items-center gap-2">
+          <Input
+            type="number"
+            min={1}
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            onBlur={commit}
+            className="w-20 text-center"
+          />
+          <Button size="icon" variant="ghost" onClick={onRemove} aria-label="Entfernen" title="Von der Packliste entfernen">
+            <Trash2 size={14} />
+          </Button>
+        </div>
+      ) : (
+        <span className="shrink-0 font-mono text-sm text-ink-muted">{item.quantity}×</span>
+      )}
+    </div>
+  );
+}
+
+// ── Read-only-Ansicht (Anfrage/Bestätigt/Abgeschlossen/Storniert) ───────────
+
+function ReadOnlyStage({ items }: { items: PacklistItem[] }) {
+  return (
+    <div className="space-y-3">
+      {groupByLocation(items).map((group) => (
+        <div key={group.label} className="space-y-2">
+          <LocationHeader label={group.label} />
+          {group.items.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg-surface px-4 py-3"
+            >
+              <p className="min-w-0 flex-1 truncate font-medium text-ink">{item.device?.name}</p>
+              <span className="shrink-0 font-mono text-sm text-ink-muted">{item.quantity}×</span>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
