@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { RequireAuth, RequireArea, RequireManager, RedirectIfAuthed } from "@/auth/guards";
 import { LoadingState } from "@/components/ui/States";
+import { RouteErrorPage } from "@/components/layout/RouteErrorPage";
 
 // Seiten werden per Code-Splitting erst beim Aufruf geladen (kein 3,4-MB-Single-Bundle).
 const LoginPage = lazy(() => import("@/pages/LoginPage").then((m) => ({ default: m.LoginPage })));
@@ -29,10 +30,12 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <RedirectIfAuthed>{lazyRoute(<LoginPage />)}</RedirectIfAuthed>,
+    errorElement: <RouteErrorPage />,
   },
   {
     path: "/",
     element: <RequireAuth />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         // AppShell umschließt den <Outlet/> bereits mit einer Suspense-Grenze.
