@@ -52,7 +52,15 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
       Pfeil-Kette (Anfrage → … → Abgeschlossen, farbcodiert), Storniert separat
       darunter; Zugewiesene-Nutzer als Avatar-Chips (Initialen).
 - [ ] Basis-Komponenten zentral nachziehen (Button, Card, Dialog, Tabs, Badge, Input).
-- [ ] Weitere Seiten: Inventar, Kalender, Angebote, Aufgaben, Anfragen-Pipeline.
+- [ ] **Inventar (entschieden 2026-07-01, NOCH NICHT umgesetzt — bewusst zurückgestellt):**
+      normale Geräte als **Liste** (Variante A: Zeilen mit Kategorie-Icon, ETM-Code,
+      animiertem Verfügbarkeits-Balken, Status-Pill — Look wie die neue Jobs-Seite).
+      **Geräte-Sets** dagegen als **Foto-/Icon-Grid** (Variante B: Karten mit Bild,
+      kompaktem Verfügbarkeits-Balken darunter — visueller, da Sets weniger zahlreich
+      sind als Einzelgeräte). Zwei Mockup-Varianten wurden gezeigt und so kombiniert
+      bestätigt. Wenn der Nutzer das anstößt: mit dieser Aufteilung (Geräte=Liste,
+      Sets=Grid) direkt loslegen, nicht nochmal nachfragen.
+- [ ] Weitere Seiten: Kalender, Angebote, Aufgaben, Anfragen-Pipeline.
 - [ ] Optional: Akzentfarbe final bestätigen, evtl. Light-Mode-Toggle.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
