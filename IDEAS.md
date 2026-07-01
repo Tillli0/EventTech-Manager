@@ -48,14 +48,22 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
       Avatar-Gruppen für zugewiesene Nutzer, farbcodierte Status-Pills.
 - [x] **Kunden** (Alle-Kunden-Ansicht) neu: Zeilen-Karten mit Initialen-Avatar (Stammkunden
       abgesetzt), Stammkunden-Badge, Kontakt-Icons, farbigem Quelle-Badge, Job-Anzahl.
-- [x] **Job-Detail** neu: Status-Badge im Titel, Status-Auswahl als farbcodiertes
-      2-Spalten-Raster (alle 8 Status, aktiver hervorgehoben), Zugewiesene-Nutzer als
-      Avatar-Chips (Initialen).
+- [x] **Job-Detail** neu: Status-Badge im Titel, Status-Auswahl als vertikale
+      Pfeil-Kette (Anfrage → … → Abgeschlossen, farbcodiert), Storniert separat
+      darunter; Zugewiesene-Nutzer als Avatar-Chips (Initialen).
 - [ ] Basis-Komponenten zentral nachziehen (Button, Card, Dialog, Tabs, Badge, Input).
 - [ ] Weitere Seiten: Inventar, Kalender, Angebote, Aufgaben, Anfragen-Pipeline.
 - [ ] Optional: Akzentfarbe final bestätigen, evtl. Light-Mode-Toggle.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Job anlegen: stiller Abbruch behoben** (2026-07-01): Fehlten Titel oder Zeitraum, brach
+  das Formular bisher komplett ohne Rückmeldung ab ("nichts passiert"). Jetzt Toast-Hinweis
+  ("Bitte einen Titel eingeben." / "Bitte einen Zeitraum festlegen.") plus Fehler-Toast bei
+  fehlgeschlagener Anlage. Mini-Kalender im Job-Dialog überarbeitet: wird nur noch beim
+  Auswählen des Zeitraums eingeblendet und dient direkt selbst als Datumsauswahl (Punkte
+  für bereits geplante Jobs), statt einem redundanten zweiten, punktlosen Kalender daneben
+  (neue Komponente `JobDateRangePicker`, `JobsMiniCalendar` jetzt klickbar).
 
 - **Job-Status-Workflow erweitert** (2026-06-30, Migration 0034): neue Status `planung`,
   `packen`, `rueckgabe` zwischen `bestaetigt`/`laeuft`/`abgeschlossen` eingefügt

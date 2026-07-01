@@ -25,19 +25,24 @@ interface DayJob {
 /**
  * Kompakter Monats-Mini-Kalender, der bei der Job-Zeitraumauswahl die bereits
  * vorhandenen Jobs (als farbige Punkte) sowie den aktuell gewählten Zeitraum
- * (hervorgehoben) anzeigt. Reine Anzeige — keine Auswahl.
+ * (hervorgehoben) anzeigt. Ohne `onSelectDay` reine Anzeige; mit `onSelectDay`
+ * werden die Tage klickbar (Zeitraum direkt im selben Kalender wählen, der
+ * auch die Buchungs-Punkte zeigt).
  */
 export function JobsMiniCalendar({
   jobs,
   selectedStart,
   selectedEnd,
   excludeJobId,
+  onSelectDay,
 }: {
   jobs: Job[] | undefined;
   selectedStart: Date | null;
   selectedEnd: Date | null;
   /** Beim Bearbeiten den eigenen Job ausblenden. */
   excludeJobId?: string;
+  /** Wenn gesetzt, werden Tage klickbar (Datumsauswahl statt reiner Anzeige). */
+  onSelectDay?: (day: Date) => void;
 }) {
   const [month, setMonth] = useState(() => startOfMonth(selectedStart ?? new Date()));
 
@@ -112,14 +117,18 @@ export function JobsMiniCalendar({
           const dayJobs = jobsByDay.get(key);
           const selected = inSelection(day);
           const today = isSameDay(day, new Date());
+          const Tag = onSelectDay ? "button" : "div";
           return (
-            <div
+            <Tag
               key={key}
+              type={onSelectDay ? "button" : undefined}
+              onClick={onSelectDay ? () => onSelectDay(day) : undefined}
               title={dayJobs?.map((j) => j.title).join(", ")}
               className={cn(
-                "flex h-9 flex-col items-center justify-start rounded py-1 text-xs",
+                "flex h-9 flex-col items-center justify-start rounded py-1 text-xs transition-colors",
                 !isSameMonth(day, month) && "text-ink-faint/50",
                 selected ? "bg-accent text-white" : "text-ink-muted",
+                onSelectDay && !selected && "hover:bg-bg-raised hover:text-ink",
               )}
             >
               <span className={cn("tabular-nums", today && !selected && "font-bold text-accent")}>
@@ -136,7 +145,7 @@ export function JobsMiniCalendar({
                   ))}
                 </span>
               )}
-            </div>
+            </Tag>
           );
         })}
       </div>

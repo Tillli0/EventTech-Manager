@@ -3,10 +3,10 @@ import { startOfDay, endOfDay } from "date-fns";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Label } from "@/components/ui/Input";
-import { DateRangeField } from "@/components/ui/DateRangeField";
+import { useToast } from "@/components/ui/Toast";
 import type { Job } from "@/types/database";
 import { useCreateJob, useJobs } from "@/hooks/useJobs";
-import { JobsMiniCalendar } from "@/components/jobs/JobsMiniCalendar";
+import { JobDateRangePicker } from "@/components/jobs/JobDateRangePicker";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
 import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -45,6 +45,7 @@ export function CreateJobDialog({
   const { data: customers } = useCustomers();
   const { data: allProfiles } = useProfiles();
   const profiles = assignableProfiles(allProfiles);
+  const toast = useToast();
 
   const [title, setTitle] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -89,29 +90,40 @@ export function CreateJobDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim() || !startDate || !endDate) return;
+    if (!title.trim()) {
+      toast.error("Bitte einen Titel eingeben.");
+      return;
+    }
+    if (!startDate || !endDate) {
+      toast.error("Bitte einen Zeitraum festlegen.");
+      return;
+    }
 
     const selectedCustomer = customers?.find((c) => c.id === customerId);
 
-    const job = await createJob.mutateAsync({
-      title: title.trim(),
-      customer_id: customerId || null,
-      location: location.trim() || null,
-      // Jobs sind tagesbasiert (keine Uhrzeit): Start = Tagesbeginn, Ende = Tagesende.
-      start_date: startOfDay(startDate).toISOString(),
-      end_date: endOfDay(endDate).toISOString(),
-      notes: initialNotes?.trim() || null,
-      color,
-      customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
-    });
+    try {
+      const job = await createJob.mutateAsync({
+        title: title.trim(),
+        customer_id: customerId || null,
+        location: location.trim() || null,
+        // Jobs sind tagesbasiert (keine Uhrzeit): Start = Tagesbeginn, Ende = Tagesende.
+        start_date: startOfDay(startDate).toISOString(),
+        end_date: endOfDay(endDate).toISOString(),
+        notes: initialNotes?.trim() || null,
+        color,
+        customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
+      });
 
-    if (assigneeIds.length > 0) {
-      await setAssignees.mutateAsync({ jobId: job.id, userIds: assigneeIds });
+      if (assigneeIds.length > 0) {
+        await setAssignees.mutateAsync({ jobId: job.id, userIds: assigneeIds });
+      }
+
+      reset();
+      onCreated?.(job);
+      onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Job konnte nicht angelegt werden.");
     }
-
-    reset();
-    onCreated?.(job);
-    onClose();
   }
 
   return (
@@ -143,10 +155,15 @@ export function CreateJobDialog({
 
         <div>
           <Label>Zeitraum *</Label>
-          <DateRangeField allDay defaultSingleDay initialStart={startDate} initialEnd={endDate} onChange={(start, end) => { setStartDate(start); setEndDate(end); }} />
-          <div className="mt-2">
-            <JobsMiniCalendar jobs={jobs} selectedStart={startDate} selectedEnd={endDate} />
-          </div>
+          <JobDateRangePicker
+            jobs={jobs}
+            start={startDate}
+            end={endDate}
+            onChange={(s, e) => {
+              setStartDate(s);
+              setEndDate(e);
+            }}
+          />
         </div>
 
         {profiles && profiles.length > 0 && (

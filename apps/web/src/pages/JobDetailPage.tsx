@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, Printer, FileText, Download, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Printer, FileText, Download, Trash2, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -180,17 +180,49 @@ export function JobDetailPage() {
             </CardHeader>
             <CardBody>
               {mayEdit ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {JOB_STATUS_OPTIONS.map((opt) => {
+                <div className="flex flex-col">
+                  {JOB_STATUS_OPTIONS.filter((o) => o.value !== "storniert").map((opt, i, arr) => {
                     const hex = JOB_STATUS_HEX[opt.value];
                     const active = job.status === opt.value;
                     return (
+                      <div key={opt.value} className="flex flex-col items-stretch">
+                        <button
+                          onClick={() => updateStatus.mutate({ id: job.id, status: opt.value as JobStatus })}
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-medium transition-all",
+                            !active && "hover:translate-x-0.5",
+                          )}
+                          style={{
+                            backgroundColor: `${hex}1A`,
+                            color: hex,
+                            borderColor: active ? hex : `${hex}33`,
+                            boxShadow: active ? `0 0 0 1px ${hex}` : undefined,
+                          }}
+                        >
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: hex }} aria-hidden />
+                          {opt.label}
+                        </button>
+                        {i < arr.length - 1 && (
+                          <div className="flex justify-start pl-[19px]">
+                            <ChevronDown size={14} className="my-0.5 text-ink-faint" aria-hidden />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <div className="my-3 border-t border-border" />
+
+                  {(() => {
+                    const opt = JOB_STATUS_OPTIONS.find((o) => o.value === "storniert")!;
+                    const hex = JOB_STATUS_HEX.storniert;
+                    const active = job.status === "storniert";
+                    return (
                       <button
-                        key={opt.value}
-                        onClick={() => updateStatus.mutate({ id: job.id, status: opt.value as JobStatus })}
+                        onClick={() => updateStatus.mutate({ id: job.id, status: "storniert" })}
                         className={cn(
                           "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-medium transition-all",
-                          !active && "hover:-translate-y-0.5",
+                          !active && "hover:translate-x-0.5",
                         )}
                         style={{
                           backgroundColor: `${hex}1A`,
@@ -203,7 +235,7 @@ export function JobDetailPage() {
                         {opt.label}
                       </button>
                     );
-                  })}
+                  })()}
                 </div>
               ) : (
                 <JobStatusBadge status={job.status} />
