@@ -4,25 +4,24 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { CustomerListView } from "@/components/customers/CustomerListView";
-import { InquiryPipelineView } from "@/components/customers/InquiryPipelineView";
 import { WebsiteLeadsView } from "@/components/customers/WebsiteLeadsView";
 import { CreateCustomerDialog } from "@/components/customers/CreateCustomerDialog";
 import { useNewWebsiteLeadCount } from "@/hooks/useWebsiteLeads";
 import { useAuth } from "@/auth/AuthProvider";
 
-type Tab = "kunden" | "pipeline" | "leads";
+type Tab = "leads" | "kunden";
 
 export function CustomersPage() {
   const { canEdit } = useAuth();
   const mayEdit = canEdit("kunden");
-  const [tab, setTab] = useState<Tab>("pipeline");
+  const [tab, setTab] = useState<Tab>("leads");
   const [createOpen, setCreateOpen] = useState(false);
   const newLeadCount = useNewWebsiteLeadCount();
 
   return (
     <div>
       <PageHeader
-        title="Kunden"
+        title="Anfragen / Kunden"
         actions={
           mayEdit ? (
             <Button onClick={() => setCreateOpen(true)}>
@@ -34,13 +33,6 @@ export function CustomersPage() {
       />
 
       <div className="mb-6 flex gap-1 rounded-md bg-bg-raised p-1 w-fit">
-        <TabButton active={tab === "pipeline"} onClick={() => setTab("pipeline")}>
-          Anfragen-Pipeline
-        </TabButton>
-        <TabButton active={tab === "kunden"} onClick={() => setTab("kunden")}>
-          <UsersIcon size={14} />
-          Alle Kunden
-        </TabButton>
         <TabButton active={tab === "leads"} onClick={() => setTab("leads")}>
           <Globe size={14} />
           Website-Anfragen
@@ -50,11 +42,14 @@ export function CustomersPage() {
             </span>
           )}
         </TabButton>
+        <TabButton active={tab === "kunden"} onClick={() => setTab("kunden")}>
+          <UsersIcon size={14} />
+          Alle Kunden
+        </TabButton>
       </div>
 
-      {tab === "pipeline" && <InquiryPipelineView />}
-      {tab === "kunden" && <CustomerListView />}
       {tab === "leads" && <WebsiteLeadsView />}
+      {tab === "kunden" && <CustomerListView />}
 
       <CreateCustomerDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>

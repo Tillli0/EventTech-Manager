@@ -14,7 +14,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: "/inventar", label: "Inventar", icon: Package, area: "inventar" },
   { to: "/jobs", label: "Jobs", icon: Briefcase, area: "jobs" },
-  { to: "/kunden", label: "Kunden", icon: Users, area: "kunden" },
+  { to: "/kunden", label: "Anfragen / Kunden", icon: Users, area: "kunden" },
   { to: "/angebote", label: "Angebote", icon: FileText, area: "angebote" },
   { to: "/kalender", label: "Kalender", icon: Calendar, area: "kalender" },
   { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
