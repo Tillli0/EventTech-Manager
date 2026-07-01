@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, KeyRound, ShieldCheck, User as UserIcon, Building2, ImagePlus, X } from "lucide-react";
+import { Plus, Trash2, KeyRound, ShieldCheck, User as UserIcon, Building2, ImagePlus, X, DatabaseBackup, Package, HardDriveDownload } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -26,6 +26,7 @@ import {
   type AdminUser,
 } from "@/hooks/useAdminUsers";
 import { useAuth } from "@/auth/AuthProvider";
+import { exportBackup, FULL_BACKUP_TABLES, INVENTORY_BACKUP_TABLES } from "@/lib/backup";
 import {
   APP_AREAS,
   JOB_VIEW_MODE_OPTIONS,
@@ -103,6 +104,10 @@ export function AdminPage() {
           <CompanySettingsCard />
         </div>
       )}
+
+      <div className="mb-6">
+        <BackupCard />
+      </div>
 
       {isLoading && <LoadingState label="Nutzer werden geladen …" />}
       {error && <ErrorState message={error.message} />}
@@ -283,6 +288,66 @@ export function AdminPage() {
         </div>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * Datensicherung: lädt die fachlichen Daten als JSON herunter (komplett oder nur
+ * Inventar). Sichtbar für Admin und Verwaltung. Client-seitig über die RLS-Data-API
+ * — kein Server, kein Secret nötig.
+ */
+function BackupCard() {
+  const toast = useToast();
+  const [running, setRunning] = useState<"komplett" | "inventar" | null>(null);
+  const [last, setLast] = useState<string | null>(null);
+
+  async function run(kind: "komplett" | "inventar") {
+    setRunning(kind);
+    try {
+      const tables = kind === "komplett" ? FULL_BACKUP_TABLES : INVENTORY_BACKUP_TABLES;
+      const result = await exportBackup(tables, kind);
+      setLast(
+        `${result.fileName} · ${result.tableCount} Tabellen, ${result.rowCount} Einträge` +
+          (result.errors.length ? ` (${result.errors.length} übersprungen)` : ""),
+      );
+      if (result.errors.length) {
+        toast.error(`Backup erstellt, aber ${result.errors.length} Tabelle(n) übersprungen (fehlende Rechte).`);
+      } else {
+        toast.success("Backup wurde als JSON heruntergeladen.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Backup fehlgeschlagen.");
+    } finally {
+      setRunning(null);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+          <DatabaseBackup size={15} />
+          Datensicherung
+        </h2>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        <p className="text-xs text-ink-muted">
+          Lädt die Daten als JSON-Datei herunter — zum Aufbewahren oder als Sicherheitskopie.
+          Bewahre die Datei an einem sicheren Ort auf (sie enthält Kunden- und Job-Daten).
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => run("komplett")} disabled={running !== null}>
+            <HardDriveDownload size={16} />
+            {running === "komplett" ? "Wird erstellt …" : "Komplettes Backup"}
+          </Button>
+          <Button variant="secondary" onClick={() => run("inventar")} disabled={running !== null}>
+            <Package size={16} />
+            {running === "inventar" ? "Wird erstellt …" : "Nur Inventar"}
+          </Button>
+        </div>
+        {last && <p className="text-xs text-ink-faint">Zuletzt: {last}</p>}
+      </CardBody>
+    </Card>
   );
 }
 
