@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { startOfDay, endOfDay } from "date-fns";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { FormField, Input, Select, Label } from "@/components/ui/Input";
+import { FormField, Input, Select, Label, Textarea } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import type { Job } from "@/types/database";
 import { useCreateJob, useJobs } from "@/hooks/useJobs";
@@ -52,6 +52,7 @@ export function CreateJobDialog({
   const [location, setLocation] = useState("");
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [notes, setNotes] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [color, setColor] = useState(() => randomJobColor());
 
@@ -64,6 +65,7 @@ export function CreateJobDialog({
     setLocation(initialLocation ?? "");
     setStartDate(initialStart ?? null);
     setEndDate(initialEnd ?? null);
+    setNotes(initialNotes ?? "");
     setAssigneeIds([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -74,6 +76,7 @@ export function CreateJobDialog({
     setLocation("");
     setStartDate(null);
     setEndDate(null);
+    setNotes("");
     setAssigneeIds([]);
     setColor(randomJobColor());
   }
@@ -109,7 +112,7 @@ export function CreateJobDialog({
         // Jobs sind tagesbasiert (keine Uhrzeit): Start = Tagesbeginn, Ende = Tagesende.
         start_date: startOfDay(startDate).toISOString(),
         end_date: endOfDay(endDate).toISOString(),
-        notes: initialNotes?.trim() || null,
+        notes: notes.trim() || null,
         color,
         customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
       });
@@ -165,6 +168,15 @@ export function CreateJobDialog({
             }}
           />
         </div>
+
+        <FormField label="Notizen / weitere Infos" hint="Freitext zum Job — z.B. Details aus der Website-Anfrage, Absprachen, Besonderheiten.">
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            placeholder="z.B. Aufbau ab 14 Uhr, Strom vor Ort vorhanden …"
+          />
+        </FormField>
 
         {profiles && profiles.length > 0 && (
           <div>

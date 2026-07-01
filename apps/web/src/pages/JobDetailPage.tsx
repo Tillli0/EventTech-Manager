@@ -18,6 +18,7 @@ import { PacklistProgress } from "@/components/jobs/PacklistProgress";
 import { printPacklist } from "@/lib/printPacklist";
 import { JobTasksSection } from "@/components/tasks/JobTasksSection";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
+import { Textarea } from "@/components/ui/Input";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
@@ -161,16 +162,7 @@ export function JobDetailPage() {
             </CardBody>
           </Card>
 
-          {job.notes && (
-            <Card>
-              <CardHeader>
-                <h2 className="text-sm font-semibold text-ink">Notizen</h2>
-              </CardHeader>
-              <CardBody>
-                <p className="whitespace-pre-wrap text-sm text-ink-muted">{job.notes}</p>
-              </CardBody>
-            </Card>
-          )}
+          <JobNotesCard job={job} mayEdit={mayEdit} />
         </div>
 
         <div className="space-y-6">
@@ -321,6 +313,62 @@ function JobOffersCard({ jobId }: { jobId: string }) {
             );
           })}
         </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+/** Notizen / weitere Infos zum Job — editierbar (übernimmt u.a. die Website-Anfrage-Nachricht). */
+function JobNotesCard({ job, mayEdit }: { job: Job; mayEdit: boolean }) {
+  const updateJob = useUpdateJob();
+  const toast = useToast();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(job.notes ?? "");
+
+  async function save() {
+    try {
+      await updateJob.mutateAsync({ id: job.id, notes: value.trim() || null });
+      setEditing(false);
+      toast.success("Notizen gespeichert.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Notizen konnten nicht gespeichert werden.");
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-ink">Notizen / weitere Infos</h2>
+        {mayEdit && !editing && (
+          <Button size="sm" variant="ghost" onClick={() => { setValue(job.notes ?? ""); setEditing(true); }}>
+            {job.notes ? "Bearbeiten" : "Hinzufügen"}
+          </Button>
+        )}
+      </CardHeader>
+      <CardBody>
+        {editing ? (
+          <div className="space-y-2">
+            <Textarea
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              rows={4}
+              autoFocus
+              placeholder="Details, Absprachen, Besonderheiten …"
+            />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setEditing(false)}>
+                Abbrechen
+              </Button>
+              <Button size="sm" onClick={save} disabled={updateJob.isPending}>
+                {updateJob.isPending ? "Speichert …" : "Speichern"}
+              </Button>
+            </div>
+          </div>
+        ) : job.notes ? (
+          <p className="whitespace-pre-wrap text-sm text-ink-muted">{job.notes}</p>
+        ) : (
+          <p className="text-sm text-ink-faint">Keine Notizen hinterlegt.</p>
+        )}
       </CardBody>
     </Card>
   );
