@@ -48,8 +48,11 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
       Avatar-Gruppen für zugewiesene Nutzer, farbcodierte Status-Pills.
 - [x] **Kunden** (Alle-Kunden-Ansicht) neu: Zeilen-Karten mit Initialen-Avatar (Stammkunden
       abgesetzt), Stammkunden-Badge, Kontakt-Icons, farbigem Quelle-Badge, Job-Anzahl.
+- [x] **Job-Detail** neu: Status-Badge im Titel, Status-Auswahl als farbcodiertes
+      2-Spalten-Raster (alle 8 Status, aktiver hervorgehoben), Zugewiesene-Nutzer als
+      Avatar-Chips (Initialen).
 - [ ] Basis-Komponenten zentral nachziehen (Button, Card, Dialog, Tabs, Badge, Input).
-- [ ] Weitere Seiten: Inventar, Job-Detail, Kalender, Angebote, Aufgaben, Anfragen-Pipeline.
+- [ ] Weitere Seiten: Inventar, Kalender, Angebote, Aufgaben, Anfragen-Pipeline.
 - [ ] Optional: Akzentfarbe final bestätigen, evtl. Light-Mode-Toggle.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)

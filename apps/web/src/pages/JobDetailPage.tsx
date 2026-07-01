@@ -12,7 +12,7 @@ import { useOffersForJob, fetchOfferWithItems } from "@/hooks/useOffers";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { useToast } from "@/components/ui/Toast";
 import { JOB_STATUS_OPTIONS, offerTotals, type JobStatus } from "@/types/database";
-import { formatDateTime, formatCurrency } from "@/lib/format";
+import { formatDateTime, formatCurrency, initials } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";
 import { PacklistProgress } from "@/components/jobs/PacklistProgress";
 import { printPacklist } from "@/lib/printPacklist";
@@ -26,6 +26,20 @@ import { useAuth } from "@/auth/AuthProvider";
 import type { Job } from "@/types/database";
 import { Users } from "lucide-react";
 import { cn } from "@/lib/cn";
+
+// Muss zu den job.*-Farben in tailwind.config.js passen (dort für Badges/Punkte
+// genutzt). Hier als Hex für farbig getönte Status-Buttons (inline style statt
+// dynamischer Tailwind-Klassen, da JIT keine berechneten Klassennamen erkennt).
+const JOB_STATUS_HEX: Record<JobStatus, string> = {
+  anfrage: "#8B92A3",
+  bestaetigt: "#3B82F6",
+  planung: "#8B5CF6",
+  packen: "#F59E0B",
+  laeuft: "#F97316",
+  rueckgabe: "#14B8A6",
+  abgeschlossen: "#22C55E",
+  storniert: "#EF4444",
+};
 
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -70,7 +84,12 @@ export function JobDetailPage() {
       </Link>
 
       <PageHeader
-        title={job.title}
+        title={
+          <span className="flex flex-wrap items-center gap-2.5">
+            {job.title}
+            <JobStatusBadge status={job.status} />
+          </span>
+        }
         description={
           <span className="flex flex-wrap items-center gap-3">
             <span className="flex items-center gap-1.5">
@@ -159,22 +178,33 @@ export function JobDetailPage() {
             <CardHeader>
               <h2 className="text-sm font-semibold text-ink">Status</h2>
             </CardHeader>
-            <CardBody className="flex flex-col gap-2">
+            <CardBody>
               {mayEdit ? (
-                JOB_STATUS_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => updateStatus.mutate({ id: job.id, status: opt.value as JobStatus })}
-                    className={cn(
-                      "rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors",
-                      job.status === opt.value
-                        ? "border-accent bg-accent-soft text-ink"
-                        : "border-border text-ink-muted hover:border-accent/40 hover:text-ink",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))
+                <div className="grid grid-cols-2 gap-2">
+                  {JOB_STATUS_OPTIONS.map((opt) => {
+                    const hex = JOB_STATUS_HEX[opt.value];
+                    const active = job.status === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => updateStatus.mutate({ id: job.id, status: opt.value as JobStatus })}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-medium transition-all",
+                          !active && "hover:-translate-y-0.5",
+                        )}
+                        style={{
+                          backgroundColor: `${hex}1A`,
+                          color: hex,
+                          borderColor: active ? hex : `${hex}33`,
+                          boxShadow: active ? `0 0 0 1px ${hex}` : undefined,
+                        }}
+                      >
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: hex }} aria-hidden />
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
               ) : (
                 <JobStatusBadge status={job.status} />
               )}
@@ -298,12 +328,20 @@ function JobAssigneesCard({ job, canEdit }: { job: Job; canEdit: boolean }) {
                   type="button"
                   onClick={() => toggle(p.id)}
                   className={cn(
-                    "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    "flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-xs font-medium transition-all",
                     active
                       ? "border-accent bg-accent-soft text-ink"
-                      : "border-border text-ink-muted hover:border-accent/40 hover:text-ink",
+                      : "border-border text-ink-muted hover:-translate-y-0.5 hover:border-accent/40 hover:text-ink",
                   )}
                 >
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+                      active ? "bg-accent text-white" : "bg-bg-raised text-ink-faint",
+                    )}
+                  >
+                    {initials(profileLabel(p))}
+                  </span>
                   {profileLabel(p)}
                 </button>
               );
@@ -312,7 +350,13 @@ function JobAssigneesCard({ job, canEdit }: { job: Job; canEdit: boolean }) {
         ) : assignedProfiles.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {assignedProfiles.map((p) => (
-              <span key={p.id} className="rounded-full bg-bg-raised px-3 py-1 text-xs text-ink-muted">
+              <span
+                key={p.id}
+                className="flex items-center gap-2 rounded-full bg-bg-raised py-1 pl-1 pr-3 text-xs text-ink-muted"
+              >
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[10px] font-semibold text-accent">
+                  {initials(profileLabel(p))}
+                </span>
                 {profileLabel(p)}
               </span>
             ))}
