@@ -17,9 +17,10 @@ import {
   type JobStatus,
   type JobViewMode,
 } from "@/types/database";
-import { formatDate } from "@/lib/format";
+import { formatDate, initials } from "@/lib/format";
 import { CreateJobDialog } from "@/components/jobs/CreateJobDialog";
 import { useSetJobViewMode } from "@/hooks/useAdminUsers";
+import { useProfiles, profileLabel } from "@/hooks/useProfiles";
 import { exportToCsv } from "@/lib/csv";
 import type { Job } from "@/types/database";
 import { useAuth } from "@/auth/AuthProvider";
@@ -31,12 +32,25 @@ function customerLabel(job: Job): string | null {
   return c.company_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || null;
 }
 
+// Literal Klassennamen (nicht interpoliert), damit Tailwinds JIT sie findet.
+const STATUS_TONE: Record<JobStatus, string> = {
+  anfrage: "bg-job-anfrage/15 text-job-anfrage",
+  bestaetigt: "bg-job-bestaetigt/15 text-job-bestaetigt",
+  planung: "bg-job-planung/15 text-job-planung",
+  packen: "bg-job-packen/15 text-job-packen",
+  laeuft: "bg-job-laeuft/15 text-job-laeuft",
+  rueckgabe: "bg-job-rueckgabe/15 text-job-rueckgabe",
+  abgeschlossen: "bg-job-abgeschlossen/15 text-job-abgeschlossen",
+  storniert: "bg-job-storniert/15 text-job-storniert",
+};
+
 export function JobsPage() {
   const { canEdit, isManager, profile, user, refresh } = useAuth();
   const mayEdit = canEdit("jobs");
   const setViewMode = useSetJobViewMode();
   const { data: jobs, isLoading, error } = useJobs();
   const { data: deletedJobs } = useDeletedJobs();
+  const { data: allProfiles } = useProfiles();
   const restoreJob = useRestoreJob();
   const hardDeleteJob = useHardDeleteJob();
   const confirm = useConfirm();
@@ -45,6 +59,12 @@ export function JobsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+
+  const profileNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    allProfiles?.forEach((p) => map.set(p.id, profileLabel(p)));
+    return map;
+  }, [allProfiles]);
 
   async function handleRestore(job: Job) {
     await restoreJob.mutateAsync(job.id);
@@ -80,6 +100,12 @@ export function JobsPage() {
     }
     return { activeJobs: active, pastJobs: past };
   }, [filteredJobs]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    jobs?.forEach((j) => (counts[j.status] = (counts[j.status] ?? 0) + 1));
+    return counts;
+  }, [jobs]);
 
   function handleExport() {
     const statusLabel = (s: JobStatus) => JOB_STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
@@ -118,21 +144,24 @@ export function JobsPage() {
         }
       />
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <Select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as JobStatus | "alle")}
-          className="sm:w-56"
-        >
-          <option value="alle">Alle Status</option>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          <StatusChip active={statusFilter === "alle"} onClick={() => setStatusFilter("alle")}>
+            Alle <ChipCount n={jobs?.length ?? 0} />
+          </StatusChip>
           {JOB_STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
+            <StatusChip
+              key={opt.value}
+              active={statusFilter === opt.value}
+              tone={STATUS_TONE[opt.value]}
+              onClick={() => setStatusFilter(opt.value)}
+            >
+              {opt.label} <ChipCount n={statusCounts[opt.value] ?? 0} />
+            </StatusChip>
           ))}
-        </Select>
+        </div>
         {isManager && profile && (
-          <label className="flex items-center gap-2 text-sm text-ink-muted">
+          <label className="flex shrink-0 items-center gap-2 text-sm text-ink-muted">
             <span className="shrink-0">Sichtmodus:</span>
             <Select
               value={profile.job_view_mode}
@@ -175,7 +204,7 @@ export function JobsPage() {
 
       <div className="space-y-2">
         {activeJobs.map((job) => (
-          <JobCard key={job.id} job={job} />
+          <JobCard key={job.id} job={job} profileNameById={profileNameById} />
         ))}
       </div>
 
@@ -200,7 +229,7 @@ export function JobsPage() {
           {pastOpen && (
             <div className="mt-2 space-y-2">
               {pastJobs.map((job) => (
-                <JobCard key={job.id} job={job} />
+                <JobCard key={job.id} job={job} profileNameById={profileNameById} muted />
               ))}
             </div>
           )}
@@ -246,6 +275,135 @@ export function JobsPage() {
   );
 }
 
+function ChipCount({ n }: { n: number }) {
+  return <span className="ml-1 rounded-full bg-black/15 px-1.5 text-[10px] font-semibold">{n}</span>;
+}
+
+function StatusChip({
+  active,
+  tone,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  tone?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+        active
+          ? tone
+            ? cn(tone, "border-transparent")
+            : "border-transparent bg-accent/15 text-accent"
+          : "border-border text-ink-muted hover:border-accent/40 hover:text-ink",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Karte für einen Job in der Liste — Fortschritt/Zuweisung nur je nach Status. */
+function JobCard({
+  job,
+  profileNameById,
+  muted = false,
+}: {
+  job: Job;
+  profileNameById: Map<string, string>;
+  muted?: boolean;
+}) {
+  const items = job.packlist_items ?? [];
+  const assignees = (job.assignees ?? []).map((a) => profileNameById.get(a.user_id)).filter(Boolean) as string[];
+
+  let progress: { label: string; done: number; total: number } | null = null;
+  if (items.length > 0) {
+    if (job.status === "packen" || job.status === "laeuft") {
+      const total = items.reduce((s, i) => s + i.quantity, 0);
+      const done = items.reduce((s, i) => s + i.quantity_picked_up, 0);
+      if (total > 0) progress = { label: "Gepackt", done, total };
+    } else if (job.status === "rueckgabe") {
+      const total = items.reduce((s, i) => s + i.quantity_picked_up, 0);
+      const done = items.reduce((s, i) => s + i.quantity_returned_ok + i.quantity_damaged + i.quantity_missing, 0);
+      if (total > 0) progress = { label: "Zurück", done, total };
+    }
+  }
+
+  return (
+    <Link to={`/jobs/${job.id}`}>
+      <Card
+        className={cn(
+          "border-l-4 px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-accent/40",
+          muted && "opacity-70",
+        )}
+        style={{ borderLeftColor: job.color }}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-2 font-medium text-ink">{job.title}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
+              <span>
+                {formatDate(job.start_date)} – {formatDate(job.end_date)}
+              </span>
+              {customerLabel(job) && <span>{customerLabel(job)}</span>}
+              {job.location && (
+                <span className="flex items-center gap-1">
+                  <MapPin size={12} />
+                  {job.location}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {progress && (
+            <div className="w-full shrink-0 sm:w-32">
+              <div className="mb-1 flex justify-between text-[11px] text-ink-faint">
+                <span>{progress.label}</span>
+                <span>
+                  {progress.done}/{progress.total}
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-bg-raised">
+                <div
+                  className="h-full rounded-full bg-accent transition-all duration-700"
+                  style={{ width: `${Math.min(100, (progress.done / progress.total) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex shrink-0 items-center gap-3">
+            {assignees.length > 0 && (
+              <div className="flex -space-x-2">
+                {assignees.slice(0, 3).map((name, i) => (
+                  <span
+                    key={i}
+                    className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-surface bg-accent-soft text-[10px] font-medium text-accent"
+                    title={name}
+                  >
+                    {initials(name)}
+                  </span>
+                ))}
+                {assignees.length > 3 && (
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-surface bg-bg-raised text-[10px] font-medium text-ink-faint">
+                    +{assignees.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
+            <JobStatusBadge status={job.status} />
+          </div>
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
 /** Karte für einen Job im Papierkorb: wiederherstellen oder endgültig löschen. */
 function TrashedJobCard({
   job,
@@ -278,43 +436,5 @@ function TrashedJobCard({
         </Button>
       </div>
     </Card>
-  );
-}
-
-/** Eine Job-Karte in der Liste (für aktive wie vergangene Jobs gleich). */
-function JobCard({ job }: { job: Job }) {
-  return (
-    <Link to={`/jobs/${job.id}`}>
-      <Card
-        className="border-l-4 px-5 py-4 transition-colors hover:border-accent/40"
-        style={{ borderLeftColor: job.color }}
-      >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="flex items-center gap-2 font-medium text-ink">
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: job.color }}
-                aria-hidden
-              />
-              {job.title}
-            </p>
-            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-ink-muted">
-              <span>
-                {formatDate(job.start_date)} – {formatDate(job.end_date)}
-              </span>
-              {customerLabel(job) && <span>{customerLabel(job)}</span>}
-              {job.location && (
-                <span className="flex items-center gap-1">
-                  <MapPin size={12} />
-                  {job.location}
-                </span>
-              )}
-            </div>
-          </div>
-          <JobStatusBadge status={job.status} />
-        </div>
-      </Card>
-    </Link>
   );
 }

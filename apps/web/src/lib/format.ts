@@ -39,3 +39,15 @@ export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return new Intl.NumberFormat("de-DE").format(value);
 }
+
+/** Initialen aus einem Namen (max. 2 Buchstaben) — für Avatar-Kreise. */
+export function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}

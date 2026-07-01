@@ -1,14 +1,30 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search, Users, Download } from "lucide-react";
+import { Search, Users, Download, Mail, Phone } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StammkundeBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 import { useCustomers, useCustomerJobCounts } from "@/hooks/useCustomers";
-import { CUSTOMER_SOURCE_LABELS, isStammkunde, type Customer } from "@/types/database";
+import { CUSTOMER_SOURCE_LABELS, isStammkunde, type Customer, type CustomerSource } from "@/types/database";
+import { initials } from "@/lib/format";
 import { exportToCsv } from "@/lib/csv";
+import { cn } from "@/lib/cn";
+
+// Literal Klassennamen (nicht interpoliert), damit Tailwinds JIT sie findet.
+const SOURCE_TONE: Record<CustomerSource, string> = {
+  whatsapp: "bg-status-verfuegbar/15 text-status-verfuegbar",
+  instagram: "bg-job-planung/15 text-job-planung",
+  email: "bg-status-ausgeliehen/15 text-status-ausgeliehen",
+  kontaktformular: "bg-accent/15 text-accent",
+  telefon: "bg-status-wartung/15 text-status-wartung",
+  sonstiges: "bg-bg-raised text-ink-muted",
+};
+
+function customerName(c: Pick<Customer, "company_name" | "first_name" | "last_name">): string {
+  return c.company_name || [c.first_name, c.last_name].filter(Boolean).join(" ");
+}
 
 export function CustomerListView() {
   const { data: customers, isLoading, error } = useCustomers();
@@ -20,18 +36,16 @@ export function CustomerListView() {
     if (!search.trim()) return customers;
     const q = search.toLowerCase();
     return customers.filter((c) => {
-      const name = [c.company_name, c.first_name, c.last_name].filter(Boolean).join(" ").toLowerCase();
+      const name = customerName(c).toLowerCase();
       return name.includes(q) || c.email?.toLowerCase().includes(q) || c.phone?.includes(q);
     });
   }, [customers, search]);
 
   function handleExport() {
-    const name = (c: Customer) =>
-      c.company_name || [c.first_name, c.last_name].filter(Boolean).join(" ");
     exportToCsv(
       `kunden-${new Date().toISOString().slice(0, 10)}`,
       [
-        { label: "Name", value: (c: Customer) => name(c) },
+        { label: "Name", value: (c: Customer) => customerName(c) },
         { label: "Firma", value: (c: Customer) => c.company_name },
         { label: "Vorname", value: (c: Customer) => c.first_name },
         { label: "Nachname", value: (c: Customer) => c.last_name },
@@ -69,45 +83,65 @@ export function CustomerListView() {
       {filtered.length === 0 ? (
         <EmptyState icon={Users} title="Keine Kunden gefunden" />
       ) : (
-        <Card className="overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-ink-muted">
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="hidden px-4 py-3 font-medium sm:table-cell">Kontakt</th>
-                <th className="px-4 py-3 font-medium">Herkunft</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((customer) => (
-                <tr key={customer.id} className="border-b border-border last:border-0 hover:bg-bg-raised">
-                  <td className="px-4 py-3">
-                    <Link to={`/kunden/${customer.id}`} className="flex items-center gap-2 font-medium text-ink">
-                      <span>
-                        {customer.company_name || [customer.first_name, customer.last_name].filter(Boolean).join(" ")}
-                      </span>
-                      {isStammkunde(customer, jobCounts?.get(customer.id) ?? 0) && <StammkundeBadge />}
-                    </Link>
+        <div className="space-y-2">
+          {filtered.map((customer) => {
+            const name = customerName(customer);
+            const jobCount = jobCounts?.get(customer.id) ?? 0;
+            const stammkunde = isStammkunde(customer, jobCount);
+            return (
+              <Link key={customer.id} to={`/kunden/${customer.id}`}>
+                <Card className="flex items-center gap-3 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent/40">
+                  <span
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+                      stammkunde ? "bg-status-wartung/15 text-status-wartung" : "bg-accent-soft text-accent",
+                    )}
+                  >
+                    {initials(name || "?")}
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-ink">{name}</span>
+                      {stammkunde && <StammkundeBadge />}
+                    </div>
                     {customer.company_name && (customer.first_name || customer.last_name) && (
-                      <p className="text-xs text-ink-muted">
+                      <p className="text-xs text-ink-faint">
                         {[customer.first_name, customer.last_name].filter(Boolean).join(" ")}
                       </p>
                     )}
-                  </td>
-                  <td className="hidden px-4 py-3 text-ink-muted sm:table-cell">
-                    <p>{customer.email ?? "—"}</p>
-                    <p className="text-xs">{customer.phone ?? "—"}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-bg-raised px-2.5 py-1 text-xs text-ink-muted">
-                      {CUSTOMER_SOURCE_LABELS[customer.source]}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-ink-muted">
+                      {customer.email && (
+                        <span className="flex items-center gap-1">
+                          <Mail size={12} />
+                          {customer.email}
+                        </span>
+                      )}
+                      {customer.phone && (
+                        <span className="flex items-center gap-1">
+                          <Phone size={12} />
+                          {customer.phone}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="hidden shrink-0 text-xs text-ink-faint sm:block">
+                    {jobCount} {jobCount === 1 ? "Job" : "Jobs"}
+                  </span>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium",
+                      SOURCE_TONE[customer.source],
+                    )}
+                  >
+                    {CUSTOMER_SOURCE_LABELS[customer.source]}
+                  </span>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
       )}
     </div>
   );

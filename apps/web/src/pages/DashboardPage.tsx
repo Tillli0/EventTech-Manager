@@ -22,7 +22,7 @@ import { useDashboard } from "@/hooks/useDashboard";
 import { useWebsiteLeads } from "@/hooks/useWebsiteLeads";
 import { useAuth } from "@/auth/AuthProvider";
 import { DEVICE_STATUS_OPTIONS, type DeviceStatus } from "@/types/database";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, initials } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Job, JobMilestone, Task } from "@/types/database";
 
@@ -35,16 +35,6 @@ const STATUS_HEX: Record<DeviceStatus, string> = {
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-}
-
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 }
 
 function customerLabel(job: Job): string | null {

@@ -23,8 +23,12 @@ export function useJobs() {
       const { data, error } = await supabase
         .from("jobs")
         // Zeitplan-Termine mitladen — für „komplett vergangen" (Termine nach dem
-        // Enddatum) und die Zeitplan-Liste im Überblick (nächster Job).
-        .select("*, customer:customers(*), milestones:job_milestones(id, title, at)")
+        // Enddatum) und die Zeitplan-Liste im Überblick (nächster Job). Packlisten-
+        // Mengen (ohne Geräte-Join) für den Fortschrittsbalken in der Job-Karte,
+        // Zuweisungen für die Avatar-Gruppe.
+        .select(
+          "*, customer:customers(*), milestones:job_milestones(id, title, at), packlist_items(id, job_id, device_id, quantity, quantity_picked_up, quantity_returned_ok, quantity_damaged, quantity_missing, picked_up_at, returned_at, is_damaged_on_return, damage_notes, created_at), assignees:job_assignees(user_id)",
+        )
         .is("deleted_at", null)
         .order("start_date", { ascending: true });
       if (error) throw error;

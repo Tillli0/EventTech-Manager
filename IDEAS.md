@@ -21,7 +21,9 @@
       und ein Audit-Log, wer wann was geändert hat. · L · ★★★ · Freigabe
 - [ ] **Automatisierte Tests** — zumindest Smoke-Tests (Login, Packliste, Angebot, Lead-Annahme);
       aktuell keinerlei Tests. · M · ★★ · Freigabe
-- [ ] **DB-Backups** der Cloud-DB (regelmäßiger `pg_dump`, z.B. via GitHub-Action). · M · ★★ · Freigabe
+- [ ] **DB-Backups** der Cloud-DB (regelmäßiger `pg_dump`, z.B. via GitHub-Action) + „Backup
+      erstellen"-Button für Admin/Verwaltung. Braucht vom Nutzer einen GitHub-PAT-Secret
+      (`GH_DISPATCH_TOKEN`) — Anleitung wurde geliefert, noch nicht bestätigt/gesetzt. · M · ★★ · Freigabe
 - [ ] **Spam: Cloudflare-Turnstile-Captcha** zusätzlich zu Honeypot + Rate-Limit, falls Spam durchkommt. · M · ★ · Freigabe
 - [ ] **Performance: Code-Splitting** — große Chunks aufteilen (`react-pdf` ~1,3 MB, `DeviceDetailPage`
       ~0,98 MB lazy-laden), schnellerer Erststart. · M · ★★ · Freigabe
@@ -41,8 +43,13 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 - [x] Akzent global auf Indigo (`tailwind.config.js`).
 - [x] **Überblick/Dashboard** neu: Kennzahlen-Karten (Hochzähl-Effekt), Auslastungs-Ring,
       Gerätestatus-Balken, „Neue Anfragen"-Panel, gestraffte Job-/Aufgaben-Zeilen.
+- [x] **Jobs** neu: Status-Chips (alle 8 Status + Zähler) statt Dropdown, Karten mit
+      farbigem Akzentbalken, animiertem Packfortschritt (aus echten Packlisten-Mengen),
+      Avatar-Gruppen für zugewiesene Nutzer, farbcodierte Status-Pills.
+- [x] **Kunden** (Alle-Kunden-Ansicht) neu: Zeilen-Karten mit Initialen-Avatar (Stammkunden
+      abgesetzt), Stammkunden-Badge, Kontakt-Icons, farbigem Quelle-Badge, Job-Anzahl.
 - [ ] Basis-Komponenten zentral nachziehen (Button, Card, Dialog, Tabs, Badge, Input).
-- [ ] Weitere Seiten: Inventar, Jobs/Job-Detail, Kunden, Kalender, Angebote, Aufgaben.
+- [ ] Weitere Seiten: Inventar, Job-Detail, Kalender, Angebote, Aufgaben, Anfragen-Pipeline.
 - [ ] Optional: Akzentfarbe final bestätigen, evtl. Light-Mode-Toggle.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
