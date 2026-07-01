@@ -306,7 +306,7 @@ export interface CustomerNote {
   created_at: string;
 }
 
-export type WebsiteLeadStatus = "neu" | "bearbeitet" | "verworfen";
+export type WebsiteLeadStatus = "neu" | "akzeptiert" | "verworfen";
 
 /** Roh-Einsendung des öffentlichen Kontaktformulars der Website (Tabelle website_leads). */
 export interface WebsiteLead {

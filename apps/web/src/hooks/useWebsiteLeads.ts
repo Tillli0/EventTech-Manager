@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { startOfDay, endOfDay } from "date-fns";
 import { supabase } from "@/lib/supabase";
-import type { Customer, WebsiteLead, WebsiteLeadStatus } from "@/types/database";
+import { randomJobColor } from "@/types/database";
+import type { Customer, Job, WebsiteLead, WebsiteLeadStatus } from "@/types/database";
 
 const LEADS_KEY = ["website-leads"] as const;
 
@@ -74,14 +76,13 @@ async function insertCustomerFromLead(lead: WebsiteLead): Promise<Customer> {
   return data as Customer;
 }
 
-async function markLeadProcessed(id: string): Promise<void> {
-  const { error } = await supabase.from("website_leads").update({ status: "bearbeitet" }).eq("id", id);
-  if (error) throw error;
+function customerDisplayName(c: Customer): string {
+  return c.company_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || c.email || "Kunde";
 }
 
 /**
  * Sucht einen bestehenden Kunden mit gleicher E-Mail (case-insensitive) oder
- * Telefonnummer — für die Dubletten-Erkennung beim Konvertieren eines Leads.
+ * Telefonnummer — für die Dubletten-Erkennung beim Akzeptieren eines Leads.
  */
 export async function findCustomerByContact(
   email: string | null,
@@ -96,58 +97,67 @@ export async function findCustomerByContact(
   return (data?.[0] as Customer) ?? null;
 }
 
-interface LeadConvertArgs {
+interface AcceptLeadArgs {
   lead: WebsiteLead;
   /** Wenn gesetzt, wird dieser bestehende Kunde verwendet statt einen neuen anzulegen (Dubletten-Erkennung). */
   existingCustomer?: Customer | null;
 }
 
 /**
- * Macht aus einem Website-Lead einen echten Kunden samt Anfrage-Karte in der
- * Pipeline und markiert den Lead als "bearbeitet". Damit landet die Web-Anfrage
- * direkt im normalen Kunden-/Anfragen-Workflow.
+ * Akzeptiert eine Website-Anfrage: legt (falls nötig) einen Kunden an, erstellt
+ * automatisch einen Job aus den Anfrage-Daten (Titel, Zeitraum, Nachricht als
+ * Notiz) samt Kalendereintrag und markiert den Lead als "akzeptiert".
  */
-export function useConvertLeadToCustomer() {
+export function useAcceptLead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ lead, existingCustomer }: LeadConvertArgs): Promise<Customer> => {
+    mutationFn: async ({ lead, existingCustomer }: AcceptLeadArgs): Promise<{ customer: Customer; job: Job }> => {
       const customer = existingCustomer ?? (await insertCustomerFromLead(lead));
 
-      const { error: inqErr } = await supabase.from("customer_inquiries").insert({
-        customer_id: customer.id,
-        title: lead.event_type || "Website-Anfrage",
-        event_date: lead.event_date,
-        description: lead.message,
+      // Zeitraum: Event-Datum als eintägiger Job; ohne Datum der heutige Tag.
+      const base = lead.event_date ? new Date(`${lead.event_date}T12:00:00`) : new Date();
+      const start = startOfDay(base).toISOString();
+      const end = endOfDay(base).toISOString();
+
+      const { data: jobData, error: jobError } = await supabase
+        .from("jobs")
+        .insert({
+          title: lead.event_type?.trim() || `Anfrage ${lead.name}`,
+          customer_id: customer.id,
+          status: "anfrage",
+          start_date: start,
+          end_date: end,
+          notes: lead.message?.trim() || null,
+          color: randomJobColor(),
+        })
+        .select()
+        .single();
+      if (jobError) throw jobError;
+      const job = jobData as Job;
+
+      const { error: calendarError } = await supabase.from("calendar_entries").insert({
+        job_id: job.id,
+        title: customerDisplayName(customer),
+        start_at: job.start_date,
+        end_at: job.end_date,
+        all_day: false,
+        source: "intern",
       });
-      if (inqErr) throw inqErr;
+      if (calendarError) throw calendarError;
 
-      await markLeadProcessed(lead.id);
-      return customer;
+      const { error: statusError } = await supabase
+        .from("website_leads")
+        .update({ status: "akzeptiert" })
+        .eq("id", lead.id);
+      if (statusError) throw statusError;
+
+      return { customer, job };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LEADS_KEY });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
-      queryClient.invalidateQueries({ queryKey: ["inquiries"] });
-    },
-  });
-}
-
-/**
- * Legt aus einem Lead einen Kunden an und markiert den Lead als "bearbeitet" —
- * ohne Anfrage-Karte. Basis für "Zu Job machen": danach wird der Job-Dialog mit
- * diesem Kunden vorbefüllt geöffnet.
- */
-export function useCreateCustomerFromLead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ lead, existingCustomer }: LeadConvertArgs): Promise<Customer> => {
-      const customer = existingCustomer ?? (await insertCustomerFromLead(lead));
-      await markLeadProcessed(lead.id);
-      return customer;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: LEADS_KEY });
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
