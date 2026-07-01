@@ -21,9 +21,9 @@
       und ein Audit-Log, wer wann was geändert hat. · L · ★★★ · Freigabe
 - [ ] **Automatisierte Tests** — zumindest Smoke-Tests (Login, Packliste, Angebot, Lead-Annahme);
       aktuell keinerlei Tests. · M · ★★ · Freigabe
-- [ ] **DB-Backups** der Cloud-DB (regelmäßiger `pg_dump`, z.B. via GitHub-Action) + „Backup
-      erstellen"-Button für Admin/Verwaltung. Braucht vom Nutzer einen GitHub-PAT-Secret
-      (`GH_DISPATCH_TOKEN`) — Anleitung wurde geliefert, noch nicht bestätigt/gesetzt. · M · ★★ · Freigabe
+- [ ] **Automatische DB-Backups** der Cloud-DB (regelmäßiger `pg_dump` via GitHub-Action,
+      Artefakt/Storage). Braucht vom Nutzer einen GitHub-PAT-Secret (`GH_DISPATCH_TOKEN`).
+      Ergänzt das bereits umgesetzte manuelle JSON-Backup (s. „Kürzlich umgesetzt"). · M · ★★ · Freigabe
 - [ ] **Spam: Cloudflare-Turnstile-Captcha** zusätzlich zu Honeypot + Rate-Limit, falls Spam durchkommt. · M · ★ · Freigabe
 - [ ] **Performance: Code-Splitting** — große Chunks aufteilen (`react-pdf` ~1,3 MB, `DeviceDetailPage`
       ~0,98 MB lazy-laden), schnellerer Erststart. · M · ★★ · Freigabe
@@ -64,6 +64,18 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 - [ ] Optional: Akzentfarbe final bestätigen, evtl. Light-Mode-Toggle.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Website-Anfragen vereinfacht + Auto-Job** (2026-07-01): Status jetzt nur noch
+  Neu / Akzeptiert / Verworfen (Migration 0035). „Akzeptieren" legt automatisch Kunde
+  (mit Dubletten-Check) **und** Job (Status „Anfrage", Zeitraum/Nachricht übernommen)
+  an und springt in den Job. Ansicht im Premium-Look neu (Status-Akzentbalken, Avatar,
+  Kontakt-Chips). Anfragen-Pipeline-Tab entfernt, „Kunden" → „Anfragen / Kunden" umbenannt.
+- **Manuelle Datensicherung** (2026-07-01): in der Verwaltung (Admin + Verwaltung) zwei
+  Buttons — „Komplettes Backup" und „Nur Inventar" — laden die Daten als JSON herunter
+  (client-seitig über die RLS-Data-API, kein Server/Secret nötig). `apps/web/src/lib/backup.ts`.
+- **Job-Notizen editierbar** (2026-07-01): Freitext-Feld „Notizen / weitere Infos" im
+  Erstell-Dialog und auf der Job-Detailseite (dort direkt bearbeitbar). Übernimmt u.a. die
+  Nachricht aus einer Website-Anfrage.
 
 - **Job anlegen: stiller Abbruch behoben** (2026-07-01): Fehlten Titel oder Zeitraum, brach
   das Formular bisher komplett ohne Rückmeldung ab ("nichts passiert"). Jetzt Toast-Hinweis
