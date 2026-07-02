@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, FileText, Download, Trash2, Pencil } from "lucide-react";
+import { Plus, FileText, Download, Trash2, Pencil, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -10,6 +10,8 @@ import { offerTotals, type Offer } from "@/types/database";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
+import { InvoiceDialog } from "@/components/invoices/InvoiceDialog";
+import { offerToInvoiceInput, type CreateInvoiceInput } from "@/hooks/useInvoices";
 import { useAuth } from "@/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -23,6 +25,7 @@ export function OffersPage() {
   const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [editOffer, setEditOffer] = useState<Offer | null>(null);
+  const [invoicePreset, setInvoicePreset] = useState<CreateInvoiceInput | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function handleDownload(id: string) {
@@ -121,6 +124,17 @@ export function OffersPage() {
                         {mayEdit && (
                           <button
                             type="button"
+                            onClick={() => setInvoicePreset(offerToInvoiceInput(offer))}
+                            className="flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:text-accent"
+                            aria-label="Zu Rechnung machen"
+                            title="Zu Rechnung machen (Positionen übernehmen)"
+                          >
+                            <Receipt size={14} />
+                          </button>
+                        )}
+                        {mayEdit && (
+                          <button
+                            type="button"
                             onClick={() => setEditOffer(offer)}
                             className="flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:text-accent"
                             aria-label="Angebot bearbeiten"
@@ -165,6 +179,11 @@ export function OffersPage() {
         open={!!editOffer}
         onClose={() => setEditOffer(null)}
         editOffer={editOffer ?? undefined}
+      />
+      <InvoiceDialog
+        open={!!invoicePreset}
+        onClose={() => setInvoicePreset(null)}
+        preset={invoicePreset ?? undefined}
       />
     </div>
   );

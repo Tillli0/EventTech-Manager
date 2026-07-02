@@ -16,6 +16,7 @@ const JobPacklistPage = lazy(() => import("@/pages/JobPacklistPage").then((m) =>
 const CustomersPage = lazy(() => import("@/pages/CustomersPage").then((m) => ({ default: m.CustomersPage })));
 const CustomerDetailPage = lazy(() => import("@/pages/CustomerDetailPage").then((m) => ({ default: m.CustomerDetailPage })));
 const OffersPage = lazy(() => import("@/pages/OffersPage").then((m) => ({ default: m.OffersPage })));
+const InvoicesPage = lazy(() => import("@/pages/InvoicesPage").then((m) => ({ default: m.InvoicesPage })));
 const CalendarPage = lazy(() => import("@/pages/CalendarPage").then((m) => ({ default: m.CalendarPage })));
 const ScanPage = lazy(() => import("@/pages/ScanPage").then((m) => ({ default: m.ScanPage })));
 const TasksPage = lazy(() => import("@/pages/TasksPage").then((m) => ({ default: m.TasksPage })));
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
           { path: "kunden", element: <RequireArea area="kunden"><CustomersPage /></RequireArea> },
           { path: "kunden/:id", element: <RequireArea area="kunden"><CustomerDetailPage /></RequireArea> },
           { path: "angebote", element: <RequireArea area="angebote"><OffersPage /></RequireArea> },
+          { path: "rechnungen", element: <RequireArea area="angebote"><InvoicesPage /></RequireArea> },
           { path: "kalender", element: <RequireArea area="kalender"><CalendarPage /></RequireArea> },
           { path: "scan", element: <RequireArea area="inventar"><ScanPage /></RequireArea> },
           { path: "aufgaben", element: <TasksPage /> },

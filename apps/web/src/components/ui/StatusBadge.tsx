@@ -1,11 +1,12 @@
 import { Star } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { DeviceStatus, JobStatus, InquiryPipelineStatus, OfferStatus } from "@/types/database";
+import type { DeviceStatus, JobStatus, InquiryPipelineStatus, OfferStatus, InvoiceDerivedStatus } from "@/types/database";
 import {
   DEVICE_STATUS_OPTIONS,
   JOB_STATUS_OPTIONS,
   INQUIRY_PIPELINE_OPTIONS,
   OFFER_STATUS_OPTIONS,
+  INVOICE_STATUS_OPTIONS,
 } from "@/types/database";
 
 const deviceDotClasses: Record<DeviceStatus, string> = {
@@ -109,6 +110,40 @@ export function OfferStatusBadge({ status }: { status: OfferStatus }) {
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", offerDotClasses[status])} />
+      {option?.label ?? status}
+    </span>
+  );
+}
+
+const invoiceTextClasses: Record<InvoiceDerivedStatus, string> = {
+  entwurf: "text-ink-muted",
+  gestellt: "text-accent",
+  teilbezahlt: "text-status-wartung",
+  ueberfaellig: "text-status-defekt",
+  bezahlt: "text-status-verfuegbar",
+  storniert: "text-ink-faint",
+};
+
+const invoiceDotClasses: Record<InvoiceDerivedStatus, string> = {
+  entwurf: "bg-ink-muted",
+  gestellt: "bg-accent",
+  teilbezahlt: "bg-status-wartung",
+  ueberfaellig: "bg-status-defekt",
+  bezahlt: "bg-status-verfuegbar",
+  storniert: "bg-ink-faint",
+};
+
+export function InvoiceStatusBadge({ status }: { status: InvoiceDerivedStatus }) {
+  const option = INVOICE_STATUS_OPTIONS.find((o) => o.value === status);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+        "border-current/20",
+        invoiceTextClasses[status],
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", invoiceDotClasses[status])} />
       {option?.label ?? status}
     </span>
   );

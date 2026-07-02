@@ -524,6 +524,99 @@ export function offerTotals(
 }
 
 // ============================================================
+// Rechnungen
+// ============================================================
+
+/** Gespeicherter Status. „teilbezahlt/bezahlt/überfällig" werden abgeleitet. */
+export type InvoiceStatus = "entwurf" | "gestellt" | "storniert";
+
+/** Anzeige-Status inkl. der aus Zahlungen/Fälligkeit abgeleiteten Zustände. */
+export type InvoiceDerivedStatus =
+  | "entwurf"
+  | "gestellt"
+  | "teilbezahlt"
+  | "ueberfaellig"
+  | "bezahlt"
+  | "storniert";
+
+export interface Invoice {
+  id: string;
+  /** Null = Entwurf. Wird beim Stellen lückenlos vergeben (RE-2026-0001). */
+  invoice_number: string | null;
+  customer_id: string | null;
+  job_id: string | null;
+  offer_id: string | null;
+  title: string;
+  status: InvoiceStatus;
+  invoice_date: string | null;
+  due_date: string | null;
+  /** Leistungs-/Eventdatum (§14-Pflichtangabe auf dem PDF). */
+  service_date: string | null;
+  tax_rate: number;
+  /** Kundenadresse zum Zeitpunkt des Stellens (bleibt stabil). */
+  address_snapshot: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joins (optional, je nach Query)
+  customer?: Customer | null;
+  items?: InvoiceItem[];
+  payments?: InvoicePayment[];
+}
+
+export interface InvoiceItem {
+  id: string;
+  invoice_id: string;
+  device_id: string | null;
+  description: string;
+  quantity: number;
+  rental_days: number;
+  unit_price: number;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface InvoicePayment {
+  id: string;
+  invoice_id: string;
+  amount: number;
+  paid_at: string;
+  method: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+/** Summe der erfassten Zahlungen. */
+export function invoicePaidSum(payments: Pick<InvoicePayment, "amount">[] | undefined): number {
+  return payments?.reduce((sum, p) => sum + p.amount, 0) ?? 0;
+}
+
+/**
+ * Leitet den Anzeige-Status ab: storniert/entwurf direkt aus dem gespeicherten
+ * Status; für gestellte Rechnungen entscheiden Zahlungen (bezahlt/teilbezahlt)
+ * und das Fälligkeitsdatum (überfällig). Kleine Rundungsdifferenzen (<1 Cent)
+ * gelten als bezahlt.
+ */
+export function invoiceDerivedStatus(
+  invoice: Pick<Invoice, "status" | "due_date" | "tax_rate">,
+  items: Pick<InvoiceItem, "quantity" | "rental_days" | "unit_price">[] | undefined,
+  payments: Pick<InvoicePayment, "amount">[] | undefined,
+  now: Date = new Date(),
+): InvoiceDerivedStatus {
+  if (invoice.status === "storniert") return "storniert";
+  if (invoice.status === "entwurf") return "entwurf";
+  const { gross } = offerTotals(items ?? [], invoice.tax_rate);
+  const paid = invoicePaidSum(payments);
+  if (gross > 0 && paid >= gross - 0.005) return "bezahlt";
+  if (invoice.due_date) {
+    const due = new Date(`${invoice.due_date.slice(0, 10)}T23:59:59`);
+    if (due.getTime() < now.getTime()) return "ueberfaellig";
+  }
+  if (paid > 0) return "teilbezahlt";
+  return "gestellt";
+}
+
+// ============================================================
 // UI-Hilfstypen
 // ============================================================
 
@@ -588,6 +681,15 @@ export const OFFER_STATUS_OPTIONS: StatusOption<OfferStatus>[] = [
   { value: "gesendet", label: "Gesendet", colorVar: "status-wartung" },
   { value: "angenommen", label: "Angenommen", colorVar: "status-verfuegbar" },
   { value: "abgelehnt", label: "Abgelehnt", colorVar: "status-defekt" },
+];
+
+export const INVOICE_STATUS_OPTIONS: StatusOption<InvoiceDerivedStatus>[] = [
+  { value: "entwurf", label: "Entwurf", colorVar: "ink-muted" },
+  { value: "gestellt", label: "Gestellt", colorVar: "accent" },
+  { value: "teilbezahlt", label: "Teilbezahlt", colorVar: "status-wartung" },
+  { value: "ueberfaellig", label: "Überfällig", colorVar: "status-defekt" },
+  { value: "bezahlt", label: "Bezahlt", colorVar: "status-verfuegbar" },
+  { value: "storniert", label: "Storniert", colorVar: "ink-faint" },
 ];
 
 export const TASK_STATUS_OPTIONS: StatusOption<TaskStatus>[] = [

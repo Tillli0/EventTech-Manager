@@ -15,12 +15,13 @@
 
 ## 🚀 Größere Features (Freigabe nötig — Claude schlägt vor)
 
-- [ ] **Rechnungsstellung** — größter offener Baustein: Rechnung aus Job/Angebot, Status-Workflow
-      (offen/bezahlt/überfällig), PDF. Dashboard verweist bereits darauf. · L · ★★★ · Freigabe
 - [ ] **Globale Suche + Änderungsprotokoll** — projektweite Suche (Geräte/Jobs/Kunden/Angebote)
       und ein Audit-Log, wer wann was geändert hat. · L · ★★★ · Freigabe
-- [ ] **Automatisierte Tests** — zumindest Smoke-Tests (Login, Packliste, Angebot, Lead-Annahme);
-      aktuell keinerlei Tests. · M · ★★ · Freigabe
+- [ ] **E2E-Tests (Playwright)** — Smoke-Flow Login → Job → Packliste → Rechnung;
+      Unit-Tests + CI existieren seit 2026-07-02 (Vitest, 46 Tests). · M · ★★ · Freigabe
+- [ ] **Rechnungen: Mahnwesen** — Erinnerungs-Mail bei Überfälligkeit (Resend), Mahnstufen.
+      Grundgerüst (Überfällig-Status) ist da. · M · ★★ · Freigabe
+- [ ] **Dashboard-Kachel „Offene Rechnungen"** — Summe offen/überfällig im Überblick. · S · ★★ · Auto
 - [ ] **Automatische DB-Backups** der Cloud-DB (regelmäßiger `pg_dump` via GitHub-Action,
       Artefakt/Storage). Braucht vom Nutzer einen GitHub-PAT-Secret (`GH_DISPATCH_TOKEN`).
       Ergänzt das bereits umgesetzte manuelle JSON-Backup (s. „Kürzlich umgesetzt"). · M · ★★ · Freigabe
@@ -64,6 +65,24 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 - [ ] Optional: Akzentfarbe final bestätigen, evtl. Light-Mode-Toggle.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Rechnungswesen** (2026-07-02, Migration 0036): Entwurf→Stellen-Workflow mit lückenloser
+  Jahres-Nummerierung (RE-2026-0001, …) per DB-Funktion `issue_invoice` + Advisory-Lock
+  (parallel-sicher getestet). Gestellte Rechnungen unlöschbar & nummern-fixiert (Trigger,
+  GoBD) — Korrektur per Storno. Teilzahlungen; Status gestellt/teilbezahlt/überfällig/
+  bezahlt wird aus Zahlungen + Fälligkeit abgeleitet (kein Cron). Adress-Snapshot beim
+  Stellen. Eigene Seite „Rechnungen" (Filter-Chips, offene Summe), PDF mit Leistungs-
+  datum/USt/Zahlungsziel/Teilzahlungs-Ausweis, „Zu Rechnung" auf der Angebotsseite.
+  Rechte: Bereich `angebote`.
+
+- **Verfügbarkeits-Engine** (2026-07-02): zentrales Modul `lib/availability.ts` (getestet) —
+  frei = Bestand − defekt − fremdgebucht über zeitraum-überlappende Jobs in bindenden
+  Status. Packlisten-Planung warnt pro Posten („Nur N von M im Zeitraum frei") inkl.
+  verlinkter Verursacher-Jobs; Geräte-Picker zeigt „N im Job-Zeitraum frei". Bugfix:
+  Papierkorb-Jobs binden keinen Bestand mehr.
+
+- **Test-Fundament** (2026-07-02): Vitest (46 Unit-Tests für Domänenlogik) + CI-Workflow
+  (tsc + ESLint + Tests + Build bei jedem Push/PR). ESLint-Altlasten bereinigt.
 
 - **Website-Anfragen vereinfacht + Auto-Job** (2026-07-01): Status jetzt nur noch
   Neu / Akzeptiert / Verworfen (Migration 0035). „Akzeptieren" legt automatisch Kunde

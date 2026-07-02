@@ -8,6 +8,8 @@ import {
   quantityNotYetPickedUp,
   offerItemTotal,
   offerTotals,
+  invoiceDerivedStatus,
+  invoicePaidSum,
   canEditPacklistDevices,
   isPackenStage,
   isRueckgabeStage,
@@ -159,6 +161,46 @@ describe("Angebots-Summen", () => {
 
   it("leeres Angebot ergibt 0", () => {
     expect(offerTotals([], 19)).toEqual({ net: 0, tax: 0, gross: 0 });
+  });
+});
+
+describe("invoiceDerivedStatus", () => {
+  const now = new Date("2026-07-02T12:00:00");
+  const items = [{ quantity: 1, rental_days: 1, unit_price: 100 }]; // brutto 119 bei 19 %
+  const base = { status: "gestellt" as const, due_date: null, tax_rate: 19 };
+
+  it("storniert und entwurf kommen direkt aus dem Status", () => {
+    expect(invoiceDerivedStatus({ ...base, status: "storniert" }, items, [], now)).toBe("storniert");
+    expect(invoiceDerivedStatus({ ...base, status: "entwurf" }, items, [], now)).toBe("entwurf");
+  });
+
+  it("gestellt ohne Zahlungen und ohne Fälligkeit", () => {
+    expect(invoiceDerivedStatus(base, items, [], now)).toBe("gestellt");
+  });
+
+  it("bezahlt, wenn Zahlungen den Bruttobetrag decken (inkl. Rundungstoleranz)", () => {
+    expect(invoiceDerivedStatus(base, items, [{ amount: 119 }], now)).toBe("bezahlt");
+    expect(invoiceDerivedStatus(base, items, [{ amount: 118.996 }], now)).toBe("bezahlt");
+  });
+
+  it("teilbezahlt bei angefangener Zahlung", () => {
+    expect(invoiceDerivedStatus(base, items, [{ amount: 50 }], now)).toBe("teilbezahlt");
+  });
+
+  it("überfällig nach Fälligkeitsdatum, außer bezahlt", () => {
+    const overdue = { ...base, due_date: "2026-07-01" };
+    expect(invoiceDerivedStatus(overdue, items, [], now)).toBe("ueberfaellig");
+    expect(invoiceDerivedStatus(overdue, items, [{ amount: 50 }], now)).toBe("ueberfaellig");
+    expect(invoiceDerivedStatus(overdue, items, [{ amount: 119 }], now)).toBe("bezahlt");
+  });
+
+  it("am Fälligkeitstag selbst noch nicht überfällig", () => {
+    expect(invoiceDerivedStatus({ ...base, due_date: "2026-07-02" }, items, [], now)).toBe("gestellt");
+  });
+
+  it("invoicePaidSum summiert (leer = 0)", () => {
+    expect(invoicePaidSum([{ amount: 10 }, { amount: 5.5 }])).toBe(15.5);
+    expect(invoicePaidSum(undefined)).toBe(0);
   });
 });
 
