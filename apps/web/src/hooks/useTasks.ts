@@ -93,7 +93,7 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: async ({ id, ...fields }: Partial<Task> & { id: string }) => {
       // Join-Felder nicht mitschicken — das sind keine Spalten
-      const { checklist_items, job, assigned_user, ...updateFields } = fields as any;
+      const { checklist_items: _c, job: _j, assigned_user: _a, ...updateFields } = fields;
       const { data, error } = await supabase
         .from("tasks")
         .update(updateFields)

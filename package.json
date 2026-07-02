@@ -6,6 +6,7 @@
     "dev": "pnpm --filter @eventtech/web dev",
     "build": "pnpm --filter @eventtech/web build",
     "lint": "pnpm --filter @eventtech/web lint",
+    "test": "pnpm --filter @eventtech/web test",
     "tauri": "pnpm --filter @eventtech/web tauri"
   },
   "engines": {

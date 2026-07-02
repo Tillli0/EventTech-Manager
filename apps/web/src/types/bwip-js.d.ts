@@ -10,10 +10,8 @@ declare module "bwip-js" {
     [key: string]: unknown;
   }
 
-  function toCanvas(canvas: HTMLCanvasElement | string, options: BwipOptions): HTMLCanvasElement;
-
   const bwipjs: {
-    toCanvas: typeof toCanvas;
+    toCanvas(canvas: HTMLCanvasElement | string, options: BwipOptions): HTMLCanvasElement;
   };
 
   export default bwipjs;
