@@ -608,6 +608,18 @@ function DeviceRow({ device, outNow, select }: { device: Device; outNow: number;
       </td>
       <td className="px-4 py-3">
         <DeviceAvailabilityBadge device={device} outNow={outNow} />
+        {select && (
+          <span
+            className={cn(
+              "mt-0.5 block text-xs",
+              select.available < 1 ? "font-medium text-status-defekt" : "text-ink-faint",
+            )}
+          >
+            {select.available < 1
+              ? "im Job-Zeitraum ausgebucht"
+              : `${select.available} im Job-Zeitraum frei`}
+          </span>
+        )}
       </td>
       {select ? (
         <td className="px-4 py-3 text-right">

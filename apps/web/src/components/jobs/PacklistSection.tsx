@@ -17,13 +17,15 @@ import {
   useUndoPickup,
   useUpdatePacklistItemQuantity,
   useRemovePacklistItem,
+  useDevicesAvailabilityMap,
 } from "@/hooks/useJobs";
+import { checkAvailability, type AvailabilityCheck } from "@/lib/availability";
 import { useLocations } from "@/hooks/useLocations";
 import { useAuth } from "@/auth/AuthProvider";
 import type { Job, PacklistItem } from "@/types/database";
 import { quantityStillOut, quantityNotYetPickedUp, canEditPacklistDevices, isPackenStage, isRueckgabeStage } from "@/types/database";
 import { cn } from "@/lib/cn";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 
 /** Job-Dauer in Tagen (inklusive Start- und Endtag, mindestens 1). */
 function jobDurationDays(job: Job): number {
@@ -193,9 +195,29 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
 function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]; canEdit: boolean }) {
   const updateQuantity = useUpdatePacklistItemQuantity();
   const removeItem = useRemovePacklistItem();
+  // Fremde Buchungen im Job-Zeitraum (eigener Job ausgenommen) für den Konflikt-Check.
+  const { data: bookingsMap } = useDevicesAvailabilityMap(job.start_date, job.end_date, job.id);
+
+  function checkFor(item: PacklistItem): AvailabilityCheck | null {
+    if (!item.device) return null;
+    return checkAvailability(item.device, item.quantity, bookingsMap?.get(item.device_id));
+  }
+
+  const overbooked = items.filter((it) => checkFor(it)?.over);
 
   return (
     <div className="space-y-3">
+      {overbooked.length > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-status-defekt/40 bg-status-defekt/10 px-4 py-3 text-sm text-status-defekt">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <p>
+            {overbooked.length === 1
+              ? "1 Posten überschreitet die Verfügbarkeit im Job-Zeitraum."
+              : `${overbooked.length} Posten überschreiten die Verfügbarkeit im Job-Zeitraum.`}{" "}
+            Details stehen an den betroffenen Geräten.
+          </p>
+        </div>
+      )}
       {groupByLocation(items).map((group) => (
         <div key={group.label} className="space-y-2">
           <LocationHeader label={group.label} />
@@ -204,6 +226,7 @@ function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]
               key={item.id}
               item={item}
               canEdit={canEdit}
+              availability={checkFor(item)}
               onQuantityChange={(quantity) => updateQuantity.mutate({ id: item.id, jobId: job.id, quantity })}
               onRemove={() => removeItem.mutate({ id: item.id, jobId: job.id })}
             />
@@ -217,11 +240,13 @@ function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]
 function PlanungRow({
   item,
   canEdit,
+  availability,
   onQuantityChange,
   onRemove,
 }: {
   item: PacklistItem;
   canEdit: boolean;
+  availability: AvailabilityCheck | null;
   onQuantityChange: (quantity: number) => void;
   onRemove: () => void;
 }) {
@@ -233,25 +258,56 @@ function PlanungRow({
     if (n !== item.quantity) onQuantityChange(n);
   }
 
+  const over = availability?.over ?? false;
+
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg-surface px-4 py-3">
-      <p className="min-w-0 flex-1 truncate font-medium text-ink">{item.device?.name}</p>
-      {canEdit ? (
-        <div className="flex shrink-0 items-center gap-2">
-          <Input
-            type="number"
-            min={1}
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            onBlur={commit}
-            className="w-20 text-center"
-          />
-          <Button size="icon" variant="ghost" onClick={onRemove} aria-label="Entfernen" title="Von der Packliste entfernen">
-            <Trash2 size={14} />
-          </Button>
+    <div
+      className={cn(
+        "rounded-lg border bg-bg-surface px-4 py-3",
+        over ? "border-status-defekt/50" : "border-border",
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="min-w-0 flex-1 truncate font-medium text-ink">{item.device?.name}</p>
+        {canEdit ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <Input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              onBlur={commit}
+              className={cn("w-20 text-center", over && "border-status-defekt/60")}
+            />
+            <Button size="icon" variant="ghost" onClick={onRemove} aria-label="Entfernen" title="Von der Packliste entfernen">
+              <Trash2 size={14} />
+            </Button>
+          </div>
+        ) : (
+          <span className="shrink-0 font-mono text-sm text-ink-muted">{item.quantity}×</span>
+        )}
+      </div>
+      {over && availability && (
+        <div className="mt-2 space-y-1 border-t border-status-defekt/20 pt-2 text-xs">
+          <p className="flex items-center gap-1.5 font-medium text-status-defekt">
+            <AlertTriangle size={13} />
+            Nur {availability.free} von {item.quantity} im Zeitraum frei ({availability.shortfall} fehlen)
+          </p>
+          {availability.conflicts.length > 0 && (
+            <p className="text-ink-muted">
+              Auch verplant in:{" "}
+              {availability.conflicts.map((c, i) => (
+                <span key={`${c.id}-${i}`}>
+                  {i > 0 && ", "}
+                  <Link to={`/jobs/${c.id}`} className="text-ink underline-offset-2 hover:underline">
+                    {c.title}
+                  </Link>{" "}
+                  ({c.quantity}×, {formatDate(c.start_date)} – {formatDate(c.end_date)})
+                </span>
+              ))}
+            </p>
+          )}
         </div>
-      ) : (
-        <span className="shrink-0 font-mono text-sm text-ink-muted">{item.quantity}×</span>
       )}
     </div>
   );

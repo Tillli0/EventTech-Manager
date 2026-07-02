@@ -3,6 +3,9 @@ import { supabase } from "@/lib/supabase";
 import type { Job, JobStatus, PacklistItem, JobMilestone } from "@/types/database";
 import { randomJobColor } from "@/types/database";
 import { recordDeviceHistory } from "@/hooks/useDeviceHistory";
+import { STOCK_BINDING_STATUSES } from "@/lib/availability";
+
+export { sumBookedQuantity } from "@/lib/availability";
 
 const JOBS_KEY = ["jobs"] as const;
 
@@ -629,7 +632,9 @@ export function useDevicesAvailabilityMap(
       let query = supabase
         .from("packlist_items")
         .select("device_id, job_id, quantity, jobs!inner(id, title, status, start_date, end_date)")
-        .in("jobs.status", ["anfrage", "bestaetigt", "planung", "packen", "laeuft", "rueckgabe"])
+        .in("jobs.status", [...STOCK_BINDING_STATUSES])
+        // Jobs im Papierkorb binden keinen Bestand mehr.
+        .is("jobs.deleted_at", null)
         .lt("jobs.start_date", endDate)
         .gt("jobs.end_date", startDate);
 
@@ -671,9 +676,10 @@ export function useDevicesOutNowMap() {
       const { data, error } = await supabase
         .from("packlist_items")
         .select(
-          "device_id, quantity_picked_up, quantity_returned_ok, quantity_damaged, quantity_missing, jobs!inner(status)",
+          "device_id, quantity_picked_up, quantity_returned_ok, quantity_damaged, quantity_missing, jobs!inner(status, deleted_at)",
         )
-        .in("jobs.status", ["anfrage", "bestaetigt", "planung", "packen", "laeuft", "rueckgabe"]);
+        .in("jobs.status", [...STOCK_BINDING_STATUSES])
+        .is("jobs.deleted_at", null);
       if (error) throw error;
 
       const map = new Map<string, number>();
@@ -709,7 +715,8 @@ export function useDeviceBookings(deviceId: string | undefined) {
         .from("packlist_items")
         .select("job_id, quantity, jobs!inner(id, title, status, start_date, end_date)")
         .eq("device_id", deviceId)
-        .in("jobs.status", ["anfrage", "bestaetigt", "planung", "packen", "laeuft", "rueckgabe"])
+        .in("jobs.status", [...STOCK_BINDING_STATUSES])
+        .is("jobs.deleted_at", null)
         .gte("jobs.end_date", todayStart.toISOString());
       if (error) throw error;
       const rows = data as unknown as {
@@ -722,11 +729,6 @@ export function useDeviceBookings(deviceId: string | undefined) {
         .sort((a, b) => a.start_date.localeCompare(b.start_date));
     },
   });
-}
-
-/** Summe der gebuchten Mengen aus einer Liste von Buchungen (siehe useDevicesAvailabilityMap). */
-export function sumBookedQuantity(bookings: { quantity: number }[] | undefined): number {
-  return bookings?.reduce((sum, b) => sum + b.quantity, 0) ?? 0;
 }
 
 /**
@@ -750,7 +752,8 @@ export function useDeviceAvailability(
         .from("packlist_items")
         .select("job_id, quantity, jobs!inner(id, title, status, start_date, end_date)")
         .eq("device_id", deviceId)
-        .in("jobs.status", ["anfrage", "bestaetigt", "planung", "packen", "laeuft", "rueckgabe"])
+        .in("jobs.status", [...STOCK_BINDING_STATUSES])
+        .is("jobs.deleted_at", null)
         .lt("jobs.start_date", endDate)
         .gt("jobs.end_date", startDate);
 
