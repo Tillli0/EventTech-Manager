@@ -17,6 +17,9 @@ on:
     branches: [main]
     paths:
       - "supabase/migrations/**"
+      # Auch bei Workflow-Änderungen laufen — so holt ein Fix an dieser Datei
+      # eine zuvor fehlgeschlagene Migration automatisch nach.
+      - ".github/workflows/db-migrate.yml"
   workflow_dispatch:
 
 jobs:
@@ -40,11 +43,12 @@ jobs:
         if: steps.guard.outputs.ready == 'true'
         uses: actions/checkout@v4
 
+      # Feste Version statt "latest" — deren Auflösung ist zuletzt fehlgeschlagen.
       - name: Supabase CLI
         if: steps.guard.outputs.ready == 'true'
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.107.0
 
       - name: Migrationen in die Cloud pushen
         if: steps.guard.outputs.ready == 'true'
