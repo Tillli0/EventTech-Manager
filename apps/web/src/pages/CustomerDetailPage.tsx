@@ -23,7 +23,7 @@ import { useToast } from "@/components/ui/Toast";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
 import { CreateCustomerDialog } from "@/components/customers/CreateCustomerDialog";
 import { useAuth } from "@/auth/AuthProvider";
-import { cn } from "@/lib/cn";
+import { Tabs } from "@/components/ui/Tabs";
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -258,29 +258,18 @@ export function CustomerDetailPage() {
                   {stammkunde && <StammkundeBadge />}
                 </div>
                 {mayEditCustomers && (
-                  <div className="mt-2 flex gap-1 rounded-md bg-bg-raised p-1">
-                    {(
-                      [
-                        { value: null, label: "Automatisch" },
-                        { value: true, label: "Immer" },
-                        { value: false, label: "Nie" },
-                      ] as const
-                    ).map((opt) => (
-                      <button
-                        key={String(opt.value)}
-                        type="button"
-                        onClick={() => updateCustomer.mutate({ id: customer.id, is_stammkunde: opt.value })}
-                        className={cn(
-                          "flex-1 rounded px-2 py-1 text-xs font-medium transition-colors",
-                          customer.is_stammkunde === opt.value
-                            ? "bg-bg-surface text-ink shadow-sm"
-                            : "text-ink-muted hover:text-ink",
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+                  <Tabs<boolean | null>
+                    className="mt-2"
+                    size="sm"
+                    stretch
+                    options={[
+                      { value: null, label: "Automatisch" },
+                      { value: true, label: "Immer" },
+                      { value: false, label: "Nie" },
+                    ]}
+                    value={customer.is_stammkunde}
+                    onChange={(next) => updateCustomer.mutate({ id: customer.id, is_stammkunde: next })}
+                  />
                 )}
                 {mayEditCustomers && customer.is_stammkunde === null && (
                   <p className="mt-1.5 text-xs text-ink-faint">

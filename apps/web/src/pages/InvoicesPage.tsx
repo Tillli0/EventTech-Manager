@@ -3,6 +3,7 @@ import { Plus, Receipt, Download, Trash2, Pencil, Send, Ban, Wallet } from "luci
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Tabs } from "@/components/ui/Tabs";
 import { InvoiceStatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 import {
@@ -27,7 +28,6 @@ import { PaymentDialog } from "@/components/invoices/PaymentDialog";
 import { useAuth } from "@/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
-import { cn } from "@/lib/cn";
 
 type Filter = InvoiceDerivedStatus | "alle";
 
@@ -193,21 +193,7 @@ export function InvoicesPage() {
 
       {invoices && invoices.length > 0 && (
         <>
-          <div className="mb-4 flex flex-wrap gap-1 rounded-md bg-bg-raised p-1 w-fit">
-            {filterOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setFilter(opt.value)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors",
-                  filter === opt.value ? "bg-bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink",
-                )}
-              >
-                {opt.label}
-                <span className="rounded-full bg-bg-raised px-1.5 text-xs text-ink-faint">{opt.count}</span>
-              </button>
-            ))}
-          </div>
+          <Tabs<Filter> className="mb-4" options={filterOptions} value={filter} onChange={setFilter} />
 
           <Card className="overflow-hidden">
             <table className="w-full text-sm">

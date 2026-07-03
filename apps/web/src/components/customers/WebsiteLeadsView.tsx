@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
 import { Button } from "@/components/ui/Button";
+import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import {
@@ -150,28 +151,7 @@ export function WebsiteLeadsView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1 rounded-md bg-bg-raised p-1 w-fit">
-        {filterOptions.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setFilter(opt.value)}
-            className={cn(
-              "flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors",
-              filter === opt.value ? "bg-bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink",
-            )}
-          >
-            {opt.label}
-            <span
-              className={cn(
-                "rounded-full px-1.5 text-xs",
-                filter === opt.value ? "bg-accent/15 text-accent" : "bg-bg-surface text-ink-faint",
-              )}
-            >
-              {opt.count}
-            </span>
-          </button>
-        ))}
-      </div>
+      <Tabs<LeadFilter> options={filterOptions} value={filter} onChange={setFilter} />
 
       {filtered.length === 0 ? (
         <p className="py-10 text-center text-sm text-ink-faint">Keine Anfragen in dieser Ansicht.</p>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, KeyRound, ShieldCheck, User as UserIcon, Building2, ImagePlus, X, DatabaseBackup, Package, HardDriveDownload } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { Tabs } from "@/components/ui/Tabs";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
@@ -35,7 +36,6 @@ import {
   type JobViewMode,
   type UserRole,
 } from "@/types/database";
-import { cn } from "@/lib/cn";
 
 const MANAGER_ROLES: UserRole[] = ["admin", "verwaltung"];
 
@@ -221,31 +221,18 @@ export function AdminPage() {
                           className="flex items-center justify-between rounded-md border border-border px-3 py-2"
                         >
                           <span className="text-sm text-ink">{area.label}</span>
-                          <div className="flex gap-1 rounded-md bg-bg-raised p-0.5">
-                            {(
-                              [
-                                { value: "none", label: "Kein" },
-                                { value: "view", label: "Lesen" },
-                                { value: "edit", label: "Bearb." },
-                              ] as const
-                            ).map((opt) => (
-                              <button
-                                key={opt.value}
-                                type="button"
-                                onClick={() =>
-                                  setAccess.mutate({ userId: user.id, area: area.value, state: opt.value })
-                                }
-                                className={cn(
-                                  "rounded px-2 py-1 text-xs font-medium transition-colors",
-                                  state === opt.value
-                                    ? "bg-bg-surface text-ink shadow-sm"
-                                    : "text-ink-muted hover:text-ink",
-                                )}
-                              >
-                                {opt.label}
-                              </button>
-                            ))}
-                          </div>
+                          <Tabs<AccessState>
+                            size="sm"
+                            options={[
+                              { value: "none", label: "Kein" },
+                              { value: "view", label: "Lesen" },
+                              { value: "edit", label: "Bearb." },
+                            ]}
+                            value={state}
+                            onChange={(next) =>
+                              setAccess.mutate({ userId: user.id, area: area.value, state: next })
+                            }
+                          />
                         </div>
                       );
                     })}
