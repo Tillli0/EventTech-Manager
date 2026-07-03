@@ -20,7 +20,7 @@ import {
 } from "@/hooks/useJobs";
 import { useDeviceSets, useAddDeviceSetToJob } from "@/hooks/useDeviceSets";
 import { ManageLocationsDialog } from "@/components/inventory/ManageLocationsDialog";
-import { DEVICE_STATUS_OPTIONS, inspectionStatus, type DeviceStatus, type Device, type Job, type PacklistItem } from "@/types/database";
+import { DEVICE_STATUS_OPTIONS, inspectionStatus, type DeviceStatus, type Device, type DeviceSet, type Job, type PacklistItem } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 import { CreateDeviceDialog } from "@/components/inventory/CreateDeviceDialog";
 import { ManageCategoriesDialog } from "@/components/inventory/ManageCategoriesDialog";
@@ -32,43 +32,35 @@ import { useAuth } from "@/auth/AuthProvider";
 
 type SortKey = "name" | "stock" | "status" | "value";
 
-function SortHead({
-  label,
-  k,
-  sort,
-  onSort,
-  className,
-  align = "left",
-}: {
-  label: string;
-  k: SortKey;
-  sort: { key: SortKey; dir: "asc" | "desc" };
-  onSort: (k: SortKey) => void;
-  className?: string;
-  align?: "left" | "right";
-}) {
-  const active = sort.key === k;
-  return (
-    <th className={cn("font-medium", className)}>
-      <button
-        type="button"
-        onClick={() => onSort(k)}
-        className={cn(
-          "inline-flex items-center gap-1 transition-colors hover:text-ink",
-          align === "right" && "flex-row-reverse",
-          active && "text-ink",
-        )}
-      >
-        {label}
-        {active ? (
-          sort.dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />
-        ) : (
-          <ChevronDown size={12} className="opacity-0" />
-        )}
-      </button>
-    </th>
-  );
+/**
+ * Wie oft ist das Set JETZT komplett zusammenstellbar? = Minimum über alle
+ * Bestandteile von ⌊frei / benötigte Menge⌋, mit frei = Bestand − defekt −
+ * aktuell ausgegeben. Null, wenn Bestandteile fehlen/unbekannt sind.
+ */
+function setBuildableNow(
+  set: DeviceSet,
+  devices: Device[] | undefined,
+  outNowMap: Map<string, number> | undefined,
+): number | null {
+  if (!set.items || set.items.length === 0 || !devices) return null;
+  let min = Infinity;
+  for (const item of set.items) {
+    const dev = devices.find((d) => d.id === item.device_id);
+    if (!dev || item.quantity <= 0) return null;
+    const free = Math.max(0, dev.stock_quantity - (dev.defective_quantity ?? 0) - (outNowMap?.get(dev.id) ?? 0));
+    min = Math.min(min, Math.floor(free / item.quantity));
+  }
+  return Number.isFinite(min) ? min : null;
 }
+
+/** Farbton je Gerätestatus für Kennzahlen-Karten (Zahl + Mini-Balken). */
+const STATUS_TONE: Record<DeviceStatus, { text: string; bar: string }> = {
+  verfuegbar: { text: "text-status-verfuegbar", bar: "bg-status-verfuegbar" },
+  ausgeliehen: { text: "text-status-ausgeliehen", bar: "bg-status-ausgeliehen" },
+  defekt: { text: "text-status-defekt", bar: "bg-status-defekt" },
+  wartung: { text: "text-status-wartung", bar: "bg-status-wartung" },
+};
+
 
 export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
   const navigate = useNavigate();
@@ -377,18 +369,51 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
         }
       />
 
-      {/* Sets oben (nur im Auswahl-Modus) */}
-      {selectMode && sets && sets.length > 0 && (
+      {/* Geräte-Sets als Foto-/Icon-Grid — im Auswahl-Modus anklickbar (Set buchen),
+          sonst Übersicht mit Live-Buchbarkeit („N× buchbar" aus der Verfügbarkeit). */}
+      {sets && sets.length > 0 && (
         <div className="mb-6">
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-muted">
-            <Boxes size={13} /> Sets
-          </p>
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
-            {sets.map((set) => (
-              <div key={set.id} className="w-36 shrink-0">
-                <SetCard set={set} selected={setOnList(set)} onClick={() => toggleSet(set.id)} />
-              </div>
-            ))}
+          <div className="mb-2 flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-ink-muted">
+              <Boxes size={13} /> Geräte-Sets
+              <span className="normal-case tracking-normal text-ink-faint">({sets.length})</span>
+            </p>
+            {!selectMode && mayEdit && (
+              <button
+                type="button"
+                onClick={() => setSetsOpen(true)}
+                className="text-xs font-medium text-accent hover:text-accent-hover"
+              >
+                Sets verwalten
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {sets.map((set) => {
+              const buildable = setBuildableNow(set, devices, outNowMap);
+              const parts = set.items?.length ?? 0;
+              return (
+                <SetCard
+                  key={set.id}
+                  set={set}
+                  selected={selectMode ? setOnList(set) : false}
+                  onClick={selectMode ? () => toggleSet(set.id) : mayEdit ? () => setSetsOpen(true) : undefined}
+                  subtitle={
+                    <>
+                      {parts} {parts === 1 ? "Bestandteil" : "Bestandteile"}
+                      {buildable !== null && (
+                        <>
+                          {" · "}
+                          <span className={buildable === 0 ? "text-status-defekt" : "text-status-verfuegbar"}>
+                            {buildable === 0 ? "ausgebucht" : `${buildable}× buchbar`}
+                          </span>
+                        </>
+                      )}
+                    </>
+                  }
+                />
+              );
+            })}
           </div>
         </div>
       )}
@@ -396,12 +421,23 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
       {/* Status-Übersicht als Kennzahlen (nicht im Auswahl-Modus) */}
       {!selectMode && (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {DEVICE_STATUS_OPTIONS.map((opt) => (
-            <Card key={opt.value} className="px-4 py-3">
-              <p className="text-xs text-ink-muted">{opt.label}</p>
-              <p className="mt-1 text-2xl font-semibold text-ink">{statusCounts[opt.value] ?? 0}</p>
-            </Card>
-          ))}
+          {DEVICE_STATUS_OPTIONS.map((opt) => {
+            const count = statusCounts[opt.value] ?? 0;
+            const share = devices && devices.length > 0 ? (count / devices.length) * 100 : 0;
+            const tone = STATUS_TONE[opt.value];
+            return (
+              <Card key={opt.value} className="px-4 py-3">
+                <p className="text-xs text-ink-muted">{opt.label}</p>
+                <p className={cn("mt-1 text-2xl font-semibold", count > 0 ? tone.text : "text-ink")}>{count}</p>
+                <div className="mt-2 h-1 overflow-hidden rounded-full bg-bg-raised">
+                  <div
+                    className={cn("h-full rounded-full transition-all duration-500", tone.bar)}
+                    style={{ width: `${share}%` }}
+                  />
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -470,77 +506,83 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
       )}
 
       {!isLoading && filteredDevices.length > 0 && (
-        <Card className="overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-ink-muted">
-                <SortHead label="Gerät" k="name" sort={sort} onSort={toggleSort} className="px-4 py-3" />
-                <th className="hidden px-4 py-3 font-medium sm:table-cell">Barcode</th>
-                <th className="hidden px-4 py-3 font-medium md:table-cell">Lagerort</th>
-                <SortHead label="Bestand" k="stock" sort={sort} onSort={toggleSort} className="hidden px-4 py-3 text-right sm:table-cell" align="right" />
-                <SortHead label="Status" k="status" sort={sort} onSort={toggleSort} className="px-4 py-3" />
-                <SortHead label="Wiederbeschaffungswert" k="value" sort={sort} onSort={toggleSort} className="hidden px-4 py-3 text-right lg:table-cell" align="right" />
-              </tr>
-            </thead>
-            {groupedByCategory.map((group) => {
-              const isCollapsed = collapsed.has(group.id);
+        <div className="space-y-4">
+          {/* Kompakte Sortier-Leiste (ersetzt die Tabellen-Spaltenköpfe) */}
+          <div className="flex items-center gap-1 text-xs text-ink-faint">
+            <span className="mr-1">Sortieren:</span>
+            {(
+              [
+                { k: "name", label: "Name" },
+                { k: "stock", label: "Bestand" },
+                { k: "status", label: "Status" },
+                { k: "value", label: "Wert" },
+              ] as const
+            ).map(({ k, label }) => {
+              const active = sort.key === k;
               return (
-                <tbody key={group.id}>
-                  {/* Kategorie-Kopf, aufklappbar, in der Kategoriefarbe */}
-                  <tr className="border-b border-border">
-                    <td
-                      colSpan={6}
-                      className="border-l-4 px-3 py-2"
-                      style={{ borderLeftColor: group.color, backgroundColor: `${group.color}14` }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleCategory(group.id)}
-                        className="flex w-full items-center gap-2 text-left"
-                      >
-                        <ChevronRight
-                          size={15}
-                          className={cn("shrink-0 transition-transform", !isCollapsed && "rotate-90")}
-                          style={{ color: group.color }}
-                        />
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: group.color }}
-                          aria-hidden
-                        />
-                        <span className="text-sm font-semibold" style={{ color: group.color }}>
-                          {group.name}
-                        </span>
-                        <span className="text-xs text-ink-faint">
-                          {group.devices.length} {group.devices.length === 1 ? "Gerät" : "Geräte"}
-                        </span>
-                      </button>
-                    </td>
-                  </tr>
-                  {!isCollapsed &&
-                    group.devices.map((device) => (
-                      <DeviceRow
-                        key={device.id}
-                        device={device}
-                        outNow={outNowMap?.get(device.id) ?? 0}
-                        select={
-                          selectMode
-                            ? {
-                                item: itemByDevice.get(device.id) ?? null,
-                                available: availableFor(device),
-                                onAdd: () => addDevice(device),
-                                onInc: (it) => changeQty(it, device, 1),
-                                onDec: (it) => changeQty(it, device, -1),
-                              }
-                            : undefined
-                        }
-                      />
-                    ))}
-                </tbody>
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => toggleSort(k)}
+                  className={cn(
+                    "inline-flex items-center gap-0.5 rounded px-2 py-1 font-medium transition-colors",
+                    active ? "bg-bg-raised text-ink" : "text-ink-muted hover:text-ink",
+                  )}
+                >
+                  {label}
+                  {active && (sort.dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                </button>
               );
             })}
-          </table>
-        </Card>
+          </div>
+
+          {groupedByCategory.map((group) => {
+            const isCollapsed = collapsed.has(group.id);
+            return (
+              <div key={group.id} className="space-y-1.5">
+                {/* Kategorie-Kopf, aufklappbar, in der Kategoriefarbe */}
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(group.id)}
+                  className="flex w-full items-center gap-2 rounded-md border-l-4 px-3 py-2 text-left"
+                  style={{ borderLeftColor: group.color, backgroundColor: `${group.color}14` }}
+                >
+                  <ChevronRight
+                    size={15}
+                    className={cn("shrink-0 transition-transform", !isCollapsed && "rotate-90")}
+                    style={{ color: group.color }}
+                  />
+                  <span className="text-sm font-semibold" style={{ color: group.color }}>
+                    {group.name}
+                  </span>
+                  <span className="text-xs text-ink-faint">
+                    {group.devices.length} {group.devices.length === 1 ? "Gerät" : "Geräte"}
+                  </span>
+                </button>
+                {!isCollapsed &&
+                  group.devices.map((device) => (
+                    <DeviceListRow
+                      key={device.id}
+                      device={device}
+                      accentColor={group.color}
+                      outNow={outNowMap?.get(device.id) ?? 0}
+                      select={
+                        selectMode
+                          ? {
+                              item: itemByDevice.get(device.id) ?? null,
+                              available: availableFor(device),
+                              onAdd: () => addDevice(device),
+                              onInc: (it) => changeQty(it, device, 1),
+                              onDec: (it) => changeQty(it, device, -1),
+                            }
+                          : undefined
+                      }
+                    />
+                  ))}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       <CreateDeviceDialog open={createOpen} onClose={() => setCreateOpen(false)} />
@@ -560,53 +602,50 @@ interface SelectProps {
   onDec: (item: PacklistItem) => void;
 }
 
-function DeviceRow({ device, outNow, select }: { device: Device; outNow: number; select?: SelectProps }) {
+/**
+ * Geräte-Zeile als Karte (Look der neuen Jobs-Seite): Kategoriefarbe als linker
+ * Akzentbalken, Foto/Icon, Name + ETM-Code, Hersteller/Modell/Lagerort als
+ * Unterzeile, rechts Bestand + Verfügbarkeit (+ Auswahl-Steuerung im Packlisten-Modus).
+ */
+function DeviceListRow({
+  device,
+  accentColor,
+  outNow,
+  select,
+}: {
+  device: Device;
+  accentColor: string;
+  outNow: number;
+  select?: SelectProps;
+}) {
   const locationName = device.location_ref?.name ?? device.location;
   const onList = !!select?.item;
 
-  const nameBlock = (
-    <span className="flex items-center gap-3">
-      <DeviceThumbnail device={device} />
-      <span className="block">
-        <span className="block font-medium text-ink">{device.name}</span>
-        <span className="block text-xs text-ink-muted">
-          {[device.manufacturer, device.model].filter(Boolean).join(" · ") || "—"}
+  const content = (
+    <>
+      <DeviceThumbnail device={device} accentColor={accentColor} />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-baseline gap-2">
+          <span className="truncate text-sm font-medium text-ink">{device.name}</span>
+          {device.barcodes?.[0]?.code && (
+            <span className="hidden shrink-0 font-mono text-[0.65rem] text-ink-faint sm:inline">
+              {device.barcodes[0].code}
+            </span>
+          )}
+        </span>
+        <span className="mt-0.5 block truncate text-xs text-ink-muted">
+          {[
+            [device.manufacturer, device.model].filter(Boolean).join(" "),
+            locationName,
+          ]
+            .filter(Boolean)
+            .join(" · ") || "—"}
         </span>
       </span>
-    </span>
-  );
-
-  return (
-    <tr className={cn("border-b border-border last:border-0", onList ? "bg-accent-soft" : "hover:bg-bg-raised")}>
-      <td className="px-4 py-3">
-        {select ? (
-          nameBlock
-        ) : (
-          <Link to={`/inventar/${device.id}`} className="flex items-center gap-3">
-            {nameBlock}
-          </Link>
-        )}
-      </td>
-      <td className="hidden px-4 py-3 font-mono text-xs text-ink-muted sm:table-cell">
-        {device.barcodes?.[0]?.code ?? "—"}
-      </td>
-      <td className="hidden px-4 py-3 text-ink-muted md:table-cell">
-        {locationName ? (
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: device.location_ref?.color ?? "#64748b" }}
-            />
-            {locationName}
-          </span>
-        ) : (
-          "—"
-        )}
-      </td>
-      <td className="hidden px-4 py-3 text-right sm:table-cell">
-        <span className="font-mono text-xs font-medium text-accent">{device.stock_quantity}×</span>
-      </td>
-      <td className="px-4 py-3">
+      <span className="hidden shrink-0 font-mono text-xs font-medium text-accent sm:inline">
+        {device.stock_quantity}×
+      </span>
+      <span className="shrink-0 text-right">
         <DeviceAvailabilityBadge device={device} outNow={outNow} />
         {select && (
           <span
@@ -615,22 +654,39 @@ function DeviceRow({ device, outNow, select }: { device: Device; outNow: number;
               select.available < 1 ? "font-medium text-status-defekt" : "text-ink-faint",
             )}
           >
-            {select.available < 1
-              ? "im Job-Zeitraum ausgebucht"
-              : `${select.available} im Job-Zeitraum frei`}
+            {select.available < 1 ? "im Job-Zeitraum ausgebucht" : `${select.available} im Job-Zeitraum frei`}
           </span>
         )}
-      </td>
+      </span>
       {select ? (
-        <td className="px-4 py-3 text-right">
+        <span className="shrink-0">
           <AddControl select={select} />
-        </td>
+        </span>
       ) : (
-        <td className="hidden px-4 py-3 text-right font-mono text-ink-muted lg:table-cell">
+        <span className="hidden w-24 shrink-0 text-right font-mono text-xs text-ink-muted lg:inline">
           {formatCurrency(device.replacement_value)}
-        </td>
+        </span>
       )}
-    </tr>
+    </>
+  );
+
+  const rowClass = cn(
+    "flex items-center gap-3 rounded-r-lg border border-l-[3px] px-4 py-2.5 transition-colors",
+    onList ? "border-accent/40 bg-accent-soft" : "border-border bg-bg-surface hover:bg-bg-raised",
+  );
+  const style = { borderLeftColor: onList ? "#6366F1" : accentColor };
+
+  if (select) {
+    return (
+      <div className={rowClass} style={style}>
+        {content}
+      </div>
+    );
+  }
+  return (
+    <Link to={`/inventar/${device.id}`} className={rowClass} style={style}>
+      {content}
+    </Link>
   );
 }
 
@@ -677,11 +733,18 @@ function AddControl({ select }: { select: SelectProps }) {
   );
 }
 
-function DeviceThumbnail({ device }: { device: Device }) {
+function DeviceThumbnail({ device, accentColor }: { device: Device; accentColor?: string }) {
   const cover = device.device_photos?.find((p) => p.is_cover) ?? device.device_photos?.[0];
   if (!cover) {
+    // Ohne Foto: Icon-Kachel in der Kategoriefarbe (dezent getönt).
     return (
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-border bg-bg-raised text-ink-faint">
+      <span
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
+        style={{
+          backgroundColor: `${accentColor ?? "#8B92A3"}1e`,
+          color: accentColor ?? "#8B92A3",
+        }}
+      >
         <ImageIcon size={16} />
       </span>
     );

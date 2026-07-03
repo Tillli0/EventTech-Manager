@@ -122,6 +122,7 @@ export function SetCard({
   onEdit,
   onDelete,
   selected = false,
+  subtitle,
 }: {
   set: DeviceSet;
   /** Klick auf die Karte selbst (z.B. Auswählen oder Bearbeiten öffnen). */
@@ -131,6 +132,8 @@ export function SetCard({
   /** Overlay-Aktion „Löschen" (oben rechts). */
   onDelete?: () => void;
   selected?: boolean;
+  /** Eigene Unterzeile (Default: Zusammenfassung der Set-Bestandteile). */
+  subtitle?: React.ReactNode;
 }) {
   return (
     <div
@@ -170,7 +173,7 @@ export function SetCard({
         )}
         <div className="p-2.5" style={selected ? { backgroundColor: `${set.color}1f` } : undefined}>
           <p className="truncate text-sm font-semibold text-ink">{set.name}</p>
-          <p className="text-xs text-ink-muted">{setItemSummary(set)}</p>
+          <p className="text-xs text-ink-muted">{subtitle ?? setItemSummary(set)}</p>
         </div>
       </button>
 
