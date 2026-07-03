@@ -52,17 +52,21 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 - [x] **Job-Detail** neu: Status-Badge im Titel, Status-Auswahl als vertikale
       Pfeil-Kette (Anfrage → … → Abgeschlossen, farbcodiert), Storniert separat
       darunter; Zugewiesene-Nutzer als Avatar-Chips (Initialen).
-- [ ] Basis-Komponenten zentral nachziehen (Button, Card, Dialog, Tabs, Badge, Input).
-- [ ] **Inventar (entschieden 2026-07-01, NOCH NICHT umgesetzt — bewusst zurückgestellt):**
-      normale Geräte als **Liste** (Variante A: Zeilen mit Kategorie-Icon, ETM-Code,
-      animiertem Verfügbarkeits-Balken, Status-Pill — Look wie die neue Jobs-Seite).
-      **Geräte-Sets** dagegen als **Foto-/Icon-Grid** (Variante B: Karten mit Bild,
-      kompaktem Verfügbarkeits-Balken darunter — visueller, da Sets weniger zahlreich
-      sind als Einzelgeräte). Zwei Mockup-Varianten wurden gezeigt und so kombiniert
-      bestätigt. Wenn der Nutzer das anstößt: mit dieser Aufteilung (Geräte=Liste,
-      Sets=Grid) direkt loslegen, nicht nochmal nachfragen.
-- [ ] Weitere Seiten: Kalender, Angebote, Aufgaben, Anfragen-Pipeline.
-- [ ] Optional: Akzentfarbe final bestätigen, evtl. Light-Mode-Toggle.
+- [x] **Basis-Komponente Tabs** (2026-07-03): geteilter Segment-Umschalter
+      (`ui/Tabs.tsx`, Icon/Zähler/sm-Größe/stretch) ersetzt 5 handgebaute Kopien
+      (Kunden, Website-Anfragen, Rechnungen, Admin-Bereichsrechte, Stammkunde).
+      Button/Card/Dialog/Input waren bereits zentral.
+- [x] **Inventar** (2026-07-03): Sets als **Foto-/Icon-Grid** oben (immer sichtbar,
+      mit Live-Buchbarkeit „N× buchbar" aus Bestand−defekt−draußen), Geräte als
+      **Karten-Liste** im Jobs-Look (Kategoriefarbe als Akzentbalken, Foto/Icon-Kachel,
+      ETM-Code, Verfügbarkeits-Badge), Kennzahlen mit farbiger Zahl + Mini-Balken,
+      kompakte Sortier-Leiste statt Tabellenkopf. Packlisten-Auswahl-Modus
+      funktioniert unverändert (verifiziert: Gerät + Set buchen, Mengen-Stepper).
+- [ ] **Stufe 3:** Angebote + Aufgaben auf den neuen Stil (OffersPage an InvoicesPage
+      angleichen mit Status-Filter-Tabs; TasksPage-Buckets als Premium-Karten).
+- [ ] **Stufe 4:** Kalender-Politur (Ansichts-Umschalter auf `Tabs`, Toolbar/
+      Termin-Karten angleichen; Kalenderlogik unberührt).
+- [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
