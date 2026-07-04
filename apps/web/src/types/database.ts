@@ -562,6 +562,7 @@ export interface Invoice {
   customer?: Customer | null;
   items?: InvoiceItem[];
   payments?: InvoicePayment[];
+  dunnings?: InvoiceDunning[];
 }
 
 export interface InvoiceItem {
@@ -584,6 +585,29 @@ export interface InvoicePayment {
   method: string | null;
   note: string | null;
   created_at: string;
+}
+
+/** Versandprotokoll des Mahnwesens (entsteht nur serverseitig, Edge Function send-dunning). */
+export interface InvoiceDunning {
+  id: string;
+  invoice_id: string;
+  /** 1 = Zahlungserinnerung, 2 = 1. Mahnung, 3 = 2. und letzte Mahnung. */
+  level: number;
+  to_email: string;
+  subject: string;
+  sent_at: string;
+  created_at: string;
+}
+
+export const DUNNING_LEVEL_LABELS: Record<number, string> = {
+  1: "Zahlungserinnerung",
+  2: "1. Mahnung",
+  3: "2. und letzte Mahnung",
+};
+
+/** Höchste bereits versendete Mahnstufe (0 = noch keine). */
+export function lastDunningLevel(dunnings: Pick<InvoiceDunning, "level">[] | undefined): number {
+  return dunnings?.reduce((max, d) => Math.max(max, d.level), 0) ?? 0;
 }
 
 /** Summe der erfassten Zahlungen. */

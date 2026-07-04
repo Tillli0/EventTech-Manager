@@ -19,8 +19,6 @@
       und ein Audit-Log, wer wann was geändert hat. · L · ★★★ · Freigabe
 - [ ] **E2E-Tests (Playwright)** — Smoke-Flow Login → Job → Packliste → Rechnung;
       Unit-Tests + CI existieren seit 2026-07-02 (Vitest, 46 Tests). · M · ★★ · Freigabe
-- [ ] **Rechnungen: Mahnwesen** — Erinnerungs-Mail bei Überfälligkeit (Resend), Mahnstufen.
-      Grundgerüst (Überfällig-Status) ist da. · M · ★★ · Freigabe
 - [ ] **Dashboard-Kachel „Offene Rechnungen"** — Summe offen/überfällig im Überblick. · S · ★★ · Auto
 - [ ] **Automatische DB-Backups** der Cloud-DB (regelmäßiger `pg_dump` via GitHub-Action,
       Artefakt/Storage). Braucht vom Nutzer einen GitHub-PAT-Secret (`GH_DISPATCH_TOKEN`).
@@ -69,6 +67,15 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Rechnungen: Mahnwesen** (2026-07-04, Migration 0037): drei Stufen (Zahlungserinnerung,
+  1. Mahnung, 2./letzte Mahnung) per E-Mail über Resend. Edge Function `send-dunning`
+  (JWT-geschützt + `can_edit_area('angebote')`-Prüfung) baut die Mail serverseitig, der
+  Dialog zeigt IMMER erst die Vorschau (Empfänger/Betreff/Text), bevor gesendet wird.
+  Versandprotokoll `invoice_dunnings` (nur serverseitig beschreibbar; Unique je
+  Rechnung+Stufe verhindert Doppelversand). „Mahnen"-Button bei überfälligen Rechnungen,
+  Mahnstufen-Hinweis unterm Status-Badge. Benötigt Secret `RESEND_API_KEY`; die Function
+  muss einmal deployt werden (`supabase functions deploy send-dunning`).
 
 - **Rechnungswesen** (2026-07-02, Migration 0036): Entwurf→Stellen-Workflow mit lückenloser
   Jahres-Nummerierung (RE-2026-0001, …) per DB-Funktion `issue_invoice` + Advisory-Lock

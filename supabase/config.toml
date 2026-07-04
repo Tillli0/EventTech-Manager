@@ -381,6 +381,11 @@ verify_jwt = false
 [functions.public-lead]
 verify_jwt = false
 
+# Mahnwesen: nur für eingeloggte Nutzer — JWT-Prüfung bleibt bewusst AN (Default),
+# zusätzlich prüft die Funktion can_edit_area('angebote') des Aufrufers.
+[functions.send-dunning]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

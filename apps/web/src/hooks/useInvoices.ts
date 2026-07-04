@@ -4,7 +4,8 @@ import type { Customer, Invoice, Offer } from "@/types/database";
 
 const INVOICES_KEY = ["invoices"] as const;
 
-const INVOICE_SELECT = "*, customer:customers(*), items:invoice_items(*), payments:invoice_payments(*)";
+const INVOICE_SELECT =
+  "*, customer:customers(*), items:invoice_items(*), payments:invoice_payments(*), dunnings:invoice_dunnings(*)";
 
 export function useInvoices() {
   return useQuery({
@@ -191,6 +192,58 @@ export function useDeleteInvoicePayment() {
       const { error } = await supabase.from("invoice_payments").delete().eq("id", id);
       if (error) throw error;
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: INVOICES_KEY }),
+  });
+}
+
+// ============================================================
+// Mahnwesen (Edge Function send-dunning)
+// ============================================================
+
+export interface DunningPreview {
+  level: number;
+  level_label: string;
+  to: string;
+  subject: string;
+  html: string;
+}
+
+/**
+ * Edge Function aufrufen und Fehlertexte der Funktion (JSON { error }) durchreichen —
+ * supabase-js liefert bei non-2xx sonst nur eine generische Meldung.
+ */
+async function invokeSendDunning(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase.functions.invoke("send-dunning", { body });
+  if (error) {
+    let message = error.message;
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const detail = (await ctx.json()) as { error?: string };
+        if (detail?.error) message = detail.error;
+      } catch {
+        // Antwort war kein JSON — generische Meldung behalten.
+      }
+    }
+    throw new Error(message);
+  }
+  if (data && (data as { error?: string }).error) {
+    throw new Error((data as { error: string }).error);
+  }
+  return (data ?? {}) as Record<string, unknown>;
+}
+
+/** Vorschau der nächsten Mahnstufe laden (nichts wird versendet). */
+export async function fetchDunningPreview(invoiceId: string): Promise<DunningPreview> {
+  const data = await invokeSendDunning({ invoice_id: invoiceId, preview: true });
+  return data as unknown as DunningPreview;
+}
+
+/** Nächste Mahnstufe wirklich versenden (Server prüft Rechte + Überfälligkeit erneut). */
+export function useSendDunning() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (invoiceId: string) => invokeSendDunning({ invoice_id: invoiceId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: INVOICES_KEY }),
   });
 }

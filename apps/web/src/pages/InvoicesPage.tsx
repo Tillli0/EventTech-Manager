@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Receipt, Download, Trash2, Pencil, Send, Ban, Wallet } from "lucide-react";
+import { Plus, Receipt, Download, Trash2, Pencil, Send, Ban, Wallet, BellRing } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,6 +17,8 @@ import {
   offerTotals,
   invoicePaidSum,
   invoiceDerivedStatus,
+  lastDunningLevel,
+  DUNNING_LEVEL_LABELS,
   INVOICE_STATUS_OPTIONS,
   type Invoice,
   type InvoiceDerivedStatus,
@@ -25,6 +27,7 @@ import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadInvoicePdf } from "@/lib/invoicePdf";
 import { InvoiceDialog } from "@/components/invoices/InvoiceDialog";
 import { PaymentDialog } from "@/components/invoices/PaymentDialog";
+import { DunningDialog } from "@/components/invoices/DunningDialog";
 import { useAuth } from "@/auth/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -44,6 +47,7 @@ export function InvoicesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [paymentsFor, setPaymentsFor] = useState<Invoice | null>(null);
+  const [dunningFor, setDunningFor] = useState<Invoice | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("alle");
 
@@ -214,6 +218,7 @@ export function InvoicesPage() {
                   const { gross } = offerTotals(invoice.items ?? [], invoice.tax_rate);
                   const open = Math.max(0, gross - invoicePaidSum(invoice.payments));
                   const isDraft = invoice.status === "entwurf";
+                  const dunned = lastDunningLevel(invoice.dunnings);
                   return (
                     <tr key={invoice.id} className="border-b border-border last:border-0 hover:bg-bg-raised">
                       <td className="px-4 py-3 font-mono text-xs text-ink">
@@ -226,6 +231,11 @@ export function InvoicesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <InvoiceStatusBadge status={derived} />
+                        {dunned > 0 && invoice.status === "gestellt" && (
+                          <p className="mt-1 text-[10px] text-ink-faint">
+                            {DUNNING_LEVEL_LABELS[dunned] ?? `Mahnstufe ${dunned}`} versendet
+                          </p>
+                        )}
                       </td>
                       <td className="hidden px-4 py-3 text-right font-mono text-ink-muted lg:table-cell">
                         {formatCurrency(gross)}
@@ -257,6 +267,21 @@ export function InvoicesPage() {
                             >
                               <Wallet size={14} />
                               Zahlung
+                            </Button>
+                          )}
+                          {mayEdit && derived === "ueberfaellig" && dunned < 3 && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => setDunningFor(invoice)}
+                              title={
+                                dunned === 0
+                                  ? "Zahlungserinnerung senden"
+                                  : `Nächste Mahnstufe senden (bisher: ${DUNNING_LEVEL_LABELS[dunned]})`
+                              }
+                            >
+                              <BellRing size={14} />
+                              Mahnen
                             </Button>
                           )}
                           <Button
@@ -320,6 +345,13 @@ export function InvoicesPage() {
           open
           onClose={() => setPaymentsFor(null)}
           canEdit={mayEdit}
+        />
+      )}
+      {dunningFor && (
+        <DunningDialog
+          invoice={invoices?.find((i) => i.id === dunningFor.id) ?? dunningFor}
+          open
+          onClose={() => setDunningFor(null)}
         />
       )}
     </div>

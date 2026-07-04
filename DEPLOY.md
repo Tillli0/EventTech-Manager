@@ -38,16 +38,17 @@ Migration `0030` keinerlei Tabellenrechte mehr).
    Migrations-Historie hakt: stattdessen die Dateien der Reihe nach über den SQL-Editor
    im Supabase-Dashboard ausführen.
 
-4. **Edge Functions deployen** (`admin-users`, `calendar-feed`):
+4. **Edge Functions deployen** (`admin-users`, `calendar-feed`, `public-lead`, `send-dunning`):
    ```bash
-   supabase functions deploy admin-users
-   supabase functions deploy calendar-feed
+   supabase functions deploy
    ```
    Danach die Function-Secrets setzen (Service-Role bleibt damit serverseitig):
    ```bash
    supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<service_role_key>
+   supabase secrets set RESEND_API_KEY=<resend_key>   # E-Mail: Lead-Benachrichtigung + Mahnwesen
    ```
-   (Weitere Secrets je nach Function — prüfen, was `supabase/functions/*/index.ts` erwartet.)
+   (Optional: `DUNNING_FROM` / `LEAD_NOTIFY_FROM` als Absenderadressen; ohne eigene
+   verifizierte Resend-Domain wird von `onboarding@resend.dev` gesendet.)
 
 5. **Erst-Admin anlegen**: in *Authentication → Users* einen Nutzer mit E-Mail/Passwort
    erstellen, dann in der DB seine Rolle setzen (SQL-Editor):

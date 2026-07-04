@@ -1,10 +1,10 @@
 # Plan: Große Features für Fable 5 — EventTech-Manager
 
-> **Stand 2026-07-02:** Block 4 (Test-Fundament, ohne Playwright-E2E), Block 2
-> (Verfügbarkeits-Engine) und Block 1 (Rechnungswesen, ohne Mahnwesen/Dashboard-Kachel)
-> sind **umgesetzt** — Details in `IDEAS.md` unter „Kürzlich umgesetzt". Offen aus dem
-> Plan: Block 3 (Suche + Audit-Log), Block 5 (Design-System + Inventar-Redesign) sowie
-> die genannten Rest-Stücke.
+> **Stand 2026-07-04:** Block 4 (Test-Fundament, ohne Playwright-E2E), Block 2
+> (Verfügbarkeits-Engine) und Block 1 (Rechnungswesen inkl. **Mahnwesen** seit
+> 2026-07-04; offen nur die Dashboard-Kachel) sind **umgesetzt** — Details in `IDEAS.md`
+> unter „Kürzlich umgesetzt". Offen aus dem Plan: Block 3 (Suche + Audit-Log), Block 5
+> (Design-System + Inventar-Redesign) sowie die genannten Rest-Stücke.
 
 > Zweck dieser Datei: Ein kuratierter Fahrplan der **wenigen wirklich großen** Bausteine,
 > die sich lohnen, mit dem stärksten Modell (Fable 5) umzusetzen. Bewusst **keine** Quick
@@ -59,8 +59,8 @@ sondern buchhalterisch/rechtlich relevant.
   Angebot übernehmen). Storno erzeugt **Storno-Rechnung**, kein Hard-Delete (GoBD).
 - **PDF:** Pflichtangaben, Steuerausweis, Zahlungshinweis, Firmenlogo aus
   `company_settings`. Wiederholt druckbar (Snapshot bleibt stabil).
-- **Mahnwesen (Stufe 2):** Fälligkeit überschritten → Status `ueberfaellig`; optional
-  Mahnstufen + E-Mail über Resend (wie `public-lead` es schon nutzt).
+- **Mahnwesen (Stufe 2):** ✅ umgesetzt 2026-07-04 (Migration 0037, Edge Function
+  `send-dunning`, drei Mahnstufen mit Vorschau-Dialog, Versand über Resend).
 - **Dashboard:** offene/überfällige Summe (der Dashboard-Platzhalter existiert bereits).
 
 **Risiken/Fallen:** Nummernlücken bei Rollback/Parallelität; Steuer-Rundung pro Position vs.
