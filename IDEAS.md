@@ -68,6 +68,14 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Auswertungen** (2026-07-04): neue Seite (Bereich `angebote`, Sidebar-Eintrag) mit
+  Finanz-KPIs (Jahresumsatz gestellt brutto/netto, Zahlungseingang, aktuell offen,
+  überfällig), Umsatz-je-Monat-Diagramm (gestellt vs. eingegangen, 12 Monate), Jobs je
+  Monat + Status-Verteilung, Top-Kunden nach gestelltem Umsatz und meistgebuchte Geräte
+  nach Gerätetagen (Stück × Jobdauer) aus den Packlisten. Reines Frontend — Aggregation
+  in `lib/reports.ts` (Vitest-getestet), Datenquellen über die bestehenden Hooks, RLS
+  bestimmt die Sichtbarkeit.
+
 - **Rechnungen: Mahnwesen** (2026-07-04, Migration 0037): drei Stufen (Zahlungserinnerung,
   1. Mahnung, 2./letzte Mahnung) per E-Mail über Resend. Edge Function `send-dunning`
   (JWT-geschützt + `can_edit_area('angebote')`-Prüfung) baut die Mail serverseitig, der
