@@ -1,17 +1,24 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, Printer, FileText, Download, Trash2, ChevronDown } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Printer, FileText, Download, Trash2, ChevronDown, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LoadingState, ErrorState } from "@/components/ui/States";
-import { OfferStatusBadge } from "@/components/ui/StatusBadge";
+import { OfferStatusBadge, InvoiceStatusBadge } from "@/components/ui/StatusBadge";
 import { useJob, useUpdateJobStatus, useUpdateJob, useSoftDeleteJob } from "@/hooks/useJobs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useOffersForJob, fetchOfferWithItems } from "@/hooks/useOffers";
+import { useInvoicesForJob } from "@/hooks/useInvoices";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { useToast } from "@/components/ui/Toast";
-import { JOB_STATUS_OPTIONS, offerTotals, type JobStatus } from "@/types/database";
+import {
+  JOB_STATUS_OPTIONS,
+  offerTotals,
+  invoicePaidSum,
+  invoiceDerivedStatus,
+  type JobStatus,
+} from "@/types/database";
 import { formatDateTime, formatCurrency, initials } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";
 import { PacklistProgress } from "@/components/jobs/PacklistProgress";
@@ -140,6 +147,8 @@ export function JobDetailPage() {
           </Card>
 
           <JobOffersCard jobId={job.id} />
+
+          <JobInvoicesCard jobId={job.id} />
 
           <Card>
             <CardHeader>
@@ -310,6 +319,56 @@ function JobOffersCard({ jobId }: { jobId: string }) {
                   </Button>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
+
+/** Rechnungen, die zu diesem Job gehören — mit Status und offenem Betrag. */
+function JobInvoicesCard({ jobId }: { jobId: string }) {
+  const { data: invoices } = useInvoicesForJob(jobId);
+
+  if (!invoices || invoices.length === 0) return null;
+
+  const openTotal = invoices.reduce((sum, inv) => {
+    if (inv.status !== "gestellt") return sum;
+    const { gross } = offerTotals(inv.items ?? [], inv.tax_rate);
+    return sum + Math.max(0, gross - invoicePaidSum(inv.payments));
+  }, 0);
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between">
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+          <Receipt size={14} />
+          Rechnungen
+        </h2>
+        {openTotal > 0 && (
+          <span className="font-mono text-xs text-ink-muted">offen: {formatCurrency(openTotal)}</span>
+        )}
+      </CardHeader>
+      <CardBody>
+        <div className="space-y-2">
+          {invoices.map((invoice) => {
+            const { gross } = offerTotals(invoice.items ?? [], invoice.tax_rate);
+            const derived = invoiceDerivedStatus(invoice, invoice.items, invoice.payments);
+            return (
+              <Link
+                key={invoice.id}
+                to={`/rechnungen?open=${invoice.id}`}
+                className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 hover:border-accent/50"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-ink">{invoice.title}</p>
+                  <p className="font-mono text-xs text-ink-muted">
+                    {invoice.invoice_number ?? "Entwurf"} · {formatCurrency(gross)}
+                  </p>
+                </div>
+                <InvoiceStatusBadge status={derived} />
+              </Link>
             );
           })}
         </div>

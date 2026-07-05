@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, MapPin, Send, Plus, Download, FileText, Pencil } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Send, Plus, Download, FileText, Pencil, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -15,9 +15,16 @@ import {
   useUpdateCustomer,
 } from "@/hooks/useCustomers";
 import { useOffersForCustomer, fetchOfferWithItems } from "@/hooks/useOffers";
-import { CUSTOMER_SOURCE_LABELS, isStammkunde, offerTotals } from "@/types/database";
+import { useInvoicesForCustomer } from "@/hooks/useInvoices";
+import {
+  CUSTOMER_SOURCE_LABELS,
+  isStammkunde,
+  offerTotals,
+  invoicePaidSum,
+  invoiceDerivedStatus,
+} from "@/types/database";
 import { formatDate, formatDateTime, formatCurrency } from "@/lib/format";
-import { JobStatusBadge, OfferStatusBadge, StammkundeBadge } from "@/components/ui/StatusBadge";
+import { JobStatusBadge, OfferStatusBadge, InvoiceStatusBadge, StammkundeBadge } from "@/components/ui/StatusBadge";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { useToast } from "@/components/ui/Toast";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
@@ -35,6 +42,7 @@ export function CustomerDetailPage() {
   const { data: jobs } = useCustomerJobs(id);
   const { data: jobCounts } = useCustomerJobCounts();
   const { data: offers } = useOffersForCustomer(id);
+  const { data: invoices } = useInvoicesForCustomer(id);
   const addNote = useAddCustomerNote();
   const updateCustomer = useUpdateCustomer();
   const toast = useToast();
@@ -204,6 +212,52 @@ export function CustomerDetailPage() {
                 <p className="flex items-center gap-2 text-sm text-ink-faint">
                   <FileText size={14} />
                   Noch keine Angebote für diesen Kunden.
+                </p>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink">Rechnungen</h2>
+              {(() => {
+                const openTotal = (invoices ?? []).reduce((sum, inv) => {
+                  if (inv.status !== "gestellt") return sum;
+                  const { gross } = offerTotals(inv.items ?? [], inv.tax_rate);
+                  return sum + Math.max(0, gross - invoicePaidSum(inv.payments));
+                }, 0);
+                return openTotal > 0 ? (
+                  <span className="font-mono text-xs text-ink-muted">offen: {formatCurrency(openTotal)}</span>
+                ) : null;
+              })()}
+            </CardHeader>
+            <CardBody>
+              {invoices && invoices.length > 0 ? (
+                <div className="space-y-2">
+                  {invoices.map((invoice) => {
+                    const { gross } = offerTotals(invoice.items ?? [], invoice.tax_rate);
+                    const derived = invoiceDerivedStatus(invoice, invoice.items, invoice.payments);
+                    return (
+                      <Link
+                        key={invoice.id}
+                        to={`/rechnungen?open=${invoice.id}`}
+                        className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 hover:border-accent/50"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-ink">{invoice.title}</p>
+                          <p className="font-mono text-xs text-ink-muted">
+                            {invoice.invoice_number ?? "Entwurf"} · {formatCurrency(gross)}
+                          </p>
+                        </div>
+                        <InvoiceStatusBadge status={derived} />
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-ink-faint">
+                  <Receipt size={14} />
+                  Noch keine Rechnungen für diesen Kunden.
                 </p>
               )}
             </CardBody>

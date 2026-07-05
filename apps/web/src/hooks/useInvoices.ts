@@ -21,6 +21,42 @@ export function useInvoices() {
   });
 }
 
+/** Rechnungen eines Jobs (für die JobInvoicesCard auf der Job-Detailseite). */
+export function useInvoicesForJob(jobId: string | undefined) {
+  return useQuery({
+    queryKey: [...INVOICES_KEY, "by-job", jobId],
+    enabled: !!jobId,
+    queryFn: async (): Promise<Invoice[]> => {
+      if (!jobId) return [];
+      const { data, error } = await supabase
+        .from("invoices")
+        .select(INVOICE_SELECT)
+        .eq("job_id", jobId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Invoice[];
+    },
+  });
+}
+
+/** Rechnungen eines Kunden (für den Rechnungs-Abschnitt der Kunden-Detailseite). */
+export function useInvoicesForCustomer(customerId: string | undefined) {
+  return useQuery({
+    queryKey: [...INVOICES_KEY, "by-customer", customerId],
+    enabled: !!customerId,
+    queryFn: async (): Promise<Invoice[]> => {
+      if (!customerId) return [];
+      const { data, error } = await supabase
+        .from("invoices")
+        .select(INVOICE_SELECT)
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Invoice[];
+    },
+  });
+}
+
 export interface CreateInvoiceItemInput {
   device_id: string | null;
   description: string;
