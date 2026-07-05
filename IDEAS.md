@@ -60,13 +60,26 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
       ETM-Code, Verfügbarkeits-Badge), Kennzahlen mit farbiger Zahl + Mini-Balken,
       kompakte Sortier-Leiste statt Tabellenkopf. Packlisten-Auswahl-Modus
       funktioniert unverändert (verifiziert: Gerät + Set buchen, Mengen-Stepper).
-- [ ] **Stufe 3:** Angebote + Aufgaben auf den neuen Stil (OffersPage an InvoicesPage
-      angleichen mit Status-Filter-Tabs; TasksPage-Buckets als Premium-Karten).
+- [x] **Stufe 3 (Angebote-Teil, 2026-07-04):** OffersPage an InvoicesPage angeglichen —
+      und darüber hinaus (Kennzahlen, Jahr-Archiv, Gruppen; siehe „Listen- &
+      Archiv-Ansichten"). Offen bleibt der Aufgaben-Teil (TasksPage-Buckets als
+      Premium-Karten).
+- [ ] **Stufe 3 (Rest):** TasksPage-Buckets als Premium-Karten.
 - [ ] **Stufe 4:** Kalender-Politur (Ansichts-Umschalter auf `Tabs`, Toolbar/
       Termin-Karten angleichen; Kalenderlogik unberührt).
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Listen- & Archiv-Ansichten** (2026-07-04): Angebote und Rechnungen nach dem Vorbild
+  professioneller Branchen-Software geordnet — Kennzahlen-Kopf (`SummaryStats`),
+  Status-Tabs mit Zählern, Jahr-Umschalter fürs Archiv (`YearFilter`), ein-/ausklappbare
+  Monats- oder Kunden-Gruppen mit Zwischensummen (`lib/listGrouping.ts`, getestet),
+  CSV-Export der gefilterten Sicht. Rechnungs-Drawer mit Verlaufs-Zeitstrahl
+  (erstellt → gestellt → Zahlungen/Mahnungen → bezahlt/storniert;
+  `lib/invoiceTimeline.ts`, getestet), verlinkbar über `/rechnungen?open=<id>`.
+  Insel aufgelöst: Rechnungen erscheinen am Job (JobInvoicesCard) und am Kunden,
+  Angebote zeigen „→ RE-…", Kunde/Job sind aus den Listen heraus verlinkt.
 
 - **Auswertungen** (2026-07-04): neue Seite (Bereich `angebote`, Sidebar-Eintrag) mit
   Finanz-KPIs (Jahresumsatz gestellt brutto/netto, Zahlungseingang, aktuell offen,
