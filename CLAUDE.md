@@ -2,14 +2,25 @@
 
 ## Die Vision (warum es dieses Projekt gibt)
 
-EventTech-Manager ist das **Betriebssystem für Tills Eventtechnik-Verleih**. Der rote
-Faden ist der reale Arbeitsablauf: **Anfrage → Angebot → Job (Packliste, Personal,
-Zeitplan) → Rechnung → Zahlung**. Jede Funktion muss sich an diesem Faden messen lassen.
+EventTech-Manager ist das **Betriebssystem für Tills Event-Dienstleistung**. Till
+**plant und setzt Veranstaltungen um**; die Technik dafür wird überwiegend bei
+Partner-Verleihern **angemietet** (kleines eigenes Rest-Inventar). Der rote Faden ist
+der reale Arbeitsablauf: **Anfrage → Angebot → Job (Material eigen + angemietet ·
+Personal · Fremdgewerke · Dokumente) → Bestellungen an Verleiher → Rechnung → Zahlung →
+Nachkalkulation**. Jede Funktion muss sich an diesem Faden messen lassen.
 
-Der Qualitätsanspruch ist „**wie professionelle Branchen-Software**" (Rentman/lexoffice
-als Messlatte): Listen sind nie nackte Aufzählungen, sondern haben Kennzahlen-Kopf,
-Status-Tabs, Jahres-Archiv, Gruppierung mit Zwischensummen und verknüpfte Vorgänge.
-Dokumente (Angebot/Rechnung) hängen sichtbar an Job und Kunde — nie auf einer Insel.
+> **Geschäftsmodell-Wende (2026-07-17):** vom Technik-**Verleih** (eigener Bestand wird
+> vermietet) zum **Event-Dienstleister** (planen + umsetzen, Technik anmieten). Das
+> bestehende Fundament bleibt wertvoll; neu sind **Dokumenten-Ablage**, **Anmietung**
+> (Verleih-Partner + Anmiet-Vorgänge) und **Kalkulation** (Deckungsbeitrag je Job).
+> Steuerung: `PLAN-NEUAUSRICHTUNG.md` (Etappen) und `ROADMAP.md` (Phasen 1–2).
+
+Der Qualitätsanspruch ist „**wie professionelle Branchen-Software**": Rentman/Current RMS
+(Verleih-Workflow inkl. **Subrental/Purchase-Order**), lexoffice/sevDesk (Rechnungswesen/
+GoBD, **Dokumenten-Ablage**). Listen sind nie nackte Aufzählungen, sondern haben
+Kennzahlen-Kopf, Status-Tabs, Jahres-Archiv, Gruppierung mit Zwischensummen und
+verknüpfte Vorgänge. Dokumente (Angebot/Rechnung, Genehmigungen, Verleiher-Rechnungen)
+hängen sichtbar an Job und Kunde — nie auf einer Insel.
 
 Drei Leitprinzipien prägen jede Entscheidung:
 
@@ -28,7 +39,8 @@ Drei Leitprinzipien prägen jede Entscheidung:
 | `CLAUDE.md` (diese Datei) | Arbeitsregeln, Architektur-Kompass, Rituale |
 | `apps/web/CLAUDE.md` | Frontend-Konventionen: Design-System, Listen-Rezept, Hook-Muster |
 | `IDEAS.md` | Ideen-Backlog + Verlauf „Kürzlich umgesetzt" (nach jeder Aufgabe pflegen!) |
-| `PLAN-FABLE5.md`, `PLAN-*.md` | Plan-Dokumente für große Vorhaben (Stand + offene Blöcke) |
+| `PLAN-NEUAUSRICHTUNG.md` | **Aktives Groß-Vorhaben**: Verleih → Event-Dienstleister (Dokumente, Anmietung, Kalkulation) — Etappen, Schema, Entscheidungen |
+| `PLAN-FABLE5.md`, `PLAN-*.md` | Weitere Plan-Dokumente für große Vorhaben (Stand + offene Blöcke) |
 | `DEPLOY.md` | Produktions-Setup (Cloudflare Pages + Supabase Cloud), Runbook |
 | `.claude/skills/` | Runbooks/Rezepte: Dev-Umgebung, Feature-Abschluss, Migrationen, große Features |
 

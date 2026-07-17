@@ -3,32 +3,50 @@
 > **Der Nordstern für alle Sessions.** Bei jeder Arbeit gilt: diese Datei sagt WOHIN und
 > in welcher Reihenfolge; `CLAUDE.md` sagt WIE (Regeln/Rituale); `IDEAS.md` hält den
 > Kleinkram und den Verlauf; `PLAN-*.md` vertiefen einzelne große Vorhaben.
-> Nach jedem erledigten Baustein: Haken setzen + Datum. Stand: **2026-07-07**.
+> Nach jedem erledigten Baustein: Haken setzen + Datum. Stand: **2026-07-17**.
 
 ---
 
 ## 1. Das Langzeit-Ziel
 
-EventTech-Manager ist das **Betriebssystem von Tills Eventtechnik-Verleih** — ein
-selbst kontrolliertes System, über das das gesamte Geschäft läuft:
+EventTech-Manager ist das **Betriebssystem von Tills Event-Dienstleistung** — ein
+selbst kontrolliertes System, über das das gesamte Geschäft läuft. Till **plant und
+setzt Veranstaltungen um**; die Technik dafür wird überwiegend bei Partner-Verleihern
+**angemietet**, ein kleines Rest-Inventar (Mischpult, BT-Box, Kleinkram) bleibt im Haus.
+Der rote Faden:
 
-**Anfrage → Angebot → Job (Packliste, Personal, Zeitplan) → Rechnung → Zahlung → Auswertung**
+**Anfrage → Angebot → Job (Material: eigen + angemietet · Personal · Fremdgewerke ·
+Dokumente) → Bestellungen an Verleiher → Durchführung → Rechnung → Zahlung →
+Nachkalkulation**
 
-„Angekommen" sind wir, wenn drei Sätze dauerhaft wahr sind:
+„Angekommen" sind wir, wenn fünf Sätze dauerhaft wahr sind:
 
 1. **„Alles läuft hier drin."** Kein Excel, keine Zettel, kein „das steht noch in
    WhatsApp" — jeder Vorgang hat seinen Platz und ist am Job/Kunden auffindbar.
-2. **„Es kann nichts verloren gehen."** Automatische Backups inkl. Dateien, ein real
+2. **„Jedes Papier hat seinen Platz."** Genehmigungen, Baupläne, Verleiher-Rechnungen,
+   Verträge und erzeugte Dokumente liegen geordnet an ihrem Vorgang und an einem
+   zentralen Ort — auffindbar, öffenbar, nichts geht verloren.
+3. **„Ich weiß bei jedem Job, was ich daran verdiene."** Deckungsbeitrag inkl. Anmiet-,
+   Personal- und sonstiger Kosten — die Kernzahl der Dienstleistung.
+4. **„Es kann nichts verloren gehen."** Automatische Backups inkl. Dateien, ein real
    geprobter Wiederherstellungs-Weg, rechtssichere Dokumente (GoBD).
-3. **„Es baut sich sicher weiter."** Muster, Invarianten und Rituale sind so dokumentiert
+5. **„Es baut sich sicher weiter."** Muster, Invarianten und Rituale sind so dokumentiert
    und durch Automationen abgesichert, dass auch schwächere Modelle gefahrlos
    weiterentwickeln können — Qualität hängt an der Maschine, nicht am Modell.
 
-Maßstab für alles Sichtbare: **professionelle Branchen-Software** (Rentman/Current RMS
-für den Verleih-Workflow, lexoffice/sevDesk fürs Rechnungswesen). Keine nackten Listen,
-keine Insel-Daten, keine UI-only-„Sicherheit".
+Maßstab für alles Sichtbare: **professionelle Branchen-Software** — Rentman/Current RMS
+(Verleih-Workflow inkl. **Subrental/Purchase-Order**), lexoffice/sevDesk (Rechnungswesen/
+GoBD, **Dokumenten-Ablage**). Keine nackten Listen, keine Insel-Daten, keine
+UI-only-„Sicherheit".
 
 ## 2. Wo wir stehen (ehrliche Bestandsaufnahme)
+
+**Geschäftsmodell-Wende (2026-07-17):** Vom Technik-**Verleih** (eigener Bestand wird
+vermietet) zum **Event-Dienstleister** (planen + umsetzen, Technik anmieten). Das
+verschiebt den Schwerpunkt der Software vom Bestand zum Projekt; das bestehende Fundament
+(Rechnungswesen, Angebote, Jobs, RLS, Kalender) bleibt voll wertvoll, neu hinzu kommen
+**Dokumenten-Ablage**, **Anmietung** (Verleih-Partner, Anmiet-Vorgänge) und die
+**Kalkulation** (Deckungsbeitrag je Job). Details: `PLAN-NEUAUSRICHTUNG.md`.
 
 **Fertig und live** (Cloudflare + Supabase Cloud, Stand 2026-07-07):
 
@@ -49,7 +67,11 @@ keine Insel-Daten, keine UI-only-„Sicherheit".
   DB-Migration in die Cloud; Wissens-Basis (CLAUDE.md × 3, 4 Skills, Plan-Dokumente).
 
 **Bekannte Lücken:** Backups nur manuell (JSON-Knopf, ohne Storage-Dateien, ohne
-Restore-Weg) · kein E-Mail-Versand von Angeboten/Rechnungen · keine Personal-
+Restore-Weg) · **keine geordnete Dokumenten-Ablage** (nur Foto-/Geräte-Datei-Inseln;
+Genehmigungen, Baupläne, Verleiher-Rechnungen, Verträge haben keinen Ort; erzeugte PDFs
+werden nur heruntergeladen) · **keine Anmietung** (kein Verleih-Partner-Stamm, keine
+Anmiet-Vorgänge, Verfügbarkeit kennt nur Eigenbestand) · **keine Kosten-/Margensicht**
+(Deckungsbeitrag je Job) · kein E-Mail-Versand von Angeboten/Rechnungen · keine Personal-
 Konfliktprüfung · keine globale Suche / kein Audit-Log · Kalender noch im alten Design ·
 kein E2E-Test.
 
@@ -79,12 +101,19 @@ ausdrückliche Freigabe · kleine Commits, nie rot pushen.
 
 ## 5. Die Phasen
 
-### Phase 0 — Das Fundament unzerstörbar machen  ⟵ **JETZT**
+> Die Neuausrichtung (2026-07-17) ist als **Phase 1 (Dokumente)** und **Phase 2
+> (Anmietung & Kalkulation)** eingehängt; Details in `PLAN-NEUAUSRICHTUNG.md`. Der alte
+> Geld-Kreislauf/Operative-Intelligenz/Reife rückt entsprechend nach hinten. **Phase 0
+> bleibt unverändert** und behält Vorrang beim Fundament.
+
+### Phase 0 — Das Fundament unzerstörbar machen  ⟵ **JETZT (P0.1 zuerst)**
 
 *Ziel: Datenverlust unmöglich, Regressionen werden automatisch gefangen.*
 
-- [ ] **P0.1 Backup automatisch:** tägliches Cloud-Backup (DB **und** Storage-Dateien),
-      Ablage außerhalb Supabase, Aufbewahrungs-Rotation.
+- [ ] **P0.1 Backup automatisch:** tägliches Cloud-Backup (DB **und** Storage-Dateien
+      inkl. künftigem `documents`-Bucket), Ablage außerhalb Supabase, Aufbewahrungs-
+      Rotation. **Kommt vor allen Neuausrichtungs-Etappen** (Tills Entscheid: Sicherheits-
+      netz vor der größten Schema-Erweiterung seit dem Rechnungswesen).
       *Fertig, wenn:* ein Backup nachweislich ohne menschliches Zutun entstanden ist.
 - [ ] **P0.2 Restore geprobt:** dokumentierter Wiederherstellungs-Weg, **einmal real
       durchgespielt** (in eine leere lokale Instanz).
@@ -98,32 +127,71 @@ ausdrückliche Freigabe · kleine Commits, nie rot pushen.
 - [ ] **P0.5 Wochen-Report (Automation):** wöchentliche Zusammenfassung „überfällige
       Rechnungen + fällige DGUV-Prüfungen + anstehende Jobs" (E-Mail oder Dashboard-Kachel).
 
-### Phase 1 — Den Geld-Kreislauf schließen
+### Phase 1 — Dokumente & Ablage  *(Neuausrichtung, Block A)*
+
+*Ziel: „Jedes Papier hat seinen Platz." Alle Dateien geordnet am Vorgang und an einem
+zentralen Ort. Details + Schema: `PLAN-NEUAUSRICHTUNG.md` (D1–D4).*
+
+- [ ] **P1.1 (D1) Dokumenten-Fundament:** privater Bucket `documents` + Tabelle mit
+      Vorgangs-Bezug + `can_see_document()`-RLS (signierte URLs, nie public).
+- [ ] **P1.2 (D2) Dokumente am Vorgang:** wiederverwendbare `DocumentsCard` (Upload,
+      farbige Kategorien, öffnen/löschen) an Job und Kunde.
+- [ ] **P1.3 (D3) Zentrale Seite „Dokumente":** Kategorie-Spalte, Suche, Jahr-Filter,
+      Monats-Gruppen, Vorgang-Verlinkung.
+- [ ] **P1.4 (D4) Auto-Archivierung:** Rechnungs-/Angebots-PDF beim Stellen/Senden
+      automatisch sprechend benannt ablegen (`RE-2026-0001_<Kunde>.pdf`).
+
+### Phase 2 — Anmietung & Kalkulation  *(Neuausrichtung, Block B)*
+
+*Ziel: Technik bei Verleihern anmieten (Vorgänge mit Status + Bestell-Dokument), Engpässe
+in der Packliste decken, je Job den Deckungsbeitrag kennen. Details: `PLAN-NEUAUSRICHTUNG.md`
+(E1–E8).*
+
+- [ ] **P2.1 (E1) Bereich `anmietung` + Verleih-Partner** (`suppliers`) + Seite `/anmietung`.
+- [ ] **P2.2 (E2) Anmiet-Vorgänge am Job** (`subrentals` + Positionen, Status-Kette).
+- [ ] **P2.3 (E3) Verfügbarkeits-Zugänge** (angemietete Technik deckt Engpässe;
+      „Fehlmenge anmieten").
+- [ ] **P2.4 (E4) Bestell-PDF** an den Verleiher (AM-Nummern).
+- [ ] **P2.5 (E5) Bestell-Mail** an den Verleiher (Edge Function, „ruhig by default",
+      Deploy nur nach Freigabe).
+- [ ] **P2.6 (E6) Kosten am Job** (`job_costs`: Personal mit Stunden×Satz, Transport,
+      Fremdgewerke).
+- [ ] **P2.7 (E7) Kalkulation** (Deckungsbeitrag je Job, Marge in den Auswertungen).
+- [ ] **P2.8 (E8) Dashboard & Navigation** neu gewichten (Fokus Anmietung, Inventar
+      nach hinten).
+
+### Phase 3 — Den Geld-Kreislauf schließen
 
 *Ziel: Vom Angebot bis zur bezahlten Rechnung ohne Medienbruch.*
 
-- [ ] **P1.1 Mahnwesen scharf schalten:** Resend-Key (Till setzt Secret), `send-dunning`
+- [ ] **P3.1 Mahnwesen scharf schalten:** Resend-Key (Till setzt Secret), `send-dunning`
       deployen, Vorschau-Test, erste echte Mahnung. *(Nach-außen-wirkend: Freigabe!)*
-- [ ] **P1.2 Angebote/Rechnungen per E-Mail** direkt an Kunden (PDF-Anhang,
+- [ ] **P3.2 Angebote/Rechnungen per E-Mail** direkt an Kunden (PDF-Anhang,
       Versand-Protokoll wie beim Mahnwesen, „ruhig by default").
-- [ ] **P1.3 Übergabe-/Rücknahmeprotokoll** mit Unterschrift (Canvas → PDF im Storage);
+- [ ] **P3.3 Bestell-Mail an Verleiher scharf schalten** (E5-Scharfschaltung: Key +
+      Function-Deploy nach Freigabe, erster echter Versand).
+- [ ] **P3.4 Übergabe-/Rücknahmeprotokoll** mit Unterschrift (Canvas → PDF im Storage);
       Schadensfälle fließen als Position in die Rechnung.
 
-### Phase 2 — Operative Intelligenz
+### Phase 4 — Operative Intelligenz
 
-- [ ] **P2.1 Personal-Konflikte:** Warnung bei überlappender Verplanung von Mitarbeitern
-      (recycelt `lib/availability.ts`; kleiner Aufwand, hoher Hebel).
-- [ ] **P2.2 Auswertungen vertiefen:** Geräte-ROI (Vermiettage × Preis vs.
-      Wiederbeschaffungswert), Auslastungs-Trends.
-- [ ] **P2.3 Kalender-Politur** (Design-Stufe 4; bewusst leicht, Muster-Folge-Arbeit).
+- [ ] **P4.1 Personal-Konflikte:** Warnung bei überlappender Verplanung von Mitarbeitern
+      (recycelt `lib/availability.ts`; **aufgewertet** — Personal ist im Dienstleistungs-
+      modell Kernressource).
+- [ ] **P4.2 Lieferanten- & Margen-Auswertung:** EK-Preisvergleich je Gerätetyp über
+      Verleiher, Deckungsbeitrag je Kunde/Monat, Auslastungs-Trends. *(Ersetzt die frühere
+      Geräte-ROI-Idee — die trägt im kleinen Rest-Inventar nicht mehr.)*
+- [ ] **P4.3 Kalender-Politur** (Design-Stufe 4; bewusst leicht, Muster-Folge-Arbeit).
+- [ ] **P4.4 Engpass-Sammelansicht** (E9): Anmiet-Bedarf über alle anstehenden Jobs.
 
-### Phase 3 — Reife & Nachvollziehbarkeit
+### Phase 5 — Reife & Nachvollziehbarkeit
 
-- [ ] **P3.1 Globale Suche** (⌘K über Geräte/Jobs/Kunden/Angebote/Rechnungen, RLS-konform).
-- [ ] **P3.2 Änderungsprotokoll** (Audit-Log per Trigger: wer/wann/was; Verlaufs-Tab).
-- [ ] **P3.3 Performance-Feinschliff** (Chunk-Größen, Erststart).
+- [ ] **P5.1 Globale Suche** (⌘K über Geräte/Jobs/Kunden/Angebote/Rechnungen/**Anmietungen/
+      Dokumente**, RLS-konform).
+- [ ] **P5.2 Änderungsprotokoll** (Audit-Log per Trigger: wer/wann/was; Verlaufs-Tab).
+- [ ] **P5.3 Performance-Feinschliff** (Chunk-Größen, Erststart).
 
-### Phase 4 — Ruhiger Betrieb
+### Phase 6 — Ruhiger Betrieb
 
 *Kein Feature-Ziel, sondern ein Zustand:* App trägt den Alltag; Automationen melden
 Probleme, bevor Till sie bemerkt; Runbooks (inkl. Restore-Drill) aktuell; neue Wünsche
@@ -135,4 +203,7 @@ laufen als kleine, bewiesene Schritte über den normalen Weiterentwicklungs-Modu
 - Reihenfolge ändern nur mit Till. Neue große Ideen erst in `IDEAS.md`, in eine Phase
   gehoben werden sie hier.
 - Eine neue Session ohne konkreten Auftrag nimmt den **obersten offenen Baustein der
-  niedrigsten offenen Phase** und legt dafür zuerst einen kurzen Plan vor.
+  niedrigsten offenen Phase** und legt dafür zuerst einen kurzen Plan vor. **Ausnahme:**
+  P0.1 (Backup) hat Vorrang vor den Neuausrichtungs-Etappen (Phase 1/2); danach dürfen
+  Phase 0 und die Neuausrichtung abwechselnd bedient werden — konkrete Aufträge von Till
+  stechen immer.

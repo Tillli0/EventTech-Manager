@@ -9,6 +9,12 @@
 > Legende — **Aufwand** S/M/L · **Wirkung** ★–★★★ · **Auto** = Claude darf eigenständig
 > umsetzen (klein/risikoarm) / **Freigabe** = vorher fragen.
 
+> **🧭 Strategiewechsel (2026-07-17): Verleih → Event-Dienstleister.** Kein eigener
+> Vermiet-Bestand mehr; künftig Veranstaltungen planen/umsetzen und Technik anmieten.
+> Das große Vorhaben (Dokumenten-Ablage, Anmietung, Kalkulation) steht in
+> `PLAN-NEUAUSRICHTUNG.md`, die Reihenfolge in `ROADMAP.md` (Phasen 1–2). Einige
+> Altpunkte unten sind dadurch herabgestuft — siehe eigene Rubrik.
+
 ## 🔧 Quick Wins (Auto — kann Claude eigenständig erledigen)
 
 - [ ] **Leere-Zustände/Ladezustände** vereinheitlichen, wo noch nicht (Konsistenz-Pass). · S · ★ · Auto
@@ -33,6 +39,29 @@
       `VITE_CALENDAR_FEED_BASE_URL`). · S · ★★ · Freigabe
 - [ ] **Lead-Notizen** — interne Notiz pro Website-Anfrage vor dem Konvertieren. · S · ★ · Freigabe
 - [ ] **Dubletten-Check auch bei manueller Kundenanlage** (nicht nur bei Lead-Konvertierung). · S · ★★ · Freigabe
+
+### Aus der Neuausrichtung entstanden (nach den Kern-Etappen)
+
+- [ ] **Lieferanten-Preishistorie** — „was hat Verleiher X zuletzt für eine LED-Bar genommen?"
+      (EK-Preise je Gerätetyp über Anmiet-Vorgänge). · M · ★★ · Freigabe
+- [ ] **Engpass-Sammelansicht** (E9) — Anmiet-Bedarf über alle anstehenden Jobs, „Anmieten"-
+      Shortcut je Zeile. · M · ★★ · Freigabe
+- [ ] **InventoryPage-Badge „+X angemietet"** — angemietete Mengen am Gerät sichtbar. · S · ★ · Auto
+- [ ] **Stundensatz-Presets** in `company_settings` (bewusst NICHT an `profiles` — Datenschutz),
+      als Vorbelegung bei Personalkosten. · S · ★ · Freigabe
+- [ ] **Bestell-PDF als Mail-Anhang** (V2 der Bestell-Mail an Verleiher). · S · ★ · Freigabe
+- [ ] **Dokumente: Volltext/OCR-Suche** über hochgeladene PDFs (später, größer). · L · ★★ · Freigabe
+
+## 🗂️ Durch die Neuausrichtung herabgestuft (2026-07-17)
+
+> Nicht gelöscht, sondern mit Begründung geparkt — Nachvollziehbarkeit.
+
+- **Geräte-ROI-Auswertung** (war ROADMAP P2.2): trägt im kleinen Rest-Inventar nicht mehr;
+  **gestrichen** und in der ROADMAP durch „Lieferanten- & Margen-Auswertung" ersetzt.
+- **„Meistgebuchte Geräte"** in den Auswertungen: verliert an Bedeutung, bleibt aber
+  bestehen (kein Rückbau nötig).
+- **Weitere Investitionen in Barcode/Scan/DGUV:** eingefroren auf Bestandspflege-Niveau —
+  bleiben voll funktionsfähig fürs Rest-Inventar, werden aber nicht mehr ausgebaut.
 
 ## 🎨 Design-Update (läuft — Freigabe erteilt)
 
