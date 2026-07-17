@@ -130,6 +130,42 @@ Solange diese fehlen, läuft der Action grün durch und überspringt die Migrati
 > Hinweis: Der `service_role`-Key wird hier NICHT gebraucht und gehört auch nicht in
 > GitHub-Secrets fürs Frontend — nur in die Edge-Function-Secrets (Teil A).
 
+---
+
+## Teil D — Backup & Restore (automatisch)
+
+Die Cloud-Datenbank wird **automatisch täglich** gesichert — ohne dein Zutun. Zuständig ist
+der GitHub-Action `.github/workflows/db-backup.yml` (ROADMAP P0.1). Er nutzt **dieselben
+Secrets** wie die Migration (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`,
+`SUPABASE_PROJECT_REF`) — sind die gesetzt, läuft das Backup ohne weitere Einrichtung;
+fehlen sie, überspringt der Action grün.
+
+**Was gesichert wird (Stufe 1):** die komplette Datenbank als wiederherstellbares
+logisches Backup in drei Teilen — `01_roles.sql` (Rollen), `02_schema.sql` (Struktur),
+`03_data.sql` (alle Daten) plus `00_manifest.txt` (Kurzübersicht). **Noch nicht dabei:**
+Storage-Dateien (Fotos, künftige Dokumente) — das ist bewusst **Stufe 2** (größer, evtl.
+Cloudflare R2).
+
+**Ablage & Rotation:** Jeder Lauf legt das Backup als **Artefakt** am Action-Lauf ab
+(Repo → *Actions* → *Supabase DB Backup (Produktion)* → gewünschter Lauf → *Artifacts*).
+Aufbewahrung **90 Tage**, danach verfällt es automatisch (das ist die Rotation).
+
+**Sofort ein Backup ziehen (manuell):** Repo → *Actions* → *Supabase DB Backup
+(Produktion)* → *Run workflow*. Nach ~1–2 Minuten liegt das Artefakt am Lauf.
+
+**Wiederherstellen (Restore-Weg):** Backup-Artefakt herunterladen und entpacken, dann in
+eine (leere) Ziel-Datenbank einspielen — Reihenfolge Rollen → Schema → Daten:
+```bash
+# gegen eine LEERE lokale Instanz proben (empfohlen vor dem Ernstfall):
+psql "<ziel-connection-string>" -f 01_roles.sql   # Rollen (Fehler bei schon vorhandenen Rollen sind ok)
+psql "<ziel-connection-string>" -f 02_schema.sql   # Struktur
+psql "<ziel-connection-string>" -f 03_data.sql     # Daten
+```
+> Der Restore-Weg gehört **einmal real durchgespielt** (ROADMAP P0.2), bevor man sich im
+> Ernstfall darauf verlässt — „ein Backup, das nie zurückgespielt wurde, ist kein Backup".
+
+---
+
 ## Checkliste „geht live"
 
 - [ ] `supabase db push` lief durch; im Cloud-Dashboard sind Tabellen + Buckets da.

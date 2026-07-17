@@ -1,0 +1,120 @@
+name: Supabase DB Backup (Produktion)
+
+# Sichert die Supabase-Cloud-Datenbank automatisch — taeglich per Zeitplan und jederzeit
+# manuell ausloesbar. Erzeugt ein wiederherstellbares logisches Backup in drei Teilen
+# (Rollen, Schema, Daten) und legt es als herunterladbares GitHub-Artefakt ab. Die
+# Aufbewahrung (retention-days) uebernimmt die Rotation: alte Backups verfallen von selbst.
+#
+# ROADMAP P0.1 (Stufe 1: nur Datenbank). Storage-Dateien (Fotos, kuenftige Dokumente)
+# sind bewusst noch NICHT enthalten — das ist Stufe 2 (groesser, evtl. Cloudflare R2).
+#
+# "Ruhig by default": Ohne die noetigen Secrets ueberspringt der Workflow alles (gruen),
+# genau wie db-migrate.yml. Benoetigte GitHub-Secrets (dieselben wie db-migrate):
+#   SUPABASE_ACCESS_TOKEN  - Supabase-Account -> Access Tokens
+#   SUPABASE_DB_PASSWORD   - DB-Passwort des Cloud-Projekts
+#   SUPABASE_PROJECT_REF   - Projekt-Ref des Cloud-Projekts
+#
+# Erst-Beweis / manueller Lauf: Repo -> Actions -> "Supabase DB Backup (Produktion)"
+# -> "Run workflow". Danach das Artefakt unten am Lauf herunterladen.
+# Wiederherstellung: siehe DEPLOY.md ("Backup & Restore").
+
+on:
+  schedule:
+    # Taeglich 03:14 UTC (nachts, ausserhalb der Nutzung; ungerade Minute meidet die
+    # volle Stunde, zu der GitHub-Cron am staerksten ausgelastet ist).
+    - cron: "14 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - name: Secrets vorhanden?
+        id: guard
+        run: |
+          if [ -n "$SUPABASE_PROJECT_REF" ] && [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_DB_PASSWORD" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Supabase-Secrets noch nicht gesetzt – Backup uebersprungen."
+          fi
+
+      - name: Zeitstempel
+        if: steps.guard.outputs.ready == 'true'
+        id: stamp
+        run: echo "value=$(date -u +%Y-%m-%d_%H%M)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        if: steps.guard.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      # Feste Version statt "latest" — deren Aufloesung ist zuletzt fehlgeschlagen
+      # (gleiche Pinnung wie db-migrate.yml).
+      - name: Supabase CLI
+        if: steps.guard.outputs.ready == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.107.0
+
+      - name: Projekt verknuepfen
+        if: steps.guard.outputs.ready == 'true'
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Datenbank dumpen (Rollen + Schema + Daten)
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          supabase db dump --linked --role-only -f backup/01_roles.sql
+          supabase db dump --linked            -f backup/02_schema.sql
+          supabase db dump --linked --data-only --use-copy -f backup/03_data.sql
+          # Kurz-Manifest fuer schnelle Sichtpruefung des Artefakts.
+          {
+            echo "EventTech-Manager DB-Backup"
+            echo "erstellt (UTC): $(date -u +'%Y-%m-%d %H:%M:%S')"
+            echo "projekt-ref:    $SUPABASE_PROJECT_REF"
+            echo ""
+            echo "Dateien (Zeilen / Groesse):"
+            for f in backup/01_roles.sql backup/02_schema.sql backup/03_data.sql; do
+              printf '  %-20s %8s Zeilen  %8s\n' "$(basename "$f")" "$(wc -l < "$f")" "$(du -h "$f" | cut -f1)"
+            done
+          } | tee backup/00_manifest.txt
+
+      - name: Nicht-leer pruefen
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          # Das Datenfile muss echte Inhalte haben — sonst ist etwas schiefgelaufen.
+          if [ ! -s backup/03_data.sql ]; then
+            echo "::error::Daten-Dump ist leer — Backup abgebrochen."
+            exit 1
+          fi
+
+      - name: Als Artefakt ablegen
+        if: steps.guard.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ steps.stamp.outputs.value }}
+          path: backup/
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Zusammenfassung
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          {
+            echo "### Backup erstellt ✅"
+            echo ""
+            echo '```'
+            cat backup/00_manifest.txt
+            echo '```'
+            echo ""
+            echo "Artefakt: **db-backup-${{ steps.stamp.outputs.value }}** (Aufbewahrung 90 Tage)."
+          } >> "$GITHUB_STEP_SUMMARY"
