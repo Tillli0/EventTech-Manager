@@ -132,8 +132,9 @@ ausdrückliche Freigabe · kleine Commits, nie rot pushen.
 *Ziel: „Jedes Papier hat seinen Platz." Alle Dateien geordnet am Vorgang und an einem
 zentralen Ort. Details + Schema: `PLAN-NEUAUSRICHTUNG.md` (D1–D4).*
 
-- [ ] **P1.1 (D1) Dokumenten-Fundament:** privater Bucket `documents` + Tabelle mit
-      Vorgangs-Bezug + `can_see_document()`-RLS (signierte URLs, nie public).
+- [x] **P1.1 (D1) Dokumenten-Fundament:** privater Bucket `documents` + Tabelle mit
+      Vorgangs-Bezug + `can_see_document()`-RLS (signierte URLs, nie public). (2026-07-17,
+      Migr. 0038, lokal + Cloud verifiziert)
 - [ ] **P1.2 (D2) Dokumente am Vorgang:** wiederverwendbare `DocumentsCard` (Upload,
       farbige Kategorien, öffnen/löschen) an Job und Kunde.
 - [ ] **P1.3 (D3) Zentrale Seite „Dokumente":** Kategorie-Spalte, Suche, Jahr-Filter,

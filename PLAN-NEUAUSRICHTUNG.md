@@ -1,8 +1,9 @@
 # PLAN — Neuausrichtung: vom Verleih zum Event-Dienstleister
 
 > **Großes Vorhaben** nach Skill `grosses-feature`. Dieses Dokument überlebt Sessions
-> und trägt die Ausführung. **Stand: 2026-07-17** — E0 (Kompass & Mockups) in Arbeit;
-> Bau-Etappen noch offen. Nach jeder Etappe: Haken + Datum, Stand-Vermerk oben.
+> und trägt die Ausführung. **Stand: 2026-07-17** — E0 (Kompass & Mockups) erledigt;
+> **D1 (Dokumenten-Fundament) live & verifiziert (Migr. 0038)**; nächste Etappe **D2**.
+> Nach jeder Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -125,7 +126,11 @@ unten sind Planungs-Annahme ab 0038.
 
 ### Block A — Dokumente (ROADMAP-Phase 1)
 
-**D1 — Bucket + Tabelle `documents` + RLS** (Migration 0038)
+**D1 ✅ — Bucket + Tabelle `documents` + RLS** (Migration 0038, erledigt 2026-07-17;
+lokal + Cloud verifiziert: Bucket privat, RLS aktiv, `anon` ohne Zugriff, Deny/Allow je
+Bereich bewiesen). Umgesetzt wie geplant, mit Zusatz-Feld `is_auto` (für D4) und zweitem
+Helfer `can_edit_document`. `supplier`/`subrental` bewusst noch nicht im Check — folgen
+mit Block B.
 - Privater Bucket `documents`; Tabelle mit `entity_type` (job/customer/supplier/
   subrental/offer/invoice/company), `entity_id`, `category`, `title`, `file_name`,
   `storage_path`, `mime_type`, `size_bytes`, `notes`, `uploaded_by`, Zeitstempel.

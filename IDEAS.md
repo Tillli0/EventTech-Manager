@@ -100,6 +100,18 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Neuausrichtung D1 — Dokumenten-Fundament** (2026-07-17, Migration 0038): privater
+  Bucket `documents` (nie public) + Tabelle mit polymorphem Vorgangs-Bezug
+  (`entity_type`/`entity_id`) und Kategorien; Helfer `can_see_document`/`can_edit_document`
+  koppeln die Sichtbarkeit an die bestehenden Bereichs-Rechte, Storage-Policies binden das
+  Signieren an die Dokument-Sichtbarkeit. Lokal + Cloud verifiziert (Bucket privat, RLS
+  aktiv, anon gesperrt, Deny/Allow je Bereich). Nächster Schritt: D2 (DocumentsCard + Upload).
+- **Automatisches DB-Backup** (2026-07-17, ROADMAP P0.1): geplanter GitHub-Action
+  `db-backup.yml` sichert die Cloud-DB täglich als Artefakt (Rollen/Schema/Daten, 90 Tage
+  Rotation), „ruhig by default". Restore-Weg in DEPLOY.md. Stufe 2 (Storage-Dateien) offen.
+- **Claude-Automationen** (2026-07-17): Hooks (Migrations-Wächter für RLS/GRANT/Nummer/
+  ENUM-Falle, Service-Role-Sperre im Frontend) + Subagent `migrations-pruefer` + `find-skills`.
+
 - **Listen- & Archiv-Ansichten** (2026-07-04): Angebote und Rechnungen nach dem Vorbild
   professioneller Branchen-Software geordnet — Kennzahlen-Kopf (`SummaryStats`),
   Status-Tabs mit Zählern, Jahr-Umschalter fürs Archiv (`YearFilter`), ein-/ausklappbare
