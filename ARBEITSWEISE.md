@@ -4,7 +4,44 @@
 > Modell und Skills. Ergänzt `CLAUDE.md` (Regeln), `WORKFLOW.md` (Technik lokal→live)
 > und `IDEAS.md` (Was steht an). Stand: 2026-07-18.
 
-## Die drei Aufgaben-Größen
+## Tills Fahrplan: So arbeitest du am effektivsten mit Claude
+
+**1. Session starten mit Kontext, nicht mit Kaltstart.**
+Erste Nachricht einer Session: sag, WO du weitermachen willst — „lies IDEAS.md und
+PLAN-NEUAUSRICHTUNG.md, wir machen an Etappe X weiter" statt „hi, was war nochmal offen?".
+Claude liest dann gezielt statt breit.
+
+**2. Sag das Ziel, nicht die Lösung.**
+„Ich will beim Job sofort sehen, ob er sich lohnt" ist eine bessere Anfrage als
+„bau mir eine Spalte mit Deckungsbeitrag in die Tabelle". Claude schlägt dann Optionen
+vor, und du entscheidest — oft kommt was Besseres raus als deine erste Idee.
+Dein Unbehagen („das hat kein System") ist eine vollwertige Anfrage — sprich es aus.
+
+**3. Bei UI: erst Mockup verlangen, dann bauen lassen.**
+„Zeig mir 2–3 Varianten als Vorschau, bevor du baust." Du entscheidest gut, wenn du
+etwas siehst — und ein verworfenes Mockup kostet Minuten, ein verworfenes Feature Stunden.
+
+**4. Ein Thema pro Session.**
+Rechnung fertig → neue Session für den Kalender. Lange Misch-Sessions werden teuer
+(Kontext wächst) und unscharf (Claude schleppt Altlasten mit). Was die Session überleben
+muss, gehört in IDEAS.md oder ein PLAN-Dokument — dafür sorgt Claude, du musst es nur
+einfordern, wenn es fehlt: „schreib das ins Repo".
+
+**5. Modell nach Größe wählen (dein größter Limit-Hebel).**
+Frage/Kleinkram → Haiku oder Sonnet. Normale Features → Sonnet. Nur Planung großer
+Vorhaben oder festgefahrene Probleme → Opus. Wechsel per `/model`.
+
+**6. Am Ende jeder Aufgabe: Beweis einfordern.**
+„Zeig mir das im Browser" oder „was sagt die Prüfkette?" — nimm kein „müsste
+funktionieren" an. Das Verifikations-Ritual ist Pflicht, du darfst darauf pochen.
+
+**7. `+` als Fokus-Schalter nutzen.**
+`+` vor der Nachricht = Claude macht NUR das Genannte, keine Extras. Gut für schnelle,
+kontrollierte Änderungen — und spart nebenbei Tokens.
+
+---
+
+## Die drei Aufgaben-Größen (Claudes Ablauf je Größe)
 
 ### Klein (Minuten): Textänderung, kleiner Fix, Frage
 
