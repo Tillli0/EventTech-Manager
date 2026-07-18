@@ -41,17 +41,29 @@ Drei Leitprinzipien prägen jede Entscheidung:
 | `ARBEITSWEISE.md` | Wie Till & Claude zusammenarbeiten: Aufgabengrößen, Skill-Wahl, Modellwahl | geänderter Zusammenarbeits-Regel |
 | `ROADMAP.md` | Nordstern: Langzeit-Ziel, Phasen, „woran erkennen wir Fertig" | erreichtem Meilenstein/Phasenwechsel |
 | `IDEAS.md` | Ideen-Backlog + Verlauf „Kürzlich umgesetzt" | **jeder** abgeschlossenen Aufgabe (Pflicht) |
-| `PLAN-NEUAUSRICHTUNG.md` | **Aktives Groß-Vorhaben**: Verleih → Event-Dienstleister — Etappen, Schema, Entscheidungen | jeder Etappe des aktiven Vorhabens |
-| `PLAN-*.md` (weitere) | Andere große Vorhaben (Stand + offene Blöcke) | jeder Etappe des jeweiligen Vorhabens |
-| `DEPLOY.md` | Produktions-Setup (Cloudflare Pages + Supabase Cloud), Runbook | Deploy-/Infra-Änderung |
+| `PLAN-V1-ABSICHERN.md` | **🔴 AKTIV (seit 2026-07-18)**: v1 beweisbar sicher machen (Restore-Probe, Storage-Backup, E2E-Netz) — inkl. **geprüftem Ist-Zustand mit Belegen** | jeder Etappe A1–A4 |
+| `PLAN-UI-NEUSCHNITT.md` | **Wartet auf A3**: helles Theme (umschaltbar), Navigation, Startseite „Nächster Einsatz", Dokumente als Job-Ordner | jeder Etappe U1–U6 |
+| `PLAN-NEUAUSRICHTUNG.md` | Verleih → Event-Dienstleister; Block A (Dokumente) **fertig**, Block B (Anmietung/Kalkulation) offen — **läuft nach den U-Etappen** | jeder Etappe des Vorhabens |
+| `PLAN-MEIN-PLAN.md` | Die persönliche Säule (Schule/Minijob/Verfügbarkeit); **M1 wird in U4 vorgezogen**, M2 geht in U4 auf | jeder Etappe M1–M6 |
+| `docs/UI-REVIEW-2026-07-18.md` | Bestandsaufnahme der UI-Wiederholungsmuster (Grundlage des Neuschnitts) | nie (Momentaufnahme) |
+| `docs/mockups/` | Visuelle Vorlagen: drei Farbwelten + Dashboard-Neuschnitt | neuem Mockup |
+| `DEPLOY.md` | Produktions-Setup (Cloudflare Pages + Supabase Cloud), Runbook, **Backup & Restore** | Deploy-/Infra-Änderung |
 | `WORKFLOW.md` | Technischer Alltag lokal → live | Änderung am Entwicklungs-Ablauf |
 | `.claude/skills/` | Runbooks/Rezepte: Dev-Umgebung, Feature-Abschluss, Migrationen, große Features | neuem/geändertem Rezept |
 | `docs/archiv/` | Erledigte/überholte Pläne — nur noch Referenz, wird **nicht** mehr gepflegt | nie (Ablage-Ordner) |
 
 **Bei jeder neuen Session zuerst lesen** (Reihenfolge nach Bedarf, nicht alles auf Vorrat):
-`IDEAS.md` (was steht an) → aktives `PLAN-*.md`, falls an einem Großvorhaben weitergearbeitet
-wird → `ROADMAP.md` nur, wenn die große Richtung unklar ist. `ARBEITSWEISE.md` und
-`apps/web/CLAUDE.md` bei Bedarf situativ (Skill-Wahl bzw. Frontend-Arbeit).
+`IDEAS.md` (was steht an) → **`PLAN-V1-ABSICHERN.md` (das aktive Vorhaben)** → weiteres
+`PLAN-*.md` nur, wenn dort weitergearbeitet wird → `ROADMAP.md` nur, wenn die große
+Richtung unklar ist. `ARBEITSWEISE.md` und `apps/web/CLAUDE.md` situativ (Skill-Wahl bzw.
+Frontend-Arbeit).
+
+**Die aktuelle Reihenfolge der Großvorhaben** (Stand 2026-07-18) — nicht eigenmächtig
+umstellen:
+`PLAN-V1-ABSICHERN.md` (A1–A4) → `PLAN-UI-NEUSCHNITT.md` (U1–U6, zieht M1 mit)
+→ `PLAN-NEUAUSRICHTUNG.md` Block B (E1–E7) → `PLAN-MEIN-PLAN.md` (M3–M6).
+Begründung: Erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
+Struktur einziehen.
 
 **Faustregel fürs Pflegen:** jede erledigte Aufgabe braucht **mindestens** einen Eintrag in
 `IDEAS.md`. Nur bei aktiven Großvorhaben zusätzlich das passende `PLAN-*.md`. Ist ein

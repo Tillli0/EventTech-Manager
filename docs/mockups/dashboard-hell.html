@@ -1,0 +1,1019 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EventTech-Manager — Dashboard hell (Mockup)</title>
+<style>
+/* ============================================================
+   TOKENS — genau die Namen, die später in tailwind.config.js landen.
+   Drei Farbwelten, ein Satz Variablen. Das ist der Beleg, dass der
+   echte Umbau ein reiner Token-Tausch ist.
+   ============================================================ */
+
+:root,
+[data-palette="a"] {
+  --bg:            #F2EFE9;
+  --bg-surface:    #FFFFFF;
+  --bg-raised:     #F7F5F1;
+  --border:        #E3DED4;
+  --border-subtle: #EDE9E2;
+  --ink:           #1A1815;
+  --ink-muted:     #6B665D;
+  --ink-faint:     #9B958A;
+  --accent:        #1F1D1A;
+  --accent-hover:  #38342E;
+  --accent-soft:   #EDE9E1;
+  --on-accent:     #FFFFFF;
+  --shadow:        0 1px 2px rgba(26,24,21,.05), 0 8px 24px -12px rgba(26,24,21,.14);
+}
+
+[data-palette="b"] {
+  --bg:            #F6F7FA;
+  --bg-surface:    #FFFFFF;
+  --bg-raised:     #F1F3F8;
+  --border:        #E2E5EC;
+  --border-subtle: #EDEFF4;
+  --ink:           #14161C;
+  --ink-muted:     #5D6472;
+  --ink-faint:     #8E96A6;
+  --accent:        #4F46E5;
+  --accent-hover:  #4338CA;
+  --accent-soft:   #EEEDFC;
+  --on-accent:     #FFFFFF;
+  --shadow:        0 1px 2px rgba(20,22,28,.05), 0 8px 24px -12px rgba(20,22,28,.16);
+}
+
+[data-palette="c"] {
+  --bg:            #F3EFE6;
+  --bg-surface:    #FFFFFF;
+  --bg-raised:     #FAF7F0;
+  --border:        #E6DFD1;
+  --border-subtle: #F0EBE0;
+  --ink:           #1B1811;
+  --ink-muted:     #6E6757;
+  --ink-faint:     #9C9484;
+  --accent:        #E9B824;
+  --accent-hover:  #D4A50F;
+  --accent-soft:   #FCF3D8;
+  --on-accent:     #1B1811;
+  --shadow:        0 1px 2px rgba(27,24,17,.05), 0 8px 24px -12px rgba(27,24,17,.16);
+}
+
+/* Job-Status — für HELLEN Grund nachgeschärft (Alt-Werte im Farbtest unten) */
+:root {
+  --job-anfrage:       #6B7280;
+  --job-bestaetigt:    #2563EB;
+  --job-planung:       #7C3AED;
+  --job-packen:        #B45309;
+  --job-laeuft:        #EA580C;
+  --job-rueckgabe:     #0F766E;
+  --job-abgeschlossen: #15803D;
+  --job-storniert:     #DC2626;
+
+  --sig-ok:   #15803D;
+  --sig-warn: #B45309;
+  --sig-bad:  #DC2626;
+
+  --r-sm: 6px;
+  --r:    10px;
+  --r-lg: 16px;
+}
+
+/* ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  transition: background-color .25s ease, color .25s ease;
+}
+
+.num { font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+a { color: inherit; text-decoration: none; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* ---------- Gerüst ---------- */
+
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  display: none;
+  width: 216px;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 26px;
+  padding: 20px 14px;
+  border-right: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+@media (min-width: 1024px) { .sidebar { display: flex; } }
+
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px; font-weight: 700;
+}
+
+.brand-name { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+
+.nav { display: flex; flex-direction: column; gap: 1px; }
+
+.nav-label {
+  padding: 0 8px 6px;
+  font-size: 10.5px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.nav a {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 8px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  color: var(--ink-muted);
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.nav a:hover { background: var(--bg-raised); color: var(--ink); }
+
+.nav a[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.nav .badge {
+  margin-left: auto;
+  min-width: 18px; padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent); color: var(--on-accent);
+  font-size: 10.5px; font-weight: 700; line-height: 18px; text-align: center;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 16px 64px;
+}
+
+@media (min-width: 768px) { .main { padding: 26px 30px 72px; } }
+
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+/* ---------- Kopf ---------- */
+
+.pagehead {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  justify-content: space-between; gap: 14px;
+}
+
+.pagehead h1 {
+  margin: 0;
+  font-size: clamp(22px, 3.2vw, 27px);
+  font-weight: 650;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+
+.pagehead p { margin: 3px 0 0; font-size: 13.5px; color: var(--ink-muted); }
+
+.switcher {
+  display: flex; gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-surface);
+}
+
+.switcher button {
+  border: 0;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit; font-size: 12.5px; font-weight: 500;
+  cursor: pointer;
+  transition: background-color .18s ease, color .18s ease;
+}
+
+.switcher button:hover { color: var(--ink); }
+
+.switcher button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+/* ---------- Karten ---------- */
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: 12px; font-weight: 650;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.card-body { padding: 14px 16px; }
+
+.card-link {
+  font-size: 12.5px; color: var(--ink-muted);
+  display: inline-flex; align-items: center; gap: 4px;
+  transition: color .15s ease;
+}
+
+.card-link:hover { color: var(--ink); }
+
+.card-link::after { content: "→"; font-size: 11px; }
+
+/* ---------- Hero: nächster Einsatz ---------- */
+
+.hero {
+  display: grid;
+  gap: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+@media (min-width: 900px) { .hero { grid-template-columns: 1.35fr 1fr; } }
+
+.hero-main { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+.hero-eyebrow {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 650;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--job-packen);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--job-packen) 20%, transparent);
+}
+
+.hero h2 {
+  margin: 0;
+  font-size: clamp(19px, 2.6vw, 24px);
+  font-weight: 650; letter-spacing: -.025em; line-height: 1.22;
+  text-wrap: balance;
+}
+
+.hero-meta {
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+  font-size: 13.5px; color: var(--ink-muted);
+}
+
+.hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
+
+.hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 4px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 36px; padding: 0 14px;
+  border: 1px solid transparent; border-radius: var(--r);
+  font: inherit; font-size: 13.5px; font-weight: 550;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn-primary { background: var(--accent); color: var(--on-accent); }
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-ghost { background: transparent; border-color: var(--border); color: var(--ink); }
+.btn-ghost:hover { background: var(--bg-raised); }
+
+/* Zeitplan */
+
+.schedule {
+  padding: 20px;
+  background: var(--bg-raised);
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 900px) {
+  .schedule { border-top: 0; border-left: 1px solid var(--border-subtle); }
+}
+
+.schedule h3 {
+  margin: 0 0 12px;
+  font-size: 11px; font-weight: 650;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.timeline { list-style: none; margin: 0; padding: 0 0 0 16px; position: relative; }
+
+.timeline::before {
+  content: ""; position: absolute;
+  left: 3px; top: 6px; bottom: 6px;
+  width: 1px; background: var(--border);
+}
+
+.timeline li {
+  position: relative;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 5px 0;
+  font-size: 13.5px;
+}
+
+.timeline li::before {
+  content: ""; position: absolute;
+  left: -16px; top: 11px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--border);
+  outline: 3px solid var(--bg-raised);
+}
+
+.timeline li.done::before { background: var(--job-abgeschlossen); }
+.timeline li.now::before   { background: var(--job-laeuft); }
+
+.timeline li.done { color: var(--ink-faint); text-decoration: line-through; text-decoration-thickness: 1px; }
+.timeline li.now  { font-weight: 600; }
+
+.timeline time { flex-shrink: 0; font-size: 12.5px; color: var(--ink-muted); }
+
+.timeline li.now time { color: var(--job-laeuft); font-weight: 600; }
+
+/* ---------- Kennzahlen ---------- */
+
+.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+@media (min-width: 900px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+
+.kpi {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 14px 15px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  transition: border-color .18s ease, transform .18s ease;
+}
+
+a.kpi:hover { border-color: var(--ink-faint); transform: translateY(-2px); }
+
+.kpi-label {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 12px; color: var(--ink-muted);
+}
+
+.kpi-value { font-size: 28px; font-weight: 650; letter-spacing: -.03em; line-height: 1.15; }
+
+.kpi-sub { font-size: 12px; color: var(--ink-faint); }
+
+.kpi-sub.warn { color: var(--sig-warn); font-weight: 550; }
+.kpi-sub.bad  { color: var(--sig-bad);  font-weight: 550; }
+
+/* Vorschau-Markierung */
+
+.soon {
+  display: inline-flex; align-items: center;
+  padding: 1px 7px;
+  border: 1px dashed var(--ink-faint);
+  border-radius: 999px;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.is-soon { border-style: dashed; }
+.is-soon .kpi-value, .is-soon .kpi-sub { opacity: .55; }
+
+/* ---------- Spalten ---------- */
+
+.cols { display: grid; gap: 20px; }
+
+@media (min-width: 1000px) { .cols { grid-template-columns: 1.55fr 1fr; } }
+
+.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+/* ---------- Zeilen ---------- */
+
+.rows { display: flex; flex-direction: column; }
+
+.row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color .15s ease;
+}
+
+.row:last-child { border-bottom: 0; padding-bottom: 0; }
+.row:first-child { padding-top: 2px; }
+
+a.row { margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: var(--r-sm); }
+a.row:hover { background: var(--bg-raised); }
+
+.row-body { min-width: 0; flex: 1; }
+
+.row-title {
+  font-size: 14px; font-weight: 550;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.row-meta {
+  margin-top: 2px;
+  display: flex; flex-wrap: wrap; gap: 3px 12px;
+  font-size: 12.5px; color: var(--ink-muted);
+}
+
+.row-side { flex-shrink: 0; text-align: right; }
+
+.amount { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+
+/* Datums-Block links */
+
+.daychip {
+  flex-shrink: 0;
+  width: 42px;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 5px 0;
+  border-radius: var(--r-sm);
+  background: var(--bg-raised);
+  line-height: 1.1;
+}
+
+.daychip .d { font-size: 16px; font-weight: 650; letter-spacing: -.02em; }
+.daychip .m { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--ink-muted); letter-spacing: .06em; }
+
+.daychip.today { background: var(--accent); color: var(--on-accent); }
+.daychip.today .m { color: var(--on-accent); opacity: .75; }
+
+/* Status — Form UND Farbe (auch ohne Farbe lesbar) */
+
+.status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 9px 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--c) 32%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 9%, transparent);
+  font-size: 11.5px; font-weight: 600;
+  color: color-mix(in srgb, var(--c) 78%, var(--ink));
+  white-space: nowrap;
+}
+
+.status::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--c); flex-shrink: 0;
+}
+
+.status.sq::before { border-radius: 1px; }
+.status.tri::before { border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.status.ring::before { background: transparent; border: 2px solid var(--c); }
+
+/* Avatare */
+
+.avatar {
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  font-size: 11.5px; font-weight: 650;
+}
+
+/* Datei-Kachel */
+
+.filetile {
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--c) 12%, transparent);
+  color: color-mix(in srgb, var(--c) 72%, var(--ink));
+  font-size: 9.5px; font-weight: 700; letter-spacing: .02em;
+}
+
+/* Aufgaben */
+
+.task {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--r);
+  background: var(--bg-raised);
+  transition: background-color .15s ease;
+}
+
+.task + .task { margin-top: 7px; }
+
+.task:hover { background: color-mix(in srgb, var(--ink) 5%, var(--bg-raised)); }
+
+.task.overdue {
+  background: color-mix(in srgb, var(--sig-bad) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sig-bad) 20%, transparent);
+}
+
+.task-dot {
+  flex-shrink: 0; margin-top: 6px;
+  width: 8px; height: 8px; border-radius: 2px;
+  background: var(--ink-faint);
+}
+
+.task.overdue .task-dot { background: var(--sig-bad); border-radius: 50%; }
+
+.task-title { font-size: 13.5px; font-weight: 550; }
+.task-meta { margin-top: 1px; font-size: 12px; color: var(--ink-muted); }
+.task.overdue .task-meta { color: var(--sig-bad); font-weight: 550; }
+
+/* ---------- Deckungsbeitrag (Vorschau) ---------- */
+
+.margin-grid { display: grid; gap: 14px; }
+@media (min-width: 620px) { .margin-grid { grid-template-columns: 1fr auto; align-items: center; } }
+
+.ledger { display: flex; flex-direction: column; }
+
+.ledger-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding: 6px 0;
+  font-size: 13.5px;
+}
+
+.ledger-row + .ledger-row { border-top: 1px solid var(--border-subtle); }
+
+.ledger-row.total {
+  margin-top: 4px; padding-top: 10px;
+  border-top: 1.5px solid var(--ink);
+  font-weight: 650; font-size: 15px;
+}
+
+.ledger-row span:first-child { color: var(--ink-muted); }
+.ledger-row.total span:first-child { color: var(--ink); }
+
+.ledger-row .v { font-weight: 600; }
+
+.gauge { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+.gauge-val { font-size: 30px; font-weight: 650; letter-spacing: -.03em; color: var(--sig-ok); }
+.gauge-cap { font-size: 11.5px; color: var(--ink-muted); }
+
+/* ---------- Inventar-Zeile (herabgestuft) ---------- */
+
+.inventory {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 26px;
+  padding: 13px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+}
+
+.inv-label {
+  font-size: 11px; font-weight: 650;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.inv-stat { display: inline-flex; align-items: baseline; gap: 6px; font-size: 13.5px; }
+.inv-stat b { font-size: 16px; font-weight: 650; letter-spacing: -.02em; }
+.inv-stat .cap { color: var(--ink-muted); }
+
+.inv-swatch { width: 8px; height: 8px; border-radius: 2px; background: var(--c); align-self: center; }
+
+/* ---------- Farbtest ---------- */
+
+.proof { margin-top: 22px; }
+
+.proof-note {
+  margin: 0 0 12px;
+  font-size: 13px; color: var(--ink-muted);
+  max-width: 68ch;
+}
+
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.sw {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--bg-surface);
+}
+
+.sw-name { font-size: 12.5px; font-weight: 600; color: var(--c); }
+.sw-hex { font-size: 10.5px; color: var(--ink-faint); }
+.sw-old { font-size: 10.5px; color: var(--ink-faint); text-decoration: line-through; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+</head>
+<body data-palette="a">
+
+<div class="shell">
+
+  <!-- ---------- Sidebar (nur Kontext, damit die Fläche echt wirkt) ---------- -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">ET</div>
+      <div class="brand-name">EventTech</div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label">Arbeit</div>
+      <a href="#" aria-current="page">Überblick</a>
+      <a href="#">Jobs</a>
+      <a href="#">Kalender</a>
+      <a href="#">Anmietung <span class="badge">3</span></a>
+      <a href="#">Aufgaben</a>
+    </nav>
+
+    <nav class="nav">
+      <div class="nav-label">Kaufmännisch</div>
+      <a href="#">Anfragen / Kunden <span class="badge">3</span></a>
+      <a href="#">Angebote</a>
+      <a href="#">Rechnungen</a>
+      <a href="#">Dokumente</a>
+      <a href="#">Auswertungen</a>
+    </nav>
+
+    <nav class="nav">
+      <div class="nav-label">Sonstiges</div>
+      <a href="#">Inventar</a>
+      <a href="#">Verwaltung</a>
+    </nav>
+  </aside>
+
+  <!-- ---------- Hauptbereich ---------- -->
+  <main class="main">
+    <div class="wrap">
+
+      <header class="pagehead">
+        <div>
+          <h1>Guten Morgen, Till</h1>
+          <p>Samstag, 18. Juli 2026 · 3 neue Anfragen</p>
+        </div>
+        <div class="switcher" role="group" aria-label="Farbwelt wählen">
+          <button type="button" data-set="a" aria-pressed="true">Creme</button>
+          <button type="button" data-set="b" aria-pressed="false">Weiß + Indigo</button>
+          <button type="button" data-set="c" aria-pressed="false">Creme + Gelb</button>
+        </div>
+      </header>
+
+      <!-- ========== Nächster Einsatz ========== -->
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-main">
+          <div class="hero-eyebrow"><span class="live-dot"></span> Nächster Einsatz — heute</div>
+          <h2 id="hero-title">Stadtfest Bad Vilbel — Bühne, Ton &amp; Licht</h2>
+          <div class="hero-meta">
+            <span>18.–20. Juli</span>
+            <span>Stadt Bad Vilbel</span>
+            <span>Marktplatz, Bad Vilbel</span>
+            <span class="status" style="--c: var(--job-packen)">Packen</span>
+          </div>
+          <div class="hero-actions">
+            <button type="button" class="btn btn-primary">Job öffnen</button>
+            <button type="button" class="btn btn-ghost">Packliste</button>
+            <button type="button" class="btn btn-ghost">Dokumente (4)</button>
+          </div>
+        </div>
+
+        <div class="schedule">
+          <h3>Zeitplan</h3>
+          <ul class="timeline">
+            <li class="done"><span>Abholung Anmietung Weber</span><time>Fr 06:30</time></li>
+            <li class="done"><span>Anlieferung Marktplatz</span><time>Fr 08:00</time></li>
+            <li class="now"><span>Bühnenaufbau</span><time>Fr 10:00</time></li>
+            <li><span>Soundcheck</span><time>Fr 16:00</time></li>
+            <li><span>Showbeginn</span><time>Fr 19:00</time></li>
+            <li><span>Abbau &amp; Rückgabe</span><time>So 23:00</time></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ========== Kennzahlen ========== -->
+      <section class="kpis" aria-label="Kennzahlen">
+        <a href="#" class="kpi">
+          <span class="kpi-label">Anstehende Jobs</span>
+          <span class="kpi-value num">7</span>
+          <span class="kpi-sub">1 heute aktiv · 14 Tage</span>
+        </a>
+        <a href="#" class="kpi">
+          <span class="kpi-label">Offene Rechnungen</span>
+          <span class="kpi-value num">8.420 €</span>
+          <span class="kpi-sub bad">1.190 € überfällig</span>
+        </a>
+        <div class="kpi is-soon">
+          <span class="kpi-label">Offene Anmietungen <span class="soon">E2</span></span>
+          <span class="kpi-value num">3</span>
+          <span class="kpi-sub">2.150 € EK angefragt</span>
+        </div>
+        <a href="#" class="kpi">
+          <span class="kpi-label">Offene Aufgaben</span>
+          <span class="kpi-value num">6</span>
+          <span class="kpi-sub warn">2 überfällig</span>
+        </a>
+      </section>
+
+      <!-- ========== Zwei Spalten ========== -->
+      <div class="cols">
+
+        <div class="col">
+
+          <!-- Anstehende Jobs -->
+          <section class="card">
+            <div class="card-head">
+              <h2>Anstehende Jobs</h2>
+              <a href="#" class="card-link">Alle Jobs</a>
+            </div>
+            <div class="card-body">
+              <div class="rows">
+                <a href="#" class="row">
+                  <div class="daychip today"><span class="d">18</span><span class="m">Jul</span></div>
+                  <div class="row-body">
+                    <div class="row-title">Stadtfest Bad Vilbel — Bühne, Ton &amp; Licht</div>
+                    <div class="row-meta"><span>Stadt Bad Vilbel</span><span>Marktplatz</span></div>
+                  </div>
+                  <div class="row-side"><span class="status" style="--c: var(--job-packen)">Packen</span></div>
+                </a>
+                <a href="#" class="row">
+                  <div class="daychip"><span class="d">23</span><span class="m">Jul</span></div>
+                  <div class="row-body">
+                    <div class="row-title">Hochzeit Kraft — Licht &amp; DJ-Ton</div>
+                    <div class="row-meta"><span>Familie Kraft</span><span>Gut Hügelheim</span></div>
+                  </div>
+                  <div class="row-side"><span class="status sq" style="--c: var(--job-planung)">Planung</span></div>
+                </a>
+                <a href="#" class="row">
+                  <div class="daychip"><span class="d">26</span><span class="m">Jul</span></div>
+                  <div class="row-body">
+                    <div class="row-title">Firmenfeier Meyer Logistik</div>
+                    <div class="row-meta"><span>Meyer Logistik GmbH</span><span>Werkshalle 2</span></div>
+                  </div>
+                  <div class="row-side"><span class="status sq" style="--c: var(--job-bestaetigt)">Bestätigt</span></div>
+                </a>
+                <a href="#" class="row">
+                  <div class="daychip"><span class="d">02</span><span class="m">Aug</span></div>
+                  <div class="row-body">
+                    <div class="row-title">Abiball Gymnasium Karben</div>
+                    <div class="row-meta"><span>Förderverein Gymnasium</span><span>Stadthalle Karben</span></div>
+                  </div>
+                  <div class="row-side"><span class="status ring" style="--c: var(--job-anfrage)">Anfrage</span></div>
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <!-- Deckungsbeitrag (Vorschau) -->
+          <section class="card is-soon">
+            <div class="card-head">
+              <h2>Deckungsbeitrag Juli <span class="soon">E7</span></h2>
+              <a href="#" class="card-link">Auswertungen</a>
+            </div>
+            <div class="card-body">
+              <div class="margin-grid">
+                <div class="ledger">
+                  <div class="ledger-row"><span>Erlös (abgerechnet, netto)</span><span class="v num">14.900 €</span></div>
+                  <div class="ledger-row"><span>Anmietung</span><span class="v num">−4.320 €</span></div>
+                  <div class="ledger-row"><span>Personal</span><span class="v num">−2.680 €</span></div>
+                  <div class="ledger-row"><span>Sonstiges</span><span class="v num">−760 €</span></div>
+                  <div class="ledger-row total"><span>Deckungsbeitrag</span><span class="v num">7.140 €</span></div>
+                </div>
+                <div class="gauge">
+                  <div class="gauge-val num">48 %</div>
+                  <div class="gauge-cap">Marge</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Zuletzt abgelegt -->
+          <section class="card">
+            <div class="card-head">
+              <h2>Zuletzt abgelegt</h2>
+              <a href="#" class="card-link">Dokumente</a>
+            </div>
+            <div class="card-body">
+              <div class="rows">
+                <a href="#" class="row">
+                  <div class="filetile" style="--c: #D97706">PDF</div>
+                  <div class="row-body">
+                    <div class="row-title">Genehmigung_Marktplatz_Stadtfest.pdf</div>
+                    <div class="row-meta"><span>Genehmigung</span><span>Stadtfest Bad Vilbel</span></div>
+                  </div>
+                  <div class="row-side"><span class="row-meta">heute · 240 kB</span></div>
+                </a>
+                <a href="#" class="row">
+                  <div class="filetile" style="--c: #15803D">PDF</div>
+                  <div class="row-body">
+                    <div class="row-title">RE-2026-0043_Stadt-Bad-Vilbel.pdf</div>
+                    <div class="row-meta"><span>Rechnung</span><span>automatisch abgelegt</span></div>
+                  </div>
+                  <div class="row-side"><span class="row-meta">gestern · 18 kB</span></div>
+                </a>
+                <a href="#" class="row">
+                  <div class="filetile" style="--c: #2563EB">PNG</div>
+                  <div class="row-body">
+                    <div class="row-title">Buehnenplan_Marktplatz_v3.png</div>
+                    <div class="row-meta"><span>Bauplan</span><span>Stadtfest Bad Vilbel</span></div>
+                  </div>
+                  <div class="row-side"><span class="row-meta">16. Jul · 1,2 MB</span></div>
+                </a>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <div class="col">
+
+          <!-- Neue Anfragen -->
+          <section class="card">
+            <div class="card-head">
+              <h2>Neue Anfragen</h2>
+              <a href="#" class="card-link">Bearbeiten</a>
+            </div>
+            <div class="card-body">
+              <div class="rows">
+                <a href="#" class="row">
+                  <div class="avatar">SW</div>
+                  <div class="row-body">
+                    <div class="row-title">Sandra Weiß</div>
+                    <div class="row-meta"><span>Geburtstag · 12. Sep</span></div>
+                  </div>
+                </a>
+                <a href="#" class="row">
+                  <div class="avatar">MR</div>
+                  <div class="row-body">
+                    <div class="row-title">Milad Rahimi</div>
+                    <div class="row-meta"><span>Hochzeit · 5. Sep</span></div>
+                  </div>
+                </a>
+                <a href="#" class="row">
+                  <div class="avatar">KN</div>
+                  <div class="row-body">
+                    <div class="row-title">Kulturverein Nidda</div>
+                    <div class="row-meta"><span>Open Air · Termin offen</span></div>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <!-- Anmietungen (Vorschau) -->
+          <section class="card is-soon">
+            <div class="card-head">
+              <h2>Anmietung — Handlungsbedarf <span class="soon">E2</span></h2>
+            </div>
+            <div class="card-body">
+              <div class="rows">
+                <div class="row">
+                  <div class="row-body">
+                    <div class="row-title">Ton-Systeme Weber</div>
+                    <div class="row-meta"><span>2 × d&amp;b Y8</span><span>seit 3 Tagen angefragt</span></div>
+                  </div>
+                  <div class="row-side"><span class="status tri" style="--c: var(--sig-warn)">Angefragt</span></div>
+                </div>
+                <div class="row">
+                  <div class="row-body">
+                    <div class="row-title">Lichttechnik Hessen</div>
+                    <div class="row-meta"><span>8 × LED-Bar</span><span>Abholung morgen 07:00</span></div>
+                  </div>
+                  <div class="row-side"><span class="status sq" style="--c: var(--job-bestaetigt)">Bestätigt</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Aufgaben -->
+          <section class="card">
+            <div class="card-head">
+              <h2>Fällige Aufgaben</h2>
+              <a href="#" class="card-link">Alle</a>
+            </div>
+            <div class="card-body">
+              <a href="#" class="task overdue">
+                <span class="task-dot"></span>
+                <span>
+                  <span class="task-title">Angebot Abiball nachfassen</span>
+                  <span class="task-meta">Fällig 15.07.2026 — 3 Tage überfällig</span>
+                </span>
+              </a>
+              <a href="#" class="task overdue">
+                <span class="task-dot"></span>
+                <span>
+                  <span class="task-title">Stromplan ans Ordnungsamt senden</span>
+                  <span class="task-meta">Fällig 17.07.2026 — 1 Tag überfällig</span>
+                </span>
+              </a>
+              <a href="#" class="task">
+                <span class="task-dot"></span>
+                <span>
+                  <span class="task-title">Rückläufer LED-Bars prüfen</span>
+                  <span class="task-meta">Fällig 22.07.2026</span>
+                </span>
+              </a>
+              <a href="#" class="task">
+                <span class="task-dot"></span>
+                <span>
+                  <span class="task-title">Verleiher-Rechnung Weber ablegen</span>
+                  <span class="task-meta">Kein Termin</span>
+                </span>
+              </a>
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      <!-- ========== Inventar, herabgestuft ========== -->
+      <section class="inventory" aria-label="Rest-Inventar">
+        <span class="inv-label">Rest-Inventar</span>
+        <span class="inv-stat"><span class="inv-swatch" style="--c: var(--job-abgeschlossen)"></span><b class="num">14</b><span class="cap">verfügbar</span></span>
+        <span class="inv-stat"><span class="inv-swatch" style="--c: var(--job-bestaetigt)"></span><b class="num">6</b><span class="cap">draußen</span></span>
+        <span class="inv-stat"><span class="inv-swatch" style="--c: var(--sig-bad)"></span><b class="num">1</b><span class="cap">defekt</span></span>
+        <span class="inv-stat"><span class="inv-swatch" style="--c: var(--sig-warn)"></span><b class="num">2</b><span class="cap">Wartung</span></span>
+        <a href="#" class="card-link" style="margin-left: auto">Inventar</a>
+      </section>
+
+      <!-- ========== Farbtest: der eigentliche Härtetest ========== -->
+      <section class="proof">
+        <div class="card">
+          <div class="card-head"><h2>Härtetest — Job-Status auf hellem Grund</h2></div>
+          <div class="card-body">
+            <p class="proof-note">
+              Die acht Job-Farben waren für dunklen Grund gewählt. Auf Weiß fallen mehrere unter
+              den lesbaren Kontrast. Unten stehen die nachgeschärften Werte, darunter durchgestrichen
+              der bisherige. Nur wo ein alter Wert steht, wurde etwas geändert.
+            </p>
+            <div class="swatches">
+              <div class="sw"><span class="sw-name" style="--c: var(--job-anfrage)">Anfrage</span><span class="sw-hex mono">#6B7280</span><span class="sw-old mono">#8B92A3</span></div>
+              <div class="sw"><span class="sw-name" style="--c: var(--job-bestaetigt)">Bestätigt</span><span class="sw-hex mono">#2563EB</span><span class="sw-old mono">#3B82F6</span></div>
+              <div class="sw"><span class="sw-name" style="--c: var(--job-planung)">Planung</span><span class="sw-hex mono">#7C3AED</span><span class="sw-old mono">#8B5CF6</span></div>
+              <div class="sw"><span class="sw-name" style="--c: var(--job-packen)">Packen</span><span class="sw-hex mono">#B45309</span><span class="sw-old mono">#F59E0B</span></div>
+              <div class="sw"><span class="sw-name" style="--c: var(--job-laeuft)">Läuft</span><span class="sw-hex mono">#EA580C</span><span class="sw-old mono">#F97316</span></div>
+              <div class="sw"><span class="sw-name" style="--c: var(--job-rueckgabe)">Rückgabe</span><span class="sw-hex mono">#0F766E</span><span class="sw-old mono">#14B8A6</span></div>
+              <div class="sw"><span class="sw-name" style="--c: var(--job-abgeschlossen)">Abgeschlossen</span><span class="sw-hex mono">#15803D</span><span class="sw-old mono">#22C55E</span></div>
+              <div class="sw"><span class="sw-name" style="--c: var(--job-storniert)">Storniert</span><span class="sw-hex mono">#DC2626</span><span class="sw-old mono">#EF4444</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  const buttons = document.querySelectorAll(".switcher button");
+  function setPalette(id) {
+    document.body.dataset.palette = id;
+    buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.set === id)));
+  }
+  buttons.forEach((btn) => btn.addEventListener("click", () => setPalette(btn.dataset.set)));
+
+  // ?palette=a|b|c erlaubt gezielte Screenshots ohne Klick (Doku-Zwecke).
+  const qp = new URLSearchParams(location.search).get("palette");
+  if (qp && ["a", "b", "c"].includes(qp)) setPalette(qp);
+</script>
+
+</body>
+</html>

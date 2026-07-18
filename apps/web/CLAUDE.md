@@ -1,7 +1,12 @@
 # apps/web — Frontend-Leitfaden (gilt für alles unter diesem Ordner)
 
-Vite + React + TypeScript + TanStack Query + Tailwind. **Dark-only** (Light-Mode bewusst
-verworfen), deutsche UI-Texte, Premium-Look mit Indigo-Akzent.
+Vite + React + TypeScript + TanStack Query + Tailwind. Deutsche UI-Texte, Premium-Look.
+
+> ⚠️ **Im Umbruch (Entscheidung 2026-07-18):** Die App ist **heute** dark-only mit
+> Indigo-Akzent — das wird auf ein **helles Theme** umgestellt, mit umschaltbaren Paletten
+> (Creme · Weiß+Indigo · Dark) über CSS-Variablen. Details und Reihenfolge:
+> `PLAN-UI-NEUSCHNITT.md` (Etappe U2). **Bis U2 gilt der Bestand unten** — aber keine neuen
+> hart kodierten Hex-Werte mehr anlegen, sie sind der Blocker für den Umschalter.
 
 ## Design-System (Token-first, keine Roh-Farben)
 

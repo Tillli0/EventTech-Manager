@@ -15,6 +15,17 @@
 > `PLAN-NEUAUSRICHTUNG.md`, die Reihenfolge in `ROADMAP.md` (Phasen 1–2). Einige
 > Altpunkte unten sind dadurch herabgestuft — siehe eigene Rubrik.
 
+> **🔴 Aktuelle Reihenfolge (2026-07-18) — hier steht, woran gerade gearbeitet wird:**
+> 1. **`PLAN-V1-ABSICHERN.md`** (A1–A4) — v1 beweisbar sicher machen: Restore proben,
+>    Storage ins Backup, E2E-Netz. **Läuft jetzt.**
+> 2. **`PLAN-UI-NEUSCHNITT.md`** (U1–U6) — helles Theme umschaltbar, Navigation,
+>    Startseite „Nächster Einsatz", Dokumente als Job-Ordner. Zieht M1 mit.
+> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation.
+> 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
+>
+> Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
+> Struktur einziehen. Grundlage des Neuschnitts: `docs/UI-REVIEW-2026-07-18.md`.
+
 ## 🔧 Quick Wins (Auto — kann Claude eigenständig erledigen)
 
 - [ ] **Leere-Zustände/Ladezustände** vereinheitlichen, wo noch nicht (Konsistenz-Pass). · S · ★ · Auto
@@ -70,10 +81,16 @@
   nicht mehr fürs kleine Rest-Inventar — herabgestuft. Die Basis-Komponenten-Vereinheitlichung
   aus demselben Block bleibt aktiv (nützt Dokumente/Anmietung).
 
-## 🎨 Design-Update (läuft — Freigabe erteilt)
+## 🎨 Design-Update (Stufen 1–3 erledigt — **abgelöst durch den UI-Neuschnitt**)
 
-Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente Animationen
-(Mockups abgestimmt). Token-first, Seite für Seite.
+> ⚠️ **Überholt seit 2026-07-18:** Die Richtung „dunkles Premium-Theme" ist durch die
+> Entscheidung zum **hellen Design mit umschaltbaren Paletten** abgelöst — siehe
+> `PLAN-UI-NEUSCHNITT.md`. Die erledigten Punkte unten bleiben als Verlauf stehen; die
+> **offenen** Punkte (Stufe 3-Rest, Stufe 4, Light-Mode-Toggle) gehen in die U-Etappen auf:
+> Stufe 4 (Kalender) → **U4**, Light-Mode → **U2** (dort als Theme-System gelöst).
+
+Ursprüngliche Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten +
+dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 - [x] Akzent global auf Indigo (`tailwind.config.js`).
 - [x] **Überblick/Dashboard** neu: Kennzahlen-Karten (Hochzähl-Effekt), Auslastungs-Ring,
@@ -106,6 +123,21 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Kompass neu gesetzt: v1 absichern → UI-Neuschnitt** (2026-07-18): Tills Beobachtung
+  „wir haben immer nur draufgesattelt" untersucht und belegt
+  (`docs/UI-REVIEW-2026-07-18.md`: fünf Farb-Mappings, fünf Kennzahlen-Kacheln, drei
+  Akkordeon-Varianten — zwei Rezepte liefen nebeneinander her). Ist-Zustand **real
+  geprüft** statt vermutet: Prüfkette grün (79 Tests), alles gepusht, **0 TODOs**, und das
+  automatische DB-Backup läuft nachweislich (Artefakt `db-backup-2026-07-18_0534`) →
+  **ROADMAP P0.1 Stufe 1 abgehakt**. Dabei drei echte Lücken gefunden: **Storage-Dateien
+  sind nicht im Backup** (seit Block A sind das Genehmigungen/Baupläne/Rechnungs-PDFs),
+  **Restore nie geprobt**, **kein Test klickt durch die App**. Daraus drei neue
+  Plan-Dokumente: `PLAN-V1-ABSICHERN.md` (aktiv), `PLAN-UI-NEUSCHNITT.md`,
+  `PLAN-MEIN-PLAN.md`. Entscheidungen: **helles Design** mit umschaltbaren Paletten
+  (Creme · Weiß+Indigo · Dark) statt dark-only; Startseite **„Nächster Einsatz"**
+  rollen-adaptiv (heute sieht ein Freelancer fast nur leere Kacheln); **Schule blockiert
+  nur Zeit**, ist nie eine Karte; Dokumente **nach Jobs + Ordnerstruktur**.
 
 - **Doku-Redundanzen bereinigt** (2026-07-18): `README.md`-Backlog (war veraltet/doppelt
   zu `IDEAS.md`, z. B. „Rechnungsstellung" längst live) durch Verweis ersetzt.

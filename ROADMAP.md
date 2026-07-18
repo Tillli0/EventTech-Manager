@@ -106,20 +106,27 @@ Backups, Löschlogik) → stärkstes verfügbares Modell + DB-seitige Absicherun
 
 *Ziel: Datenverlust unmöglich, Regressionen werden automatisch gefangen.*
 
-- [ ] **P0.1 Backup automatisch:** tägliches Cloud-Backup (DB **und** Storage-Dateien
-      inkl. künftigem `documents`-Bucket), Ablage außerhalb Supabase, Aufbewahrungs-
-      Rotation. **Kommt vor allen Neuausrichtungs-Etappen** (Tills Entscheid: Sicherheits-
-      netz vor der größten Schema-Erweiterung seit dem Rechnungswesen).
-      *Fertig, wenn:* ein Backup nachweislich ohne menschliches Zutun entstanden ist.
+> **Steuerung seit 2026-07-18:** Diese Phase wird über `PLAN-V1-ABSICHERN.md` abgearbeitet
+> (Etappen A1–A4) — dort stehen der geprüfte Ist-Zustand mit Belegen und die Details.
+
+- [x] **P0.1 Backup automatisch — Stufe 1 (Datenbank)** (2026-07-18). *Beleg:* Artefakt
+      `db-backup-2026-07-18_0534` (26 kB) ist per Zeitplan **ohne menschliches Zutun**
+      entstanden; Workflow `.github/workflows/db-backup.yml`, Aufbewahrung 90 Tage.
+      ⚠️ **Stufe 2 (Storage-Dateien inkl. `documents`-Bucket) fehlt noch** → Etappe **A2**.
+      Solange gilt: „es kann nichts verloren gehen" ist **noch nicht** wahr.
+      ⚠️ **Falle:** Der Workflow läuft **grün durch, wenn Secrets fehlen** — grün beweist
+      nichts, nur ein vorhandenes Artefakt tut das.
 - [ ] **P0.2 Restore geprobt:** dokumentierter Wiederherstellungs-Weg, **einmal real
-      durchgespielt** (in eine leere lokale Instanz).
+      durchgespielt** (in eine leere lokale Instanz). → Etappe **A1**.
       *Fertig, wenn:* aus einem echten Backup eine funktionierende App entstand.
 - [ ] **P0.3 CI-Guardrails:** harte Checks, die den Build brechen bei: Service-Role-Key
       im Frontend-Code · neuer Tabelle ohne RLS/GRANT · Migrations-Nummern-Duplikat.
       *Fertig, wenn:* ein absichtlicher Verstoß im Test-Branch rot wird.
+      *(Teilweise vorhanden: Hooks als Migrations-Wächter seit 2026-07-17.)*
 - [ ] **P0.4 Invarianten-Tests ausbauen:** Set-Auflösung in der Verfügbarkeit,
       Mahn-Stufenlogik, Storno-Semantik; ein Playwright-E2E-Smoke
-      (Login → Job → Packliste → Rechnung stellen).
+      (Login → Job → Packliste → Rechnung stellen). → Etappe **A3**.
+      **Das ist das Netz für den UI-Neuschnitt** — kein U-Umbau ohne A3.
 - [ ] **P0.5 Wochen-Report (Automation):** wöchentliche Zusammenfassung „überfällige
       Rechnungen + fällige DGUV-Prüfungen + anstehende Jobs" (E-Mail oder Dashboard-Kachel).
 
@@ -135,8 +142,31 @@ zentralen Ort. Details + Schema: `PLAN-NEUAUSRICHTUNG.md` (D1–D4).*
       farbige Kategorien, öffnen/löschen) an Job und Kunde. (2026-07-18, voll bewiesen)
 - [x] **P1.3 (D3) Zentrale Seite „Dokumente":** Kategorie-Spalte, Suche, Jahr-Filter,
       Monats-Gruppen, Vorgang-Verlinkung. (2026-07-18, voll bewiesen)
-- [ ] **P1.4 (D4) Auto-Archivierung:** Rechnungs-/Angebots-PDF beim Stellen/Senden
-      automatisch sprechend benannt ablegen (`RE-2026-0001_<Kunde>.pdf`).
+- [x] **P1.4 (D4) Auto-Archivierung:** Rechnungs-/Angebots-PDF beim Stellen/Senden
+      automatisch sprechend benannt ablegen (`RE-2026-0001_<Kunde>.pdf`). (2026-07-18,
+      voll bewiesen — damit ist **Block A komplett**.)
+
+### Phase 1.5 — UI-Neuschnitt  ⟵ **nach Phase 0, vor Phase 2**
+
+*Ziel: Die App wird von „gewachsen" auf „gestaltet" umgestellt — bevor Anmietung und
+Kalkulation zusätzliche Karten und Seiten hinzufügen. Details: `PLAN-UI-NEUSCHNITT.md`.*
+
+Auslöser: Tills Beobachtung „wir haben immer nur draufgesattelt", bestätigt durch
+`docs/UI-REVIEW-2026-07-18.md` (dasselbe UI-Bedürfnis 4–5-mal unabhängig gelöst).
+
+- [ ] **P1.5.1 (U1) Mockup des Gesamtkonzepts** — Navigation, Startseite in drei Rollen,
+      Job-Abschnitte, Dokumente-Ordner. Till entscheidet danach das Standard-Theme.
+- [ ] **P1.5.2 (U2) Theme-Fundament:** CSS-Variablen statt fester Hex-Werte, Paletten
+      Creme · Weiß+Indigo · Dark umschaltbar; **eine** Farb-Registry statt fünf Mappings;
+      Kontrast auf hellem Grund nachgeschärft.
+- [ ] **P1.5.3 (U3) Startseite „Nächster Einsatz" + neue Navigation** — rollen-adaptiv,
+      damit auch Externe einen sinnvollen Einstieg haben. **Erledigt zugleich P2.8 (E8).**
+- [ ] **P1.5.4 (U4) Kalender als Ebenen-Modell** — Firmenjobs · eigene Einsätze · Köln ·
+      Schule; zieht **M1** aus `PLAN-MEIN-PLAN.md` vor.
+- [ ] **P1.5.5 (U5) Dokumente als Job-Ordner** (Tills Wunsch: nach Jobs sortieren +
+      Ordnerstruktur).
+- [ ] **P1.5.6 (U6) Job-Detailseite in Abschnitte** — Voraussetzung dafür, dass Block B
+      ohne Chaos einziehen kann.
 
 ### Phase 2 — Anmietung & Kalkulation  *(Neuausrichtung, Block B)*
 
@@ -155,7 +185,7 @@ in der Packliste decken, je Job den Deckungsbeitrag kennen. Details: `PLAN-NEUAU
       Fremdgewerke).
 - [ ] **P2.7 (E7) Kalkulation** (Deckungsbeitrag je Job, Marge in den Auswertungen).
 - [ ] **P2.8 (E8) Dashboard & Navigation** neu gewichten (Fokus Anmietung, Inventar
-      nach hinten).
+      nach hinten). → **geht in P1.5.3 (U3) auf**, wird dort miterledigt.
 
 ### Phase 3 — Den Geld-Kreislauf schließen
 
@@ -174,11 +204,13 @@ in der Packliste decken, je Job den Deckungsbeitrag kennen. Details: `PLAN-NEUAU
 
 - [ ] **P4.1 Personal-Konflikte:** Warnung bei überlappender Verplanung von Mitarbeitern
       (recycelt `lib/availability.ts`; **aufgewertet** — Personal ist im Dienstleistungs-
-      modell Kernressource).
+      modell Kernressource). → **wird von `PLAN-MEIN-PLAN.md` M5 miterledigt** (dort
+      inkl. persönlicher Verfügbarkeit: „nicht verfügbar" **ohne Grund preiszugeben**).
 - [ ] **P4.2 Lieferanten- & Margen-Auswertung:** EK-Preisvergleich je Gerätetyp über
       Verleiher, Deckungsbeitrag je Kunde/Monat, Auslastungs-Trends. *(Ersetzt die frühere
       Geräte-ROI-Idee — die trägt im kleinen Rest-Inventar nicht mehr.)*
-- [ ] **P4.3 Kalender-Politur** (Design-Stufe 4; bewusst leicht, Muster-Folge-Arbeit).
+- [ ] **P4.3 Kalender-Politur** (Design-Stufe 4). → **geht in P1.5.4 (U4) auf**
+      (Ebenen-Modell + Ansichts-Umschalter auf `ui/Tabs`).
 - [ ] **P4.4 Engpass-Sammelansicht** (E9): Anmiet-Bedarf über alle anstehenden Jobs.
 
 ### Phase 5 — Reife & Nachvollziehbarkeit

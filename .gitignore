@@ -10,3 +10,7 @@ android/.gradle/
 android/app/build/
 .pnpm-store/
 *.log
+
+# Python-Bytecode aus Skill-Skripten (.claude/skills/*/scripts/)
+__pycache__/
+*.pyc

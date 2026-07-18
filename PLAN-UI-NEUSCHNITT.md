@@ -1,0 +1,201 @@
+# PLAN — UI/UX-Neuschnitt: helles Design + rundes Gesamtkonzept
+
+> **Großes Vorhaben, wartet auf `PLAN-V1-ABSICHERN.md`.** Stand: **2026-07-18** —
+> abgestimmt und freigegeben, Baubeginn **erst nach Etappe A3** (E2E-Netz).
+>
+> Grundlage: `docs/UI-REVIEW-2026-07-18.md` (Bestandsaufnahme) und
+> `docs/mockups/` (drei Farbwelten + Vision). `ROADMAP.md` sagt WOHIN, `CLAUDE.md` WIE,
+> hier stehen die **Details**.
+
+---
+
+## 1. Warum es dieses Vorhaben gibt
+
+Till (2026-07-18): *„wir haben immer nur draufgesattelt"* — und später: *„lass uns von
+außen drauf schauen und es krass verbessern vom UI/UX"*.
+
+Das UI-Review hat den Befund bestätigt: **dasselbe UI-Bedürfnis ist 4–5-mal unabhängig
+gelöst** (fünf Farb-Mappings, fünf Kennzahlen-Kacheln, drei Akkordeon-Implementierungen),
+weil zwei Rezepte nebeneinander herliefen — das ältere „Jobs-Look"-Muster und das später
+etablierte „Listen-Rezept".
+
+Zwei Erweiterungen würden das verschärfen, wenn man sie einfach anhängt:
+- **Anmietung + Kalkulation** (`PLAN-NEUAUSRICHTUNG.md`, Block B) lässt die
+  Job-Detailseite von 7 auf **9–10 Karten** wachsen.
+- **Die persönliche Säule** (`PLAN-MEIN-PLAN.md`) wäre der **11. Nav-Eintrag**.
+
+**Befund von außen** (stand in keinem Dokument): Für einen zugewiesenen Freelancer ist die
+App heute **weitgehend leer**. Er landet auf einem Dashboard voller Firmen-Kennzahlen, die
+RLS ihm ausblendet — er hat **keinen sinnvollen Einstieg**.
+
+## 2. Die Leitidee
+
+**Die Startseite zeigt den nächsten Einsatz — für jeden seinen.**
+
+Statt einer Firmenübersicht steht oben der eine Job, der als Nächstes zählt, mit Zeitplan,
+Ort und Kunde. Dasselbe Muster trägt alle drei Rollen: Till sieht seinen nächsten Einsatz
+plus Firmenzahlen; ein Freelancer sieht **seinen** Einsatz statt leerer Kacheln.
+
+> **Bewusst nicht** „Mein Tag": Till plant **Events, keine Tage** (seine Korrektur,
+> 2026-07-18). Die Metapher ist der nächste Einsatz, nicht der Kalendertag.
+
+**Und die Trennlinie fürs Private** — nicht „privat vs. Firma", sondern:
+
+| | Sichtbar als Inhalt | Wirkt nur als Blocker |
+|---|---|---|
+| **Was** | Eigene Jobs · Köln-Schichten | Schule · Klausuren · Ferien |
+| **Wo** | Startseite, Kalender-Ebene, Auswertung | Kalender-Ebene (gedämpft), Kollisionswarnung |
+
+Schule ist **nie eine Karte**, sondern der stille Grund für eine Warnung („Am 14.09. ist
+Klausur"). Das hält den Job-Fokus, ohne dass etwas verschwindet.
+
+## 3. Kern-Entscheidungen
+
+### K-A · Themes über CSS-Variablen — Voraussetzung für alles Weitere
+**Geprüfter Stand:** `tailwind.config.js` enthält **feste Hex-Werte**, die beim Bauen in
+die Klassen einkompiliert werden; `index.css` setzt `color-scheme: dark` hart;
+`darkMode: "class"` ist konfiguriert, aber **ungenutzt**. Eine Variablen-Schicht existiert
+nicht → **Umschalten zur Laufzeit ist heute unmöglich.**
+
+Einmalige Umstellung: Tokens auf `rgb(var(--…) / <alpha-value>)`, Themes in `index.css` als
+`:root[data-theme="…"]`, Umschalter + Speicherung. Danach ist jedes weitere Theme fast
+gratis — **inklusive Dark, dessen Werte bereits existieren** und nur das dritte
+Variablen-Set werden.
+
+**Der eigentliche Blocker:** Die fünf Farb-Mappings enthalten **hart kodierte Hex-Werte**
+(u. a. `JOB_STATUS_HEX` in `JobDetailPage`). Sie würden beim Umschalten **nicht**
+mitwechseln → helles Design mit dunklen Farbresten. Die Konsolidierung ist hier
+**technische Voraussetzung, keine Kosmetik**.
+
+**Ein Standard-Theme** wird im Verifikations-Ritual geprüft (Tills Wahl nach U1); die
+anderen bleiben verfügbar, ohne bei jeder Änderung mitgeprüft zu werden — sonst
+verdreifacht sich die Prüfarbeit dauerhaft.
+
+### K-B · Das Persönliche verbraucht **keinen** Navigationsplatz
+Stundenplan, Arbeitgeber und Verfügbarkeit liegen im **Nutzer-Menü** (Avatar oben rechts)
+unter „Meine Zeiten" — Konvention professioneller Software für Profil-Gebundenes. Die
+*Wirkung* passiert auf der Startseite und im Kalender. Kein neuer Bereich, kein
+`app_area`-Wert. **Ersetzt** die frühere Idee einer eigenen Seite `/mein-plan`.
+
+### K-C · Navigation in drei Gruppen statt zehn flacher Einträge
+```
+  Überblick                   ← Startseite: „Nächster Einsatz", rollen-adaptiv
+
+  ARBEIT          Jobs · Kalender · Aufgaben · Anmietung
+  KAUFMÄNNISCH    Anfragen / Kunden · Angebote · Rechnungen · Auswertungen
+  ABLAGE          Dokumente · Inventar
+
+  Verwaltung                  ← unten, managerOnly
+```
+`Inventar` rutscht nach „Ablage" (Rest-Inventar; entspricht E8/F6 der Neuausrichtung).
+Mobile Fußleiste: **Überblick · Jobs · Kalender · Aufgaben**.
+
+### K-D · Job-Detailseite bekommt Abschnitte statt einer Endlos-Spalte
+Vier Anker (`Übersicht · Material · Geld · Ablage`) über `ui/Tabs` — dieselbe Komponente
+wie überall, **kein neues Muster**. Erst dadurch ist Block B ohne Chaos einbaubar.
+
+### K-E · Dokumente: Ordner nach Job statt Kategorie-Seitenleiste
+Tills Wunsch (2026-07-18): *„nach Jobs sortieren und Ordnerstruktur, wie professionelle
+Software."* Der `CategoryButton`-Eigenbau entfällt; Umschalter über `ui/Tabs`:
+**Nach Job · Nach Kategorie · Nach Datum**, Standard **Nach Job**, Ordner-Anmutung
+(aufklappbare Gruppen, Anzahl + Größe je Ordner).
+**Kein Neubau:** `useAllDocuments` löst Job-/Kundennamen **bereits** je Zeile auf,
+`lib/listGrouping.ts` + `GroupRow` können genau das — sie werden hier nur endlich benutzt.
+Suche auf `ui/Input`, CSV-Export ergänzen.
+
+### K-F · Konsolidierung fällt beim Umbau ab, statt eine eigene Etappe zu sein
+Für den Theme-Umbau muss **jede** Farbzuordnung ohnehin angefasst werden (K-A) — dabei
+werden aus fünf Mappings **eine** Registry. Analog: Die Startseite wird neu gebaut →
+`MetricCard`/`KpiCard`/Inventar-Kacheln werden **ein** `SummaryStats`. Die sechs
+Review-Befunde erledigen sich unterwegs; Mehraufwand nahe null.
+
+### K-G · Struktur trägt „wer macht was" später, ohne es jetzt zu bauen
+Tills Zukunftswunsch: *„Max holt die Technik bei Beuchel ab, Bela baut auf"* — ausdrücklich
+**ferne Zukunft**. Der Zeitplan am Job (`job_milestones` existiert) ist der natürliche Ort.
+Die Zeitplan-Karte wird so gestaltet, dass eine **Personen-Spalte später ohne Umbau**
+hineinpasst. Kein Code, kein Schema jetzt — nur keine Tür zumauern.
+
+## 4. Etappen
+
+> **U1 ist ein Mockup** — Till entscheidet visuell, bevor Code entsteht (`ARBEITSWEISE.md`).
+> Baubeginn erst nach `PLAN-V1-ABSICHERN.md` **A3**.
+
+**U1 — Mockup des Gesamtkonzepts** *(kein Produktionscode)*
+Erweitert `docs/mockups/dashboard-hell.html` (Paletten A/B/C bereits drin) um die
+**Struktur**: neue Navigation (K-C), Startseite in **drei Rollen-Zuständen**
+(Till · Verwaltung · Freelancer), Job-Detailseite mit Abschnitten (K-D), Dokumente als
+Job-Ordner (K-E). *Ziel:* Till entscheidet danach das **Standard-Theme**.
+
+**U2 — Theme-Fundament + eine Farb-Registry** *(betrifft alles, deshalb zuerst)*
+Tokens auf `var()`; `index.css` mit Theme-Sets (**Creme**, **Weiß+Indigo**, **Dark** aus den
+heutigen Werten); Umschalter + Speicherung. Die fünf Mappings (`STATUS_TONE`×2,
+`JOB_STATUS_HEX`, `TONE`, `KPI_TONE`, `SOURCE_TONE`) werden **eine** getestete
+`lib/statusTone.ts`. `job-*`/`status-*` für hellen Grund nachgeschärft — **jeder Wert gegen
+4,5:1 geprüft und benannt** (bekannt kritisch: `anfrage` #8B92A3, `abgeschlossen` #22C55E).
+`apps/web/CLAUDE.md` von „dark-only" auf die neue Wahrheit ziehen.
+
+**U3 — Startseite „Nächster Einsatz" + neue Navigation**
+`DashboardPage` inhaltlich neu: Hero „Nächster Einsatz" mit Zeitplan; darunter offene
+Rechnungen, anstehende Jobs, neue Anfragen, fällige Aufgaben, zuletzt abgelegte Dokumente;
+Rest-Inventar als schmale Fußzeile. **Rollen-adaptiv** über vorhandene Helfer (`hasArea`,
+`is_manager`, `job_view_mode`). `lib/nav.ts` auf K-C. Eine `SummaryStats`-Variante ersetzt
+`MetricCard`/`KpiCard`. Neu: `ui/Avatar.tsx` (heute 4× nachgebaut).
+→ **Erledigt zugleich E8** aus `PLAN-NEUAUSRICHTUNG.md`.
+
+**U4 — Kalender als Ebenen-Modell**
+Ebenen ein-/ausschaltbar: **Firmenjobs · Meine Einsätze · Köln · Schule**. Ansichts-
+Umschalter (Monat/Woche/Tag/Agenda) endlich auf `ui/Tabs`. Kollisionswarnung über das
+vorhandene `detectCollisions` aus `hooks/useCalendar.ts`.
+**Abhängigkeit:** braucht **M1** aus `PLAN-MEIN-PLAN.md` (DB-Fundament) — wird vorgezogen
+und hier miterledigt. Schule erscheint **gedämpft, nie als Karte**.
+
+**U5 — Dokumente als Job-Ordner**
+Umsetzung von K-E. Löst zugleich Review-Befund #4 und #6 (die doppelte „verknüpfte
+Angebote/Rechnungen"-Karte in `JobDetailPage`/`CustomerDetailPage` wird **eine** Komponente
+mit `entityType`-Prop — Muster liefert `DocumentsCard` bereits).
+
+**U6 — Job-Detailseite in Abschnitte**
+Umsetzung von K-D inkl. Zeitplan nach K-G. Bewusst **zuletzt**, damit Block B direkt in die
+fertige Struktur einzieht statt in eine, die kurz darauf wieder umgebaut wird.
+
+## 5. Verhältnis zu den anderen Plänen ⚠️
+
+- **`PLAN-V1-ABSICHERN.md`** läuft **vorher**. A3 (E2E-Smoke) ist das Netz für diesen Umbau.
+- **Parallele Session (Creme-Mockup):** hat `docs/mockups/` erzeugt, **keinen
+  Produktionscode** → bisher kein Konflikt. **Ab U2 darf nur eine Session
+  `tailwind.config.js` und die Startseite anfassen.**
+- **`PLAN-NEUAUSRICHTUNG.md`:** E8 geht in U3 auf. E1–E7 unverändert — die U-Etappen laufen
+  **davor**, damit Block B in die neue Struktur einzieht.
+- **`PLAN-MEIN-PLAN.md`:** M1 wird nach U4 vorgezogen, M2 geht in U4 auf. M3–M6 bleiben.
+
+## 6. Risiken
+
+1. **Zwei Sessions am selben UI** — größtes Risiko, siehe §5. Vor U2 klären.
+2. **Übersehene Hex-Werte** → helles Theme mit dunklen Farbresten. Nach U2 gezielt nach
+   `#`-Literalen in `src/` suchen; erlaubt bleiben nur die dynamischen Kategorie-/Set-Farben
+   aus der DB (dokumentierte Ausnahme).
+3. **Kontrast-Regression** auf hellem Grund — jeder Wert messen und **benennen**.
+4. **Theme-Pflegeaufwand:** drei Themes = dreifache Prüfung → Gegenmittel in K-A.
+5. **Rollen-Blindheit:** Startseite in **allen drei** Rollen prüfen, sonst baut man wieder
+   nur Tills Sicht.
+6. **Scope-Falle:** „wer macht was im Ablauf" ist ferne Zukunft (K-G) — nicht mitbauen.
+
+## 7. Verifikation (je Etappe)
+
+1. Prüfkette grün: `tsc --noEmit` · `pnpm lint` · `pnpm test` · `pnpm build`.
+2. **Browser-Beweis** über Preview-MCP (`web-dev`): jede geänderte Seite bei **375 px und
+   Desktop**, Konsole fehlerfrei.
+3. **Theme-Beweis** (U2): alle Themes durchgeschaltet, keine Farbreste; Kontrastwerte der
+   acht `job-*` und vier `status-*` **benannt**.
+4. **Rollen-Beweis** (U3): zweiter Nutzer ohne Manager-Rechte — Startseite zeigt sinnvolle
+   Inhalte statt leerer Kacheln.
+5. **Unit-Test** für `lib/statusTone.ts`.
+6. Nach jeder Etappe: Haken + Datum hier, `IDEAS.md` pflegen, Commit + Push.
+
+## 8. Verlauf
+
+- **2026-07-18:** UI-Review erstellt (`docs/UI-REVIEW-2026-07-18.md`). Parallel drei
+  Farbwelten als Mockup (`docs/mockups/`). Till entscheidet: **Umstieg auf hell**, Creme
+  oder Weiß+Indigo **umschaltbar** statt festgelegt, Dark später zurück; Startseite
+  **„Nächster Einsatz"** statt Tages-Metapher; Schule **klein**; Dokumente **nach Jobs +
+  Ordner**; „wer macht was" **ferne Zukunft**. Plan freigegeben, Baubeginn nach A3.
