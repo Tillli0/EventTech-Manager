@@ -42,3 +42,93 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # ---------------------------------------------------------------------------
+  # E2E (ROADMAP P0.4, Etappe A3): das Netz fuer den UI-Neuschnitt.
+  #
+  # Bewusst ein EIGENER Job: Er braucht den kompletten Supabase-Stack (Docker) und
+  # laeuft dadurch deutlich laenger als die Pruefkette. Faellt er aus, bleibt die
+  # schnelle Rueckmeldung aus dem ci-Job erhalten.
+  #
+  # Der Stack wird frisch hochgefahren und per Migrationen befuellt — die Tests
+  # legen ihre eigenen Daten an (Praefix TEST-E2E) und raeumen sie selbst wieder ab.
+  # ---------------------------------------------------------------------------
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # NOCH NICHT PFLICHT: Dieser Job konnte lokal nicht erprobt werden (er braucht
+    # einen frischen Supabase-Stack auf dem Runner). Solange er nicht nachweislich
+    # einmal gruen war, darf er die Pipeline nicht blockieren — sonst steht der
+    # Build rot, ohne dass etwas am Code kaputt ist.
+    #
+    # >>> Sobald ein Lauf gruen ist: diese Zeile entfernen, dann ist E2E Pflicht. <<<
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Feste Version statt "latest" — deren Aufloesung ist zuletzt fehlgeschlagen
+      # (gleiche Pinnung wie db-migrate.yml / db-backup.yml).
+      - name: Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.107.0
+
+      - name: Supabase-Stack starten
+        run: supabase start
+
+      - name: Erst-Admin anlegen
+        # Die Tests brauchen einen Login. Anlage ueber die Standard-Verbindung der
+        # lokalen Instanz (postgres:postgres@localhost:54322) — das ist stabiler,
+        # als den Container-Namen zu erraten. Nur CI-Wegwerf-Umgebung.
+        # `profiles` entsteht per Trigger aus auth.users.
+        run: |
+          psql "postgresql://postgres:postgres@localhost:54322/postgres" <<'SQL'
+          insert into auth.users (
+            instance_id, id, aud, role, email, encrypted_password,
+            email_confirmed_at, created_at, updated_at,
+            raw_app_meta_data, raw_user_meta_data
+          )
+          select
+            '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
+            'admin@eventtech.local', crypt('EventTech2026!', gen_salt('bf')),
+            now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}'
+          where not exists (select 1 from auth.users where email = 'admin@eventtech.local');
+
+          update public.profiles set role = 'admin' where email = 'admin@eventtech.local';
+          select email, role from public.profiles;
+          SQL
+
+      - name: Anon-Key fuer die Web-App setzen
+        # Der Dev-Server liest VITE_SUPABASE_ANON_KEY; auf dem Runner gibt es keine
+        # .env, deshalb aus `supabase status` uebernehmen.
+        run: |
+          ANON=$(supabase status -o json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{console.log(JSON.parse(s).ANON_KEY)})")
+          echo "VITE_SUPABASE_ANON_KEY=$ANON" >> apps/web/.env
+          echo "VITE_SUPABASE_URL=http://localhost:54321" >> apps/web/.env
+
+      - name: Playwright-Browser
+        run: pnpm --filter @eventtech/web exec playwright install --with-deps chromium
+
+      - name: E2E-Tests
+        run: pnpm --filter @eventtech/web exec playwright test
+
+      - name: Bericht bei Fehlschlag sichern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

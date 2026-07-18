@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { dateToInput } from "@/lib/datetime";
 import {
   deviceBreakdown,
   inspectionStatus,
@@ -41,10 +42,15 @@ describe("deviceBreakdown", () => {
 });
 
 describe("inspectionStatus", () => {
+  // Bewusst LOKAL formatiert (nicht über toISOString): `inspectionStatus`
+  // rechnet mit dem lokalen Kalendertag. Mit toISOString war dieser Test
+  // zeitzonenabhängig und wurde zwischen Mitternacht und 02:00 MESZ rot, weil
+  // das UTC-Datum dann noch der Vortag ist — ein Tag "heute" galt dadurch
+  // fälschlich als überfällig. Real aufgetreten am 2026-07-19 um 00:21.
   function isoInDays(days: number): string {
     const d = new Date();
     d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
+    return dateToInput(d);
   }
 
   it("none ohne Datum oder bei ungültigem Datum", () => {

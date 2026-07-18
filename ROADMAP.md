@@ -127,10 +127,16 @@ Backups, Löschlogik) → stärkstes verfügbares Modell + DB-seitige Absicherun
       im Frontend-Code · neuer Tabelle ohne RLS/GRANT · Migrations-Nummern-Duplikat.
       *Fertig, wenn:* ein absichtlicher Verstoß im Test-Branch rot wird.
       *(Teilweise vorhanden: Hooks als Migrations-Wächter seit 2026-07-17.)*
-- [ ] **P0.4 Invarianten-Tests ausbauen:** Set-Auflösung in der Verfügbarkeit,
-      Mahn-Stufenlogik, Storno-Semantik; ein Playwright-E2E-Smoke
-      (Login → Job → Packliste → Rechnung stellen). → Etappe **A3**.
-      **Das ist das Netz für den UI-Neuschnitt** — kein U-Umbau ohne A3.
+- [x] **P0.4 E2E-Netz** (2026-07-19, Etappe A3): Playwright mit **15 Tests** (~30 s) —
+      Seiten-Smoke über alle 11 Hauptseiten (kein weißer Bildschirm, keine JS-Fehler),
+      Navigation, Job-Durchstich (anlegen → öffnen → Papierkorb). **Mutationsprobe
+      bestanden**: eine absichtlich kaputte Seite wird rot, alle anderen bleiben grün.
+      *Bewusst ohne Rechnungsstellung* — gestellte Rechnungen sind per Trigger unlöschbar
+      und verbrauchen eine Nummer aus dem lückenlosen Jahreskreis; ein Test dürfte das
+      nicht bei jedem Lauf tun. ⚠️ In CI noch `continue-on-error` (ungetestet auf dem
+      Runner) — nach dem ersten grünen Lauf zur Pflicht machen.
+      *Offen bleibt:* zusätzliche Invarianten-Unit-Tests (Set-Auflösung, Mahnstufen,
+      Storno-Semantik).
 - [ ] **P0.5 Wochen-Report (Automation):** wöchentliche Zusammenfassung „überfällige
       Rechnungen + fällige DGUV-Prüfungen + anstehende Jobs" (E-Mail oder Dashboard-Kachel).
 

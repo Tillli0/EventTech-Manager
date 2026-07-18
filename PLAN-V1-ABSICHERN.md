@@ -149,7 +149,49 @@ und herunterlädt; Ergebnis als zweites Artefakt.
 
 </details>
 
-### A3 — E2E-Smoke-Test *(P0.4 — das Netz für den Umbau)*
+### A3 ✅ — E2E-Smoke-Test *(P0.4, erledigt 2026-07-19)*
+
+Playwright (nur Chromium) mit **15 Tests**, Laufzeit ~30 s:
+- **Seiten-Smoke** über alle 11 Hauptseiten: `<main>` vorhanden, sichtbarer Inhalt,
+  keine Fehler-/Ersatzansicht, **keine JS-Fehler**. Dazu unbekannte Route und
+  Navigations-Klickpfad.
+- **Job-Durchstich**: anlegen → in der Liste finden → Detailseite → Papierkorb (mit
+  Bestätigung) → aus der Liste verschwunden.
+- Befehle: `pnpm --filter @eventtech/web e2e` (bzw. `e2e:ui`).
+
+**Mutationsprobe bestanden** — und sie hat einen echten Mangel aufgedeckt: Die erste
+Fassung meldete **grün, obwohl eine Seite abstürzte**, weil sie die noch intakte
+App-Hülle prüfte und fertig war, bevor der Absturz durchschlug. Erst mit
+`waitForLoadState` + kurzer Wartezeit und der Fehlerprüfung **am Ende** wurde exakt die
+manipulierte Seite rot, alle anderen blieben grün.
+
+**Vier Stolpersteine, die im Code dokumentiert sind:**
+1. **Rate-Limit:** Meldet sich jeder Test einzeln an, drosselt Supabase-Auth nach wenigen
+   Versuchen — die ersten Tests sind grün, der Rest scheitert an Timeouts und sieht aus
+   wie ein kaputtes UI. Lösung: einmalige Anmeldung in `auth.setup.ts`, Sitzung
+   wiederverwenden (13 Tests: 3,9 min mit 10 Fehlern → 19 s alles grün).
+2. **Kalendertage nicht über `getByRole`:** Tage mit Jobs tragen ein `title`
+   (z. B. „Geburtstag"), das den zugänglichen Namen überschreibt — der Button heißt dann
+   nicht mehr „15".
+3. **Termin in der Zukunft wählen:** Ein Testjob in der Vergangenheit landet in der
+   eingeklappten Gruppe „Vergangen" und ist unsichtbar — er wird korrekt angelegt, der
+   Test sieht ihn nur nicht.
+4. **Aufräumen:** Der Papierkorb-Weg löscht nur weich; `global-teardown.ts` entfernt die
+   `TEST-E2E`-Reste endgültig (verifiziert: 0 Reste).
+
+**Nebenbefund, sofort behoben:** Der bestehende Test `inspectionStatus` in
+`database.test.ts` war **zeitzonenabhängig** — sein Helfer baute das Datum über
+`toISOString()` (UTC), die Funktion rechnet aber mit dem lokalen Kalendertag. Zwischen
+00:00 und 02:00 MESZ galt „heute" dadurch als überfällig. Real aufgetreten um 00:21.
+Behoben durch `dateToInput` aus `lib/datetime.ts`.
+
+⚠️ **CI: noch nicht Pflicht.** Der neue `e2e`-Job in `ci.yml` (eigener Job, fährt einen
+Supabase-Stack hoch) konnte lokal **nicht** erprobt werden und läuft deshalb mit
+`continue-on-error: true` — er darf die Pipeline nicht blockieren, bevor er einmal
+nachweislich grün war. **Sobald ein Lauf grün ist, diese Zeile entfernen** (steht als
+Kommentar im Workflow).
+
+<details><summary>Ursprüngliche Planung (Referenz)</summary>
 Playwright einführen (nur Chromium, gegen den lokalen Stack):
 - **Ein** durchgehender Flow: Login → Job anlegen → Gerät auf die Packliste → Angebot
   erzeugen → Rechnung stellen (Nummer prüfen) → Testdaten aufräumen.
@@ -160,6 +202,8 @@ Playwright einführen (nur Chromium, gegen den lokalen Stack):
 - *Fertig, wenn:* ein absichtlich eingebauter Fehler den Test **rot** macht.
 - ⚠️ Lieber **ein stabiler** Flow als fünf wacklige — flaky Tests werden ignoriert und
   sind dann wertlos.
+
+</details>
 
 ### A4 — Wahrheit in der Doku *(klein, sofort)*
 - `ROADMAP.md`: P0.1 abhaken **mit Beleg** (Artefaktname + Datum); Stufe-2-Vermerk auf A2.

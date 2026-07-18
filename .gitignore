@@ -14,3 +14,9 @@ android/app/build/
 # Python-Bytecode aus Skill-Skripten (.claude/skills/*/scripts/)
 __pycache__/
 *.pyc
+
+# Playwright: abgelegte Test-Sitzung, Berichte, Artefakte
+apps/web/e2e/.auth/
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/blob-report/
