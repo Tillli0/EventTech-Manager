@@ -100,6 +100,12 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Neuausrichtung D2 — Dokumente am Vorgang** (2026-07-18): wiederverwendbare
+  `DocumentsCard` (Tabellen-Optik mit farbigen Kategorie-Kacheln nach dem freigegebenen
+  Zielbild) an Job- und Kunden-Detailseite: Upload per Knopf/Drag-and-drop mit Dialog,
+  Öffnen über kurzlebige signierte URLs (privater Bucket), Löschen mit Bestätigung,
+  Skeleton-/Leer-/Fehler-Zustände, Schreibrechte je Bereich. `formatBytes` in
+  `lib/format.ts` (+Tests). Voll bewiesen (Netzwerk-Kette, 3 Viewports, DB-Gegenprobe).
 - **Neuausrichtung D1 — Dokumenten-Fundament** (2026-07-17, Migration 0038): privater
   Bucket `documents` (nie public) + Tabelle mit polymorphem Vorgangs-Bezug
   (`entity_type`/`entity_id`) und Kategorien; Helfer `can_see_document`/`can_edit_document`

@@ -135,8 +135,8 @@ zentralen Ort. Details + Schema: `PLAN-NEUAUSRICHTUNG.md` (D1–D4).*
 - [x] **P1.1 (D1) Dokumenten-Fundament:** privater Bucket `documents` + Tabelle mit
       Vorgangs-Bezug + `can_see_document()`-RLS (signierte URLs, nie public). (2026-07-17,
       Migr. 0038, lokal + Cloud verifiziert)
-- [ ] **P1.2 (D2) Dokumente am Vorgang:** wiederverwendbare `DocumentsCard` (Upload,
-      farbige Kategorien, öffnen/löschen) an Job und Kunde.
+- [x] **P1.2 (D2) Dokumente am Vorgang:** wiederverwendbare `DocumentsCard` (Upload,
+      farbige Kategorien, öffnen/löschen) an Job und Kunde. (2026-07-18, voll bewiesen)
 - [ ] **P1.3 (D3) Zentrale Seite „Dokumente":** Kategorie-Spalte, Suche, Jahr-Filter,
       Monats-Gruppen, Vorgang-Verlinkung.
 - [ ] **P1.4 (D4) Auto-Archivierung:** Rechnungs-/Angebots-PDF beim Stellen/Senden

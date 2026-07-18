@@ -1,9 +1,9 @@
 # PLAN — Neuausrichtung: vom Verleih zum Event-Dienstleister
 
 > **Großes Vorhaben** nach Skill `grosses-feature`. Dieses Dokument überlebt Sessions
-> und trägt die Ausführung. **Stand: 2026-07-17** — E0 (Kompass & Mockups) erledigt;
-> **D1 (Dokumenten-Fundament) live & verifiziert (Migr. 0038)**; nächste Etappe **D2**.
-> Nach jeder Etappe: Haken + Datum, Stand-Vermerk oben.
+> und trägt die Ausführung. **Stand: 2026-07-18** — E0 erledigt; **D1 (Fundament) und
+> D2 (DocumentsCard an Job + Kunde) live & bewiesen**; nächste Etappe **D3** (zentrale
+> Seite „Dokumente"). Nach jeder Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -140,7 +140,9 @@ mit Block B.
 - Beweis: psql — Upload-Zeile sichtbar nur mit passendem Bereich; Bucket **nicht** public
   (`select public from storage.buckets where id='documents'` → false).
 
-**D2 — `DocumentsCard` + Upload-Hook** (keine Migration)
+**D2 ✅ — `DocumentsCard` + Upload-Hook** (keine Migration; erledigt 2026-07-18,
+Browser-Beweis: Upload → signierte URL → PDF geöffnet → Löschen; Testdaten-Gegenprobe
+0/0; Spalten-Layout erst ab `lg`, darunter kompakte Zeile)
 - Wiederverwendbare `components/documents/DocumentsCard.tsx` (Props `entityType`,
   `entityId`, `allowedCategories`): Tabellen-Optik mit farbigen Kategorie-Kacheln,
   Upload (Drag/Drop), Öffnen über signierte URL, Löschen über `ConfirmDialog`.
