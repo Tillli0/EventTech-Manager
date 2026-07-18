@@ -34,18 +34,29 @@ Drei Leitprinzipien prägen jede Entscheidung:
 
 ## Wo welches Wissen liegt (Doku-Landkarte)
 
-| Datei | Inhalt |
-|---|---|
-| `CLAUDE.md` (diese Datei) | Arbeitsregeln, Architektur-Kompass, Rituale |
-| `apps/web/CLAUDE.md` | Frontend-Konventionen: Design-System, Listen-Rezept, Hook-Muster |
-| `ARBEITSWEISE.md` | Welcher Skill wann: Aufgabengrößen, Design-Reihenfolge, Token-Sparregeln |
-| `IDEAS.md` | Ideen-Backlog + Verlauf „Kürzlich umgesetzt" (nach jeder Aufgabe pflegen!) |
-| `PLAN-NEUAUSRICHTUNG.md` | **Aktives Groß-Vorhaben**: Verleih → Event-Dienstleister (Dokumente, Anmietung, Kalkulation) — Etappen, Schema, Entscheidungen |
-| `PLAN-FABLE5.md`, `PLAN-*.md` | Weitere Plan-Dokumente für große Vorhaben (Stand + offene Blöcke) |
-| `DEPLOY.md` | Produktions-Setup (Cloudflare Pages + Supabase Cloud), Runbook |
-| `.claude/skills/` | Runbooks/Rezepte: Dev-Umgebung, Feature-Abschluss, Migrationen, große Features |
+| Datei | Inhalt | Wird aktualisiert bei … |
+|---|---|---|
+| `CLAUDE.md` (diese Datei) | Arbeitsregeln, Architektur-Kompass, Rituale | neuer/geänderter Grundregel |
+| `apps/web/CLAUDE.md` | Frontend-Konventionen: Design-System, Listen-Rezept, Hook-Muster | neuer Frontend-Konvention |
+| `ARBEITSWEISE.md` | Wie Till & Claude zusammenarbeiten: Aufgabengrößen, Skill-Wahl, Modellwahl | geänderter Zusammenarbeits-Regel |
+| `ROADMAP.md` | Nordstern: Langzeit-Ziel, Phasen, „woran erkennen wir Fertig" | erreichtem Meilenstein/Phasenwechsel |
+| `IDEAS.md` | Ideen-Backlog + Verlauf „Kürzlich umgesetzt" | **jeder** abgeschlossenen Aufgabe (Pflicht) |
+| `PLAN-NEUAUSRICHTUNG.md` | **Aktives Groß-Vorhaben**: Verleih → Event-Dienstleister — Etappen, Schema, Entscheidungen | jeder Etappe des aktiven Vorhabens |
+| `PLAN-*.md` (weitere) | Andere große Vorhaben (Stand + offene Blöcke) | jeder Etappe des jeweiligen Vorhabens |
+| `DEPLOY.md` | Produktions-Setup (Cloudflare Pages + Supabase Cloud), Runbook | Deploy-/Infra-Änderung |
+| `WORKFLOW.md` | Technischer Alltag lokal → live | Änderung am Entwicklungs-Ablauf |
+| `.claude/skills/` | Runbooks/Rezepte: Dev-Umgebung, Feature-Abschluss, Migrationen, große Features | neuem/geändertem Rezept |
+| `docs/archiv/` | Erledigte/überholte Pläne — nur noch Referenz, wird **nicht** mehr gepflegt | nie (Ablage-Ordner) |
 
-**Bei jeder neuen Session:** erst `IDEAS.md` (Stand) und ggf. das aktive `PLAN-*.md` lesen.
+**Bei jeder neuen Session zuerst lesen** (Reihenfolge nach Bedarf, nicht alles auf Vorrat):
+`IDEAS.md` (was steht an) → aktives `PLAN-*.md`, falls an einem Großvorhaben weitergearbeitet
+wird → `ROADMAP.md` nur, wenn die große Richtung unklar ist. `ARBEITSWEISE.md` und
+`apps/web/CLAUDE.md` bei Bedarf situativ (Skill-Wahl bzw. Frontend-Arbeit).
+
+**Faustregel fürs Pflegen:** jede erledigte Aufgabe braucht **mindestens** einen Eintrag in
+`IDEAS.md`. Nur bei aktiven Großvorhaben zusätzlich das passende `PLAN-*.md`. Ist ein
+Plan komplett umgesetzt, oben im Dokument mit Stand+Datum als „UMGESETZT" markieren und
+nach `docs/archiv/` verschieben (git mv, Historie bleibt erhalten).
 
 ## Arbeitsweise: Commit & Push nach jeder fertigen Aufgabe
 

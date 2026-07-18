@@ -110,7 +110,7 @@ eventtech-manager/
 │   ├── migrations/           SQL-Schema (bis 0030)
 │   └── functions/            Edge Functions (admin-users, calendar-feed)
 ├── .github/workflows/        db-migrate.yml (Cloud-Migrationen bei Push)
-├── CLAUDE.md  WORKFLOW.md  DEPLOY.md  HANDOVER.md
+├── CLAUDE.md  WORKFLOW.md  DEPLOY.md  ARBEITSWEISE.md
 ```
 
 ## Offene Punkte / Backlog

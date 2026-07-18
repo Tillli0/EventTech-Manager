@@ -104,6 +104,13 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Doku-Aufräumung + Arbeitsweise-Regel** (2026-07-18): `HANDOVER.md` (überholter
+  Einmal-Übergabetext) und `PLAN-PROFI-ANSICHTEN.md` (als „UMGESETZT" markiert) nach
+  `docs/archiv/` verschoben (nicht gelöscht, Historie bleibt). Neue Doku-Landkarte in
+  `CLAUDE.md`: Tabelle sagt jetzt explizit, **wann welche Datei aktualisiert** wird, plus
+  klare Session-Start-Lesereihenfolge. Neu: `ARBEITSWEISE.md` — Tills Fahrplan für
+  effektives Arbeiten mit Claude (Kontext-Start, Ziel statt Lösung, Mockup-first,
+  Session-Hygiene, Modellwahl) + welcher Skill wann greift.
 - **Neuausrichtung D4 — Auto-Archivierung erzeugter PDFs** (2026-07-18): beim Stellen einer
   Rechnung bzw. beim Senden eines Angebots landet das PDF automatisch dauerhaft im
   Dokumente-Archiv — sprechend benannt (`RE-2026-0001_Milad.pdf`, `AN-2026-9001_Milad.pdf`),
