@@ -6,7 +6,9 @@ import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateField";
 import { useCustomers, useInquiries } from "@/hooks/useCustomers";
 import { useDevices } from "@/hooks/useDevices";
-import { useCreateOffer, useUpdateOffer, type CreateOfferItemInput } from "@/hooks/useOffers";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCreateOffer, useUpdateOffer, fetchOfferWithItems, type CreateOfferItemInput } from "@/hooks/useOffers";
+import { archiveOfferPdf } from "@/hooks/useDocuments";
 import { offerTotals, OFFER_STATUS_OPTIONS, type Offer, type OfferStatus } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 
@@ -47,6 +49,7 @@ export function CreateOfferDialog({
   const { data: devices } = useDevices();
   const createOffer = useCreateOffer();
   const updateOffer = useUpdateOffer();
+  const queryClient = useQueryClient();
   const isEdit = !!editOffer;
 
   const [customerId, setCustomerId] = useState(presetCustomerId ?? "");
@@ -164,7 +167,7 @@ export function CreateOfferDialog({
 
     try {
       if (editOffer) {
-        await updateOffer.mutateAsync({
+        const saved = await updateOffer.mutateAsync({
           id: editOffer.id,
           customer_id: customerId || null,
           inquiry_id: inquiryId || null,
@@ -176,6 +179,21 @@ export function CreateOfferDialog({
           status,
           items: payloadItems,
         });
+        onClose();
+        // Verlässt das Angebot den Entwurf („gesendet" o.ä.), landet das PDF im
+        // Dokumente-Archiv. Best-effort + idempotent — der Speichervorgang selbst
+        // ist bereits durch; ein Archiv-Fehler darf ihn nicht rückgängig wirken lassen.
+        if (saved.status !== "entwurf") {
+          void (async () => {
+            try {
+              const full = await fetchOfferWithItems(saved.id);
+              await archiveOfferPdf(full);
+              queryClient.invalidateQueries({ queryKey: ["documents"] });
+            } catch (archiveErr) {
+              console.warn("Angebots-PDF konnte nicht archiviert werden:", archiveErr);
+            }
+          })();
+        }
       } else {
         await createOffer.mutateAsync({
           customer_id: customerId || null,
@@ -187,8 +205,8 @@ export function CreateOfferDialog({
           notes: notes.trim() || null,
           items: payloadItems,
         });
+        onClose();
       }
-      onClose();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Angebot konnte nicht gespeichert werden.");
     }

@@ -104,6 +104,14 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Neuausrichtung D4 — Auto-Archivierung erzeugter PDFs** (2026-07-18): beim Stellen einer
+  Rechnung bzw. beim Senden eines Angebots landet das PDF automatisch dauerhaft im
+  Dokumente-Archiv — sprechend benannt (`RE-2026-0001_Milad.pdf`, `AN-2026-9001_Milad.pdf`),
+  mit `auto`-Badge, Kategorie Rechnung/Angebot. Idempotent (kein Doppel-Archiv), best-effort
+  (der Beleg bleibt gültig, falls das Archiv scheitert). Namens-Konvention als getestete
+  `lib/documentNaming.ts`. Aus RLS-Gründen am eigenen Beleg-Vorgang abgelegt, in der
+  Gesamtsicht aber auf den Job verlinkt. Damit ist Block A (Dokumente) komplett. Voll
+  bewiesen (Browser + DB, Testdaten restlos entfernt).
 - **Neuausrichtung D3 — zentrale Seite „Dokumente"** (2026-07-18): neue Seite `/dokumente`
   (bereichslos, RLS filtert zeilenweise) nach dem Listen-Rezept — Kennzahlen-Kopf,
   Kategorie-Spalte mit Zählern, Suche über Titel/Vorgang, Jahr-Filter, Monatsgruppen mit

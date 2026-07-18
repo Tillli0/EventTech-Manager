@@ -1,10 +1,11 @@
 # PLAN — Neuausrichtung: vom Verleih zum Event-Dienstleister
 
 > **Großes Vorhaben** nach Skill `grosses-feature`. Dieses Dokument überlebt Sessions
-> und trägt die Ausführung. **Stand: 2026-07-18** — E0 erledigt; **D1 (Fundament),
-> D2 (DocumentsCard an Job + Kunde) und D3 (zentrale Seite „Dokumente") live & bewiesen**;
-> nächste Etappe **D4** (Auto-Archivierung erzeugter PDFs). Nach jeder Etappe: Haken +
-> Datum, Stand-Vermerk oben.
+> und trägt die Ausführung. **Stand: 2026-07-18** — E0 erledigt; **Block A Dokumente
+> komplett: D1 (Fundament), D2 (DocumentsCard an Job + Kunde), D3 (zentrale Seite
+> „Dokumente") und D4 (Auto-Archivierung erzeugter PDFs) live & bewiesen**; nächste
+> Etappe **E1** (Bereich `anmietung` + Verleih-Partner, Block B). Nach jeder Etappe:
+> Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -163,14 +164,30 @@ geteilt mit der Karte. Browser-Beweis: Upload → zentral sichtbar, Filter/Suche
   Bereich — die Sicht aggregiert, was der Nutzer ohnehin sehen darf).
 - Beweis: Filter/Suche/Jahr live, Links springen zum Vorgang.
 
-**D4 — Auto-Archivierung erzeugter PDFs** (keine Migration)
-- `lib/documentNaming.ts` (+ Test): `RE-2026-0001_<Kunde-slug>.pdf`,
-  `AN-2026-0001_<Kunde-slug>.pdf`.
-- Beim Stellen einer Rechnung (`useIssueInvoice`) und beim Senden/Markieren eines
-  Angebots das erzeugte PDF (aus `invoicePdf.tsx`/`offerPdf.tsx`) zusätzlich in den
-  Bucket schreiben + `documents`-Zeile (category rechnung/angebot, `auto`-Kennzeichen).
-- Beweis: Rechnung stellen → Datei erscheint im Dokumente-Tab des Jobs mit korrektem
-  Namen; Doppel-Stellen erzeugt keine Dublette (idempotent über `storage_path`).
+**D4 ✅ — Auto-Archivierung erzeugter PDFs** (keine Migration; erledigt 2026-07-18)
+- `lib/documentNaming.ts` (+ Test, 7 Fälle): `RE-2026-0001_<Kunde-slug>.pdf`,
+  `AN-2026-9001_<Kunde-slug>.pdf` (Umlaut-Transliteration, Sonderzeichen → „-").
+- `invoicePdf.tsx`/`offerPdf.tsx` liefern jetzt `renderInvoicePdfBlob`/`renderOfferPdfBlob`
+  (Download nutzt sie weiter). `archiveInvoicePdf`/`archiveOfferPdf` in `useDocuments.ts`
+  legen das PDF idempotent im privaten Bucket ab (`is_auto = true`), `storage_path` fest
+  aus der Beleg-ID → Doppel-Aufruf erzeugt keine Dublette.
+- **Wichtige Abweichung vom Entwurf (RLS-Korrektheit):** Belege docken am **eigenen
+  Vorgang** (`entity_type` invoice/offer) an, NICHT am Job. Grund: `can_edit_document`
+  für invoice/offer verlangt `can_edit_area('angebote')` — genau das Recht, das man zum
+  Stellen/Senden ohnehin hat; am Job zu hängen bräuchte `jobs`-Schreibrecht (Insert würde
+  für reine Finanz-Nutzer scheitern) und exponierte die Kunden-Rechnung jedem Job-
+  Zugewiesenen. Damit die Belege trotzdem „am Vorgang" wirken, verlinkt `useAllDocuments`
+  sie in der Gesamtsicht auf ihren Job (Fallback Kunde → Beleg-Nummer).
+- Trigger: `InvoicesPage.handleIssue` nach dem Stellen; `CreateOfferDialog` nach dem
+  Speichern, sobald das Angebot den Entwurf verlässt. Beide best-effort (Beleg bleibt
+  gültig, wenn das Archiv scheitert) + invalidieren die `documents`-Query.
+- **Storage-Falle (teuer):** `upload({ upsert: true })` scheitert an der Storage-Update-
+  Policy (verlangt eine noch fehlende documents-Zeile) → `upsert: false`, „Datei existiert
+  schon" (409) wird als Erfolg gewertet und nur die Zeile nachgelegt.
+- Beweis (Browser + DB): Rechnung stellen → `RE-2026-0001_Milad.pdf` (3158 B) zentral mit
+  `auto`-Badge, Kategorie „Rechnung", Vorgang-Link zum Job; signierte URL 200. Angebot auf
+  „gesendet" → `AN-2026-9001_Milad.pdf`. Erneutes Speichern → weiterhin 1 Zeile/1 Datei
+  (idempotent). Testdaten (inkl. Storage) restlos entfernt.
 
 ### Block B — Anmietung & Kalkulation (ROADMAP-Phase 2)
 
@@ -320,3 +337,8 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   Zielbild-Mockups freigegeben (Dokumente in seriöser Tabellen-Optik mit farbigen
   Kategorien). Kompass umgestellt (dieses Dokument, ROADMAP, CLAUDE.md, IDEAS.md).
   Nächster Schritt: P0.1 automatisches Backup, dann Block A (Dokumente).
+- **2026-07-18:** Block A abgeschlossen. D1–D3 gebaut & bewiesen. **D4** (Auto-Archivierung)
+  fertig: erzeugte Rechnungs-/Angebots-PDFs landen beim Stellen/Senden idempotent im
+  Dokumente-Archiv (`RE-…_<Kunde>.pdf` / `AN-…_<Kunde>.pdf`). RLS-bedingt am eigenen Beleg-
+  Vorgang statt am Job (in der Gesamtsicht zum Job verlinkt). Nächster Schritt: **E1**
+  (Bereich `anmietung` + Verleih-Partner) — Beginn von Block B.

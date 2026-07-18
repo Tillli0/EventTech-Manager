@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Plus, Receipt, Download, Trash2, Pencil, Send, Ban, Wallet, BellRing, FileDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -37,6 +38,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import { exportToCsv } from "@/lib/csv";
 import { downloadInvoicePdf } from "@/lib/invoicePdf";
+import { archiveInvoicePdf } from "@/hooks/useDocuments";
 import { InvoiceDialog } from "@/components/invoices/InvoiceDialog";
 import { PaymentDialog } from "@/components/invoices/PaymentDialog";
 import { DunningDialog } from "@/components/invoices/DunningDialog";
@@ -72,6 +74,7 @@ export function InvoicesPage() {
   const deleteInvoice = useDeleteInvoice();
   const toast = useToast();
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -211,6 +214,16 @@ export function InvoicesPage() {
     try {
       const issued = await issueInvoice.mutateAsync(invoice);
       toast.success(`Rechnung ${issued.invoice_number} gestellt.`);
+      // PDF dauerhaft ins Dokumente-Archiv legen (best-effort — die Rechnung ist
+      // bereits gültig; ein Fehler hier darf das Stellen nicht entwerten).
+      try {
+        const full = await fetchInvoiceWithItems(issued.id);
+        await archiveInvoicePdf(full);
+        queryClient.invalidateQueries({ queryKey: ["documents"] });
+      } catch (archiveErr) {
+        console.warn("Rechnungs-PDF konnte nicht archiviert werden:", archiveErr);
+        toast.error("Rechnung gestellt, aber das PDF konnte nicht automatisch abgelegt werden.");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Rechnung konnte nicht gestellt werden.");
     }
