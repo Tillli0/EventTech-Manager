@@ -38,6 +38,7 @@ Drei Leitprinzipien prägen jede Entscheidung:
 |---|---|
 | `CLAUDE.md` (diese Datei) | Arbeitsregeln, Architektur-Kompass, Rituale |
 | `apps/web/CLAUDE.md` | Frontend-Konventionen: Design-System, Listen-Rezept, Hook-Muster |
+| `ARBEITSWEISE.md` | Welcher Skill wann: Aufgabengrößen, Design-Reihenfolge, Token-Sparregeln |
 | `IDEAS.md` | Ideen-Backlog + Verlauf „Kürzlich umgesetzt" (nach jeder Aufgabe pflegen!) |
 | `PLAN-NEUAUSRICHTUNG.md` | **Aktives Groß-Vorhaben**: Verleih → Event-Dienstleister (Dokumente, Anmietung, Kalkulation) — Etappen, Schema, Entscheidungen |
 | `PLAN-FABLE5.md`, `PLAN-*.md` | Weitere Plan-Dokumente für große Vorhaben (Stand + offene Blöcke) |
