@@ -140,11 +140,22 @@ Secrets** wie die Migration (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`,
 `SUPABASE_PROJECT_REF`) — sind die gesetzt, läuft das Backup ohne weitere Einrichtung;
 fehlen sie, überspringt der Action grün.
 
-**Was gesichert wird (Stufe 1):** die komplette Datenbank als wiederherstellbares
-logisches Backup in drei Teilen — `01_roles.sql` (Rollen), `02_schema.sql` (Struktur),
-`03_data.sql` (alle Daten) plus `00_manifest.txt` (Kurzübersicht). **Noch nicht dabei:**
-Storage-Dateien (Fotos, künftige Dokumente) — das ist bewusst **Stufe 2** (größer, evtl.
-Cloudflare R2).
+**Was gesichert wird — zwei Artefakte je Lauf:**
+
+- **Stufe 1 — Datenbank** (`db-backup-<datum>`): drei Teile — `01_roles.sql` (Rollen),
+  `02_schema.sql` (Struktur), `03_data.sql` (alle Daten, inkl. **Logins** aus `auth.users`)
+  plus `00_manifest.txt`.
+- **Stufe 2 — Storage-Dateien** (`storage-backup-<datum>`, seit 2026-07-18): **alle**
+  Buckets mit ihren Dateien — Fotos, Dokumente, Firmenlogo — plus Manifest mit Anzahl und
+  Größe je Bucket.
+
+> Die Bucket-Liste wird **dynamisch** ermittelt: ein später angelegter Bucket wandert
+> automatisch ins Backup, ohne dass jemand den Workflow anfassen muss.
+>
+> **Wachposten:** Übersteigt das Storage-Backup **2 GB**, bricht der Schritt **absichtlich
+> mit Fehler ab** — dann gehören die Dateien auf ein externes Ziel (z. B. Cloudflare R2)
+> statt in GitHub-Artefakte. Lieber ein lauter Fehler als ein stilles Teil-Backup. Ab 1 GB
+> gibt es vorher eine Warnung.
 
 **Ablage & Rotation:** Jeder Lauf legt das Backup als **Artefakt** am Action-Lauf ab
 (Repo → *Actions* → *Supabase DB Backup (Produktion)* → gewünschter Lauf → *Artifacts*).

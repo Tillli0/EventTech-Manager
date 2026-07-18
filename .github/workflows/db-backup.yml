@@ -5,8 +5,10 @@ name: Supabase DB Backup (Produktion)
 # (Rollen, Schema, Daten) und legt es als herunterladbares GitHub-Artefakt ab. Die
 # Aufbewahrung (retention-days) uebernimmt die Rotation: alte Backups verfallen von selbst.
 #
-# ROADMAP P0.1 (Stufe 1: nur Datenbank). Storage-Dateien (Fotos, kuenftige Dokumente)
-# sind bewusst noch NICHT enthalten — das ist Stufe 2 (groesser, evtl. Cloudflare R2).
+# ROADMAP P0.1 — beide Stufen: Stufe 1 = Datenbank (drei SQL-Teile), Stufe 2 = alle
+# Storage-Dateien (Fotos, Dokumente, Firmenlogo) als zweites Artefakt. Ohne Stufe 2 waere
+# "es kann nichts verloren gehen" nicht wahr: Der Restore-Drill vom 2026-07-18 hat gezeigt,
+# dass die Datei-METADATEN zwar zurueckkommen, die Dateien selbst aber fehlten.
 #
 # "Ruhig by default": Ohne die noetigen Secrets ueberspringt der Workflow alles (gruen),
 # genau wie db-migrate.yml. Benoetigte GitHub-Secrets (dieselben wie db-migrate):
@@ -106,15 +108,113 @@ jobs:
           retention-days: 90
           if-no-files-found: error
 
+      # ---------------------------------------------------------------------
+      # Stufe 2: Storage-Dateien (ROADMAP P0.1 Stufe 2, Etappe A2)
+      #
+      # Bewusst NACH dem DB-Upload: Schlaegt der Storage-Teil fehl, ist das
+      # Datenbank-Backup bereits sicher abgelegt.
+      #
+      # Warum ueberhaupt: Der Restore-Drill (A1) hat gezeigt, dass
+      # `storage.objects` zwar wiederhergestellt wird, die DATEIEN aber fehlten —
+      # z. B. zeigte der Eintrag fuers Firmenlogo ins Leere, und das Logo steckt
+      # in jedem Rechnungs- und Angebots-PDF.
+      #
+      # Buckets werden ABSICHTLICH dynamisch aufgelistet statt fest verdrahtet:
+      # so wird ein spaeter angelegter Bucket automatisch mitgesichert. (Beim
+      # Planen dieser Etappe waren vier Buckets angenommen — es sind fuenf.)
+      #
+      # ACHTUNG: `supabase storage` braucht derzeit `--experimental`. Bricht der
+      # Schritt nach einem CLI-Update, ist dieses Flag der erste Verdaechtige.
+      # ---------------------------------------------------------------------
+      - name: Storage-Dateien sichern
+        if: steps.guard.outputs.ready == 'true'
+        id: storage
+        run: |
+          set -euo pipefail
+          mkdir -p storage-backup
+
+          # Bucket-Liste holen (Zeilen der Form "name/")
+          supabase storage ls ss:/// --experimental --linked 2>/dev/null \
+            | sed 's#/$##' | grep -v '^$' | grep -v 'Initialising' > buckets.txt || true
+
+          if [ ! -s buckets.txt ]; then
+            echo "::error::Keine Buckets gefunden — Storage-Backup abgebrochen (lieber lauter Fehler als stilles Teil-Backup)."
+            exit 1
+          fi
+
+          echo "Gefundene Buckets:"; cat buckets.txt
+
+          # Relativer Zielpfad ist Absicht: absolute Pfade werden vom cp-Befehl
+          # teils als Protokoll fehlinterpretiert.
+          cd storage-backup
+          while read -r bucket; do
+            [ -z "$bucket" ] && continue
+            echo "→ $bucket"
+            supabase storage cp -r "ss:///$bucket" "./$bucket" \
+              --experimental --linked --workdir "$GITHUB_WORKSPACE" 2>&1 \
+              | grep -v 'Initialising' || true
+          done < ../buckets.txt
+          cd ..
+
+          # Manifest je Bucket
+          {
+            echo "EventTech-Manager Storage-Backup"
+            echo "erstellt (UTC): $(date -u +'%Y-%m-%d %H:%M:%S')"
+            echo ""
+            printf '  %-22s %8s Dateien  %10s\n' "BUCKET" "ANZAHL" "GROESSE"
+            while read -r bucket; do
+              [ -z "$bucket" ] && continue
+              n=$(find "storage-backup/$bucket" -type f 2>/dev/null | wc -l)
+              s=$(du -sh "storage-backup/$bucket" 2>/dev/null | cut -f1 || echo "0")
+              printf '  %-22s %8s Dateien  %10s\n' "$bucket" "$n" "$s"
+            done < buckets.txt
+          } | tee storage-backup/00_manifest.txt
+
+          TOTAL_FILES=$(find storage-backup -type f -not -name '00_manifest.txt' | wc -l)
+          TOTAL_MB=$(du -sm storage-backup | cut -f1)
+          echo "files=$TOTAL_FILES" >> "$GITHUB_OUTPUT"
+          echo "size_mb=$TOTAL_MB"   >> "$GITHUB_OUTPUT"
+
+          # Groessen-Wachposten: lieber lauter Fehler als stilles Teil-Backup.
+          # GitHub-Artefakte sind fuer Dateien in dieser Groessenordnung gedacht;
+          # darueber gehoert das Backup auf ein externes Ziel (z. B. Cloudflare R2).
+          if [ "$TOTAL_MB" -gt 2000 ]; then
+            echo "::error::Storage-Backup ist ${TOTAL_MB} MB gross (> 2 GB). GitHub-Artefakte sind dafuer der falsche Ort — bitte auf ein externes Ziel (z. B. Cloudflare R2) umstellen, statt still nur einen Teil zu sichern."
+            exit 1
+          fi
+          if [ "$TOTAL_MB" -gt 1000 ]; then
+            echo "::warning::Storage-Backup ist ${TOTAL_MB} MB gross. Ab 2 GB bricht dieser Schritt bewusst ab — rechtzeitig ein externes Ziel einrichten."
+          fi
+
+      - name: Storage als Artefakt ablegen
+        if: steps.guard.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: storage-backup-${{ steps.stamp.outputs.value }}
+          path: storage-backup/
+          retention-days: 90
+          if-no-files-found: error
+
       - name: Zusammenfassung
         if: steps.guard.outputs.ready == 'true'
         run: |
           {
             echo "### Backup erstellt ✅"
             echo ""
+            echo "**Datenbank**"
             echo '```'
             cat backup/00_manifest.txt
             echo '```'
             echo ""
-            echo "Artefakt: **db-backup-${{ steps.stamp.outputs.value }}** (Aufbewahrung 90 Tage)."
+            echo "**Storage-Dateien**"
+            echo '```'
+            cat storage-backup/00_manifest.txt
+            echo '```'
+            echo ""
+            echo "Artefakte (Aufbewahrung 90 Tage):"
+            echo "- **db-backup-${{ steps.stamp.outputs.value }}**"
+            echo "- **storage-backup-${{ steps.stamp.outputs.value }}** — ${{ steps.storage.outputs.files }} Dateien, ${{ steps.storage.outputs.size_mb }} MB"
+            echo ""
+            echo "> Wiederherstellung: siehe \`DEPLOY.md\` → *Backup & Restore*. Ziel muss ein"
+            echo "> **frisches Supabase-Projekt** sein, keine leere Datenbank."
           } >> "$GITHUB_STEP_SUMMARY"

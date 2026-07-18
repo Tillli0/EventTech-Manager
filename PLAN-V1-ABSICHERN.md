@@ -109,7 +109,35 @@ Packliste, ein Dokument-Eintrag.
 
 </details>
 
-### A2 — Storage-Dateien ins Backup *(P0.1 Stufe 2)*
+### A2 ✅ — Storage-Dateien ins Backup *(P0.1 Stufe 2, erledigt 2026-07-18)*
+
+`db-backup.yml` um einen Storage-Schritt erweitert, der **alle** Buckets sichert und als
+zweites Artefakt `storage-backup-<datum>` ablegt.
+
+- **Buckets dynamisch aufgelistet** statt fest verdrahtet — ein später angelegter Bucket
+  wird automatisch mitgesichert. (Begründung aus der Praxis: geplant waren vier Buckets,
+  tatsächlich sind es fünf.)
+- **Nach** dem DB-Upload platziert: Scheitert Storage, ist die Datenbank schon gesichert.
+- **Größen-Wachposten:** > 2 GB → **harter Fehler** mit dem Hinweis auf ein externes Ziel
+  (Cloudflare R2); > 1 GB → Warnung. Lieber lauter Fehler als stilles Teil-Backup.
+- Manifest je Bucket (Anzahl + Größe), Zusammenfassung im Lauf zeigt beide Artefakte.
+
+**Lokal verifiziert** (dieselben Befehle wie im Workflow, gegen die Cloud, nur lesend):
+Bucket-Parsing liefert alle fünf; die Download-Schleife holte das Firmenlogo
+(`company-assets/logo-….jpg`); Manifest-Ausgabe korrekt; heruntergeladene
+Produktionsdateien danach entfernt.
+
+⚠️ **Noch nicht bewiesen:** Ein echter Lauf in GitHub Actions. Der Workflow-Code ist
+lokal mit identischen Befehlen verifiziert, aber der Lauf auf dem Runner (Linux, frische
+CLI) ist ungetestet — er läuft nachts um 03:14 UTC automatisch oder kann über
+*Actions → Run workflow* sofort ausgelöst werden. **Erst danach ist P0.1 Stufe 2 wirklich
+belegt.**
+
+⚠️ **Bekannte Bruchstelle:** `supabase storage` benötigt derzeit `--experimental`. Bricht
+der Schritt nach einem CLI-Update, ist dieses Flag der erste Verdächtige (steht als
+Kommentar im Workflow).
+
+<details><summary>Ursprüngliche Planung (Referenz)</summary>
 `db-backup.yml` um die Buckets erweitern: `documents` (privat!), `device-photos`,
 `device-documents`, Meilenstein-Fotos. Eigener Schritt, der über die Storage-API listet
 und herunterlädt; Ergebnis als zweites Artefakt.
@@ -118,6 +146,8 @@ und herunterlädt; Ergebnis als zweites Artefakt.
   stilles Teil-Backup**.
 - *Fertig, wenn:* ein Lauf ein Artefakt erzeugt, das eine hochgeladene Testdatei
   nachweislich enthält (danach Testdatei entfernen).
+
+</details>
 
 ### A3 — E2E-Smoke-Test *(P0.4 — das Netz für den Umbau)*
 Playwright einführen (nur Chromium, gegen den lokalen Stack):
