@@ -169,16 +169,44 @@ Aufbewahrung **90 Tage**, danach verfällt es automatisch (das ist die Rotation)
 **Sofort ein Backup ziehen (manuell):** Repo → *Actions* → *Supabase DB Backup
 (Produktion)* → *Run workflow*. Nach ~1–2 Minuten liegt das Artefakt am Lauf.
 
-**Wiederherstellen (Restore-Weg):** Backup-Artefakt herunterladen und entpacken, dann in
-eine (leere) Ziel-Datenbank einspielen — Reihenfolge Rollen → Schema → Daten:
+**Wiederherstellen (Restore-Weg):** Backup-Artefakt herunterladen und entpacken, dann
+einspielen — Reihenfolge Rollen → Schema → Daten:
 ```bash
-# gegen eine LEERE lokale Instanz proben (empfohlen vor dem Ernstfall):
-psql "<ziel-connection-string>" -f 01_roles.sql   # Rollen (Fehler bei schon vorhandenen Rollen sind ok)
+psql "<ziel-connection-string>" -f 01_roles.sql   # Rollen (Fehler bei vorhandenen Rollen sind ok)
 psql "<ziel-connection-string>" -f 02_schema.sql   # Struktur
 psql "<ziel-connection-string>" -f 03_data.sql     # Daten
 ```
-> Der Restore-Weg gehört **einmal real durchgespielt** (ROADMAP P0.2), bevor man sich im
-> Ernstfall darauf verlässt — „ein Backup, das nie zurückgespielt wurde, ist kein Backup".
+
+> ### ⚠️ Das Ziel muss eine **Supabase-Instanz** sein, keine leere Datenbank
+>
+> **Real geprobt am 2026-07-18** (ROADMAP P0.2) — mit einem echten Cloud-Dump. Wichtigste
+> Erkenntnis: Der Restore in eine frisch angelegte, **nackte** Postgres-Datenbank
+> (`create database …`) **scheitert** — 109 Fehler. Grund: Das Backup enthält nur die
+> **eigenen** Objekte und setzt die Supabase-Plattform-Schemas `auth`, `extensions` und
+> `vault` sowie deren Extensions als **vorhanden** voraus.
+>
+> **Richtiges Ziel ist deshalb ein frisches Supabase-Projekt** (Cloud: neues Projekt
+> anlegen; lokal: `supabase start` auf einer leeren Instanz). Dort sind Plattform-Schemas,
+> `auth.users` und Extensions bereits da.
+>
+> **Was der Drill sonst gezeigt hat:**
+> - ✅ **Inhaltlich vollständig:** `auth.users` (alle Logins), sämtliche Fachtabellen,
+>   `storage.objects` **und** `storage.buckets` sind im Dump enthalten.
+> - ✅ **Schutzmechanismen kommen mit zurück:** 31 Tabellen mit RLS, 113 Policies,
+>   46 Fremdschlüssel, 16 Trigger, 46 Funktionen — inklusive `issue_invoice()`,
+>   `can_see_document()` und `has_area()`.
+> - ✅ **Der pg_dump-Warnhinweis** („might not be able to restore without
+>   `--disable-triggers`") hat sich **nicht** materialisiert: Die Daten liefen ohne
+>   Constraint-Fehler durch. Falls es doch einmal klemmt, ist `--disable-triggers` beim
+>   Daten-Schritt der dokumentierte Ausweg.
+> - ⚠️ **Verweise ins Leere:** `storage.objects` wird wiederhergestellt, **die Dateien
+>   aber nicht** (Stufe 2 fehlt noch). Nach einem Restore zeigt z. B. der Eintrag für das
+>   **Firmenlogo** (`company-assets/…jpg`) auf eine nicht existierende Datei — und das
+>   Logo steckt in jedem Rechnungs- und Angebots-PDF.
+>
+> **Vollständige Buckets-Liste** (für Stufe 2 wichtig): `company-assets` (public),
+> `device-photos` (public), `job-photos` (public), `device-documents` (privat),
+> `documents` (privat).
 
 ---
 

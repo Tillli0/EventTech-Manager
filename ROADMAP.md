@@ -116,9 +116,13 @@ Backups, Löschlogik) → stärkstes verfügbares Modell + DB-seitige Absicherun
       Solange gilt: „es kann nichts verloren gehen" ist **noch nicht** wahr.
       ⚠️ **Falle:** Der Workflow läuft **grün durch, wenn Secrets fehlen** — grün beweist
       nichts, nur ein vorhandenes Artefakt tut das.
-- [ ] **P0.2 Restore geprobt:** dokumentierter Wiederherstellungs-Weg, **einmal real
-      durchgespielt** (in eine leere lokale Instanz). → Etappe **A1**.
-      *Fertig, wenn:* aus einem echten Backup eine funktionierende App entstand.
+- [x] **P0.2 Restore geprobt** (2026-07-18, Etappe A1). Mit **echtem Cloud-Dump** in eine
+      separate lokale DB zurückgespielt; Daten **und** Schutzmechanismen kamen vollständig
+      zurück (31 Tabellen mit RLS, 113 Policies, 46 Funktionen inkl. `issue_invoice()`).
+      **Wichtigste Erkenntnis:** Ziel muss ein **frisches Supabase-Projekt** sein, keine
+      nackte Datenbank — der bis dahin dokumentierte Weg scheiterte mit 109 Fehlern.
+      Korrigiert in `DEPLOY.md`. *(Nicht getestet: App gegen die restaurierte DB — Beweis
+      liegt auf DB-Ebene.)*
 - [ ] **P0.3 CI-Guardrails:** harte Checks, die den Build brechen bei: Service-Role-Key
       im Frontend-Code · neuer Tabelle ohne RLS/GRANT · Migrations-Nummern-Duplikat.
       *Fertig, wenn:* ein absichtlicher Verstoß im Test-Branch rot wird.

@@ -65,7 +65,38 @@ ohne menschliches Zutun entstanden ist"). Der Haken dort wird mit A4 nachgezogen
 **Reihenfolge:** A4 (klein, sofort) → A1 → A2 → A3.
 A1+A2 sichern die **Daten**, A3 sichert den **Umbau**.
 
-### A1 — Restore einmal real durchspielen *(P0.2)*
+### A1 ✅ — Restore einmal real durchspielen *(P0.2, erledigt 2026-07-18)*
+
+**Durchgeführt mit einem echten Cloud-Dump** (nur lesend gezogen), Ziel war eine separate
+lokale Datenbank — die Entwicklungs-DB blieb unberührt (Gegenprobe: 6 Jobs unverändert),
+Testdatenbank danach entfernt.
+
+**Ergebnis: der dokumentierte Weg war falsch.** Restore in eine nackte
+`create database`-DB scheitert mit **109 Fehlern** — das Backup setzt die
+Supabase-Plattform-Schemas (`auth`, `extensions`, `vault`) voraus. Richtiges Ziel ist ein
+**frisches Supabase-Projekt**. Korrigiert in `DEPLOY.md`.
+
+**Gegen eine Instanz mit Plattform-Basis lief der Restore sauber:**
+Schema 1 Rest-Fehler (`publication supabase_realtime`, in echtem Projekt vorhanden),
+Daten 1 Rest-Fehler (Versionsdrift einer `auth`-Plattformtabelle, kein Datenverlust).
+Wiederhergestellt: 5 Logins, 5 Profile, 29 Geräte, 14 Packlisten-Posten, 2 Angebote —
+plus **31 Tabellen mit RLS, 113 Policies, 46 FKs, 16 Trigger, 46 Funktionen** inkl.
+`issue_invoice()`, `can_see_document()`, `has_area()`.
+
+**Der pg_dump-Warnhinweis** zu `--disable-triggers` hat sich **nicht** materialisiert.
+
+**Nicht getestet (ehrlich):** Die App wurde **nicht** gegen die wiederhergestellte DB
+gestartet — dafür müsste die lokale Supabase-API umkonfiguriert werden, was die
+Entwicklungsumgebung angefasst hätte. Der Beweis liegt auf DB-Ebene (Daten + Rechte +
+Invarianten vollständig).
+
+**Verschärft A2:** `storage.objects` wird wiederhergestellt, die **Dateien nicht** — nach
+einem Restore zeigt der Eintrag fürs **Firmenlogo** ins Leere, und das Logo steckt in
+jedem Rechnungs-/Angebots-PDF. Vollständige Bucket-Liste (A2 muss **alle fünf** sichern,
+nicht vier): `company-assets`, `device-photos`, `job-photos` (public),
+`device-documents`, `documents` (privat).
+
+<details><summary>Ursprüngliche Planung (Referenz)</summary>
 Artefakt `db-backup-2026-07-18_0534` herunterladen und in eine **leere lokale
 Supabase-Instanz** zurückspielen (`01_roles` → `02_schema` → `03_data`), App dagegen
 starten, einloggen, Stichproben prüfen: eine Rechnung **mit Nummer**, ein Job mit
@@ -75,6 +106,8 @@ Packliste, ein Dokument-Eintrag.
 - **Kein Eingriff in Produktion** — rein lokal.
 - ⚠️ Diese Übung kann Unangenehmes zeigen (z. B. dass etwas im Dump fehlt). Das ist ihr
   Zweck — Ergebnis **ehrlich berichten**, nicht wegdiskutieren.
+
+</details>
 
 ### A2 — Storage-Dateien ins Backup *(P0.1 Stufe 2)*
 `db-backup.yml` um die Buckets erweitern: `documents` (privat!), `device-photos`,
