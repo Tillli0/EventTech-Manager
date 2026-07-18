@@ -150,6 +150,22 @@ Cloudflare R2).
 (Repo → *Actions* → *Supabase DB Backup (Produktion)* → gewünschter Lauf → *Artifacts*).
 Aufbewahrung **90 Tage**, danach verfällt es automatisch (das ist die Rotation).
 
+> ### ⚠️ Grün heißt NICHT gesichert
+>
+> Der Workflow ist „ruhig by default": **fehlen die Secrets, überspringt er alles und wird
+> trotzdem grün.** Ein grüner Haken in der Actions-Liste ist deshalb **kein Beleg**, dass
+> ein Backup existiert — er kann auch bedeuten, dass seit Wochen nichts gesichert wird.
+>
+> **Woran man ein echtes Backup erkennt** (mindestens einmal im Quartal prüfen):
+> 1. Am Lauf hängt ein **Artefakt** `db-backup-<datum>_<zeit>` — fehlt es, wurde nichts
+>    gesichert.
+> 2. Die **Zusammenfassung** des Laufs zeigt das Manifest mit Zeilenzahlen; steht dort
+>    „Supabase-Secrets noch nicht gesetzt – Backup uebersprungen", ist es ein Leerlauf.
+> 3. Das Artefakt ist **nicht winzig** (eine gefüllte DB liegt deutlich über wenigen kB).
+>
+> *Stand 2026-07-18:* geprüft — Artefakt `db-backup-2026-07-18_0534` (26 kB) existiert,
+> per Zeitplan ohne menschliches Zutun entstanden. Das Backup läuft also wirklich.
+
 **Sofort ein Backup ziehen (manuell):** Repo → *Actions* → *Supabase DB Backup
 (Produktion)* → *Run workflow*. Nach ~1–2 Minuten liegt das Artefakt am Lauf.
 
