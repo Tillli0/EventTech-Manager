@@ -18,6 +18,10 @@
 ## 🔧 Quick Wins (Auto — kann Claude eigenständig erledigen)
 
 - [ ] **Leere-Zustände/Ladezustände** vereinheitlichen, wo noch nicht (Konsistenz-Pass). · S · ★ · Auto
+- [ ] **impeccable-Altbefunde (objektive):** `transition: width` auf DashboardPage:362
+      (Layout-Ruckler — auf transform/grid umstellen) und `font-family: Arial` in
+      `lib/printPacklist.ts:50` (Druck-Layout auf Inter/system-ui angleichen). Die
+      `border-l`-Akzentbalken-Befunde bleiben bewusst — dokumentierte Design-Sprache. · S · ★ · Auto
 
 ## 🚀 Größere Features (Freigabe nötig — Claude schlägt vor)
 
