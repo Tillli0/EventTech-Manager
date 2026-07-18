@@ -137,8 +137,8 @@ zentralen Ort. Details + Schema: `PLAN-NEUAUSRICHTUNG.md` (D1–D4).*
       Migr. 0038, lokal + Cloud verifiziert)
 - [x] **P1.2 (D2) Dokumente am Vorgang:** wiederverwendbare `DocumentsCard` (Upload,
       farbige Kategorien, öffnen/löschen) an Job und Kunde. (2026-07-18, voll bewiesen)
-- [ ] **P1.3 (D3) Zentrale Seite „Dokumente":** Kategorie-Spalte, Suche, Jahr-Filter,
-      Monats-Gruppen, Vorgang-Verlinkung.
+- [x] **P1.3 (D3) Zentrale Seite „Dokumente":** Kategorie-Spalte, Suche, Jahr-Filter,
+      Monats-Gruppen, Vorgang-Verlinkung. (2026-07-18, voll bewiesen)
 - [ ] **P1.4 (D4) Auto-Archivierung:** Rechnungs-/Angebots-PDF beim Stellen/Senden
       automatisch sprechend benannt ablegen (`RE-2026-0001_<Kunde>.pdf`).
 

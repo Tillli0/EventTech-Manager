@@ -104,6 +104,11 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Neuausrichtung D3 — zentrale Seite „Dokumente"** (2026-07-18): neue Seite `/dokumente`
+  (bereichslos, RLS filtert zeilenweise) nach dem Listen-Rezept — Kennzahlen-Kopf,
+  Kategorie-Spalte mit Zählern, Suche über Titel/Vorgang, Jahr-Filter, Monatsgruppen mit
+  Größen-Zwischensumme, Sprung zum Vorgang. `useAllDocuments` löst Job-/Kundennamen je
+  Zeile auf; `categoryMeta.tsx` teilt die Kategorie-Optik mit der Karte. Voll bewiesen.
 - **Neuausrichtung D2 — Dokumente am Vorgang** (2026-07-18): wiederverwendbare
   `DocumentsCard` (Tabellen-Optik mit farbigen Kategorie-Kacheln nach dem freigegebenen
   Zielbild) an Job- und Kunden-Detailseite: Upload per Knopf/Drag-and-drop mit Dialog,

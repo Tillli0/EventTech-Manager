@@ -1,9 +1,10 @@
 # PLAN — Neuausrichtung: vom Verleih zum Event-Dienstleister
 
 > **Großes Vorhaben** nach Skill `grosses-feature`. Dieses Dokument überlebt Sessions
-> und trägt die Ausführung. **Stand: 2026-07-18** — E0 erledigt; **D1 (Fundament) und
-> D2 (DocumentsCard an Job + Kunde) live & bewiesen**; nächste Etappe **D3** (zentrale
-> Seite „Dokumente"). Nach jeder Etappe: Haken + Datum, Stand-Vermerk oben.
+> und trägt die Ausführung. **Stand: 2026-07-18** — E0 erledigt; **D1 (Fundament),
+> D2 (DocumentsCard an Job + Kunde) und D3 (zentrale Seite „Dokumente") live & bewiesen**;
+> nächste Etappe **D4** (Auto-Archivierung erzeugter PDFs). Nach jeder Etappe: Haken +
+> Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -152,7 +153,10 @@ Browser-Beweis: Upload → signierte URL → PDF geöffnet → Löschen; Testdat
 - Einbau an `JobDetailPage` und `CustomerDetailPage`.
 - Beweis: Datei am Job hochladen, öffnen, löschen; mobil + Desktop; RLS-Probe.
 
-**D3 — Zentrale Seite „Dokumente"** (keine Migration)
+**D3 ✅ — Zentrale Seite „Dokumente"** (keine Migration; erledigt 2026-07-18. Bereichslos
+wie Aufgaben, RLS filtert zeilenweise; Kategorie-Spalte + Suche + Jahr + Monatsgruppen mit
+Größen-Zwischensumme; `useAllDocuments` löst Job/Kunde je Zeile auf; `categoryMeta.tsx`
+geteilt mit der Karte. Browser-Beweis: Upload → zentral sichtbar, Filter/Suche, Vorgang-Link)
 - `pages/DocumentsPage.tsx`, Lazy-Route + `nav.ts`-Eintrag. Kategorie-Spalte links,
   Suche, `YearFilter`, Monats-Gruppen (`lib/listGrouping.ts`), Vorgang-Verlinkung.
   Sichtbar für alle eingeloggten Nutzer; RLS blendet zeilenweise aus (kein eigener
