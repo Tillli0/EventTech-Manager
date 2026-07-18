@@ -144,21 +144,23 @@ sollte, ist das ein Multiplikator.
 
 ---
 
-## 5) Design-System vollenden + Inventar-Redesign · M · ★★
+## 5) Design-System vollenden · M · ★★
 
-**Warum Fable 5:** Das Redesign ist konzeptionell schon abgestimmt (dunkles Premium-Theme,
-Indigo), aber die **Zentralisierung der Basis-Komponenten** (Button/Card/Dialog/Tabs/Badge/
-Input) ist ein systematischer, App-weiter Refactor mit vielen Berührungspunkten — genau da
-hilft ein starkes Modell, Konsistenz ohne Regressionen zu halten.
+> **Update 2026-07-18:** Der Inventar-Redesign-Teil (Geräte-Liste/Sets-Grid) ist mit der
+> Geschäftsmodell-Wende herabgestuft — Inventar ist jetzt nur noch kleines Rest-Inventar,
+> siehe `IDEAS.md` „Durch die Neuausrichtung herabgestuft". Die **Basis-Komponenten-
+> Vereinheitlichung** bleibt wertvoll (nützt auch Dokumente/Anmietung) und ist hier aktiv.
+
+**Warum Fable 5:** Die **Zentralisierung der Basis-Komponenten** (Button/Card/Dialog/Tabs/
+Badge/Input) ist ein systematischer, App-weiter Refactor mit vielen Berührungspunkten —
+genau da hilft ein starkes Modell, Konsistenz ohne Regressionen zu halten.
 
 **Scope:**
 - Basis-Komponenten vereinheitlichen und alte Ad-hoc-Stellen darauf ziehen.
-- **Inventar-Redesign** (bereits entschieden, siehe `IDEAS.md`): Geräte als **Liste**
-  (Variante A), Geräte-Sets als **Foto-/Icon-Grid** (Variante B). Direkt so umsetzen, nicht
-  neu diskutieren.
-- Restseiten nachziehen: Kalender, Angebote, Aufgaben.
+- Restseiten nachziehen: Kalender, Angebote, Aufgaben, sowie die neuen Bereiche
+  Dokumente/Anmietung, sobald sie stehen.
 
-**Fertig, wenn:** Eine Komponenten-Quelle, Inventar in A/B-Aufteilung, einheitliches Look&Feel.
+**Fertig, wenn:** Eine Komponenten-Quelle, einheitliches Look&Feel über alle Seiten.
 
 ---
 

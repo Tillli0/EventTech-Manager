@@ -66,6 +66,9 @@
   bestehen (kein Rückbau nötig).
 - **Weitere Investitionen in Barcode/Scan/DGUV:** eingefroren auf Bestandspflege-Niveau —
   bleiben voll funktionsfähig fürs Rest-Inventar, werden aber nicht mehr ausgebaut.
+- **Inventar-Redesign** (war `PLAN-FABLE5.md` Block 5, Geräte-Liste/Sets-Grid): lohnt sich
+  nicht mehr fürs kleine Rest-Inventar — herabgestuft. Die Basis-Komponenten-Vereinheitlichung
+  aus demselben Block bleibt aktiv (nützt Dokumente/Anmietung).
 
 ## 🎨 Design-Update (läuft — Freigabe erteilt)
 
@@ -104,6 +107,13 @@ Richtung: dunkles Premium-Theme, Indigo-Akzent, modernere Komponenten + dezente 
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Doku-Redundanzen bereinigt** (2026-07-18): `README.md`-Backlog (war veraltet/doppelt
+  zu `IDEAS.md`, z. B. „Rechnungsstellung" längst live) durch Verweis ersetzt.
+  Modellwahl-Erklärung war doppelt in `ROADMAP.md` §4 und `ARBEITSWEISE.md` — jetzt nur
+  noch an einer Stelle (`ARBEITSWEISE.md`), ROADMAP verweist + behält nur die
+  projektspezifische Geld/Recht/Daten-Faustregel. `PLAN-FABLE5.md` Block 5:
+  Inventar-Redesign herabgestuft (kleines Rest-Inventar lohnt sich nicht mehr),
+  Basis-Komponenten-Vereinheitlichung bleibt aktiv.
 - **Doku-Aufräumung + Arbeitsweise-Regel** (2026-07-18): `HANDOVER.md` (überholter
   Einmal-Übergabetext) und `PLAN-PROFI-ANSICHTEN.md` (als „UMGESETZT" markiert) nach
   `docs/archiv/` verschoben (nicht gelöscht, Historie bleibt). Neue Doku-Landkarte in

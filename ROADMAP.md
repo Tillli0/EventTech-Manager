@@ -89,15 +89,11 @@ ausdrückliche Freigabe · kleine Commits, nie rot pushen.
 
 ## 4. Modell-Strategie: Was macht wer?
 
-- **Starkes Modell (Fable-Klasse), solange verfügbar:** alles, was „einmal schwer, für
-  immer wertvoll" ist — Phase 0 komplett; von den harten Features (P2/P3) mindestens die
-  **fertigen Entwürfe** als `PLAN-*.md` (Schema, RLS, Entscheidungen, Risiken), damit
-  später nur noch ausgeführt wird.
-- **Schwächere Modelle:** Muster-Folge-Arbeit — Listen nach dem Listen-Rezept
-  (`apps/web/CLAUDE.md`), UI-Politur, kleine Features nach vorhandenem Vorbild,
-  Ausführung fertiger Pläne. Immer unter dem Schutz der Guardrails aus Phase 0.
-- **Faustregel:** Wenn ein Fehler Geld, Recht oder Daten kostet (Nummernkreise, RLS,
-  Backups, Löschlogik) → stärkstes verfügbares Modell + DB-seitige Absicherung + Tests.
+Praktische Modellwahl nach Aufgabengröße: siehe `ARBEITSWEISE.md`. Projektspezifisch
+zusätzlich: **starkes Modell für „einmal schwer, für immer wertvoll"** (Phase 0, fertige
+`PLAN-*.md`-Entwürfe für harte Features) und als eiserne Faustregel — unabhängig von der
+sonstigen Aufgabengröße: **kostet ein Fehler Geld, Recht oder Daten** (Nummernkreise, RLS,
+Backups, Löschlogik) → stärkstes verfügbares Modell + DB-seitige Absicherung + Tests.
 
 ## 5. Die Phasen
 

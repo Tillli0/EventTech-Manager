@@ -115,9 +115,5 @@ eventtech-manager/
 
 ## Offene Punkte / Backlog
 
-- **Rechnungsstellung** (größter offener Baustein; Dashboard verweist bereits darauf).
-- **Website-Kontaktformular → System** (durchdacht, siehe Memory `website-lead-form.md`).
-- **DB-Backups** (regelmäßiger `pg_dump` der Cloud-DB).
-- **Globale Suche + Änderungsprotokoll**.
-- **Automatisierte Tests** (zumindest Smoke-Tests: Login, Packliste, Angebot).
-- Kleinigkeit: vorbestehende ESLint-Warnung in `apps/web/src/hooks/useJobs.ts` (ungenutztes `jobId`).
+Aktueller Stand & Verlauf: `IDEAS.md` (Backlog + „Kürzlich umgesetzt"), großer Nordstern:
+`ROADMAP.md`, aktives Großvorhaben: `PLAN-NEUAUSRICHTUNG.md`.
