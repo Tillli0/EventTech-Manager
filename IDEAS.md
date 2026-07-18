@@ -124,6 +124,23 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **V1 abgesichert — Teil A komplett** (2026-07-18/19, `PLAN-V1-ABSICHERN.md`): vier
+  Etappen vor dem UI-Umbau.
+  **A4:** Backup-Falle „grün heißt nicht gesichert" in `DEPLOY.md` benannt (der Workflow
+  läuft grün durch, wenn Secrets fehlen — nur ein Artefakt beweist ein Backup) + 22 Tests
+  für `csv.ts`/`datetime.ts`.
+  **A1 — Restore real durchgespielt:** Der dokumentierte Weg war **falsch**. Ein Restore
+  in eine nackte Datenbank scheitert mit 109 Fehlern; Ziel muss ein **frisches
+  Supabase-Projekt** sein (Plattform-Schemas `auth`/`extensions`/`vault` werden
+  vorausgesetzt). Gegen eine korrekte Instanz kamen Daten **und** Schutzmechanismen
+  vollständig zurück (31 Tabellen mit RLS, 113 Policies, 46 Funktionen).
+  **A2 — Storage im Backup:** Dateien fehlten bisher komplett; nach einem Restore zeigte
+  der Eintrag fürs **Firmenlogo** ins Leere (steckt in jedem Rechnungs-PDF). Jetzt zweites
+  Artefakt mit allen fünf Buckets, dynamisch aufgelistet, Größen-Wachposten bei 2 GB.
+  **A3 — E2E-Netz:** Playwright, 15 Tests (~30 s), Mutationsprobe bestanden. Deckte auf,
+  dass die erste Testfassung **grün meldete, obwohl eine Seite abstürzte**. Nebenbefund:
+  ein bestehender Test war zeitzonenabhängig und wurde nachts rot — behoben.
+
 - **Kompass neu gesetzt: v1 absichern → UI-Neuschnitt** (2026-07-18): Tills Beobachtung
   „wir haben immer nur draufgesattelt" untersucht und belegt
   (`docs/UI-REVIEW-2026-07-18.md`: fünf Farb-Mappings, fünf Kennzahlen-Kacheln, drei
