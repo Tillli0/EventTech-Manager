@@ -27,6 +27,7 @@ import { JobTasksSection } from "@/components/tasks/JobTasksSection";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { Textarea } from "@/components/ui/Input";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
+import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
 import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
@@ -149,6 +150,8 @@ export function JobDetailPage() {
           <JobOffersCard jobId={job.id} />
 
           <JobInvoicesCard jobId={job.id} />
+
+          <DocumentsCard entityType="job" entityId={job.id} />
 
           <Card>
             <CardHeader>

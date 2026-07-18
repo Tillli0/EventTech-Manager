@@ -254,6 +254,60 @@ export interface DeviceDocument {
   created_at: string;
 }
 
+// ============================================================
+// Dokumenten-Ablage (Migration 0038): jede Datei hängt an ihrem
+// Vorgang (entity_type + entity_id) und hat eine Kategorie.
+// „DocumentRecord" statt „Document", um den DOM-Typ nicht zu verschatten.
+// ============================================================
+
+export type DocumentEntityType = "job" | "customer" | "offer" | "invoice" | "company";
+
+export type DocumentCategory =
+  | "genehmigung"
+  | "bauplan"
+  | "eingangsrechnung"
+  | "vertrag"
+  | "angebot"
+  | "rechnung"
+  | "sonstiges";
+
+export interface DocumentRecord {
+  id: string;
+  entity_type: DocumentEntityType;
+  entity_id: string;
+  category: DocumentCategory;
+  title: string;
+  file_name: string;
+  storage_path: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  notes: string | null;
+  /** true = automatisch archiviert (erzeugtes Angebots-/Rechnungs-PDF, Etappe D4). */
+  is_auto: boolean;
+  uploaded_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
+  genehmigung: "Genehmigung",
+  bauplan: "Bauplan",
+  eingangsrechnung: "Eingangsrechnung",
+  vertrag: "Vertrag",
+  angebot: "Angebot",
+  rechnung: "Rechnung",
+  sonstiges: "Sonstiges",
+};
+
+/** Kategorien, die Nutzer beim Hochladen wählen (angebot/rechnung vergibt nur die Auto-Archivierung, D4). */
+export const DOCUMENT_UPLOAD_CATEGORIES: DocumentCategory[] = [
+  "genehmigung",
+  "bauplan",
+  "eingangsrechnung",
+  "vertrag",
+  "sonstiges",
+];
+
 export interface Customer {
   id: string;
   company_name: string | null;

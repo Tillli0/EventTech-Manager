@@ -25,6 +25,7 @@ import {
 } from "@/types/database";
 import { formatDate, formatDateTime, formatCurrency } from "@/lib/format";
 import { JobStatusBadge, OfferStatusBadge, InvoiceStatusBadge, StammkundeBadge } from "@/components/ui/StatusBadge";
+import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { useToast } from "@/components/ui/Toast";
 import { CreateOfferDialog } from "@/components/offers/CreateOfferDialog";
@@ -262,6 +263,8 @@ export function CustomerDetailPage() {
               )}
             </CardBody>
           </Card>
+
+          <DocumentsCard entityType="customer" entityId={customer.id} />
         </div>
 
         <div className="space-y-6">

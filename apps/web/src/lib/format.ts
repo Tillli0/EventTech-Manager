@@ -51,3 +51,22 @@ export function initials(name: string): string {
     .join("")
     .toUpperCase();
 }
+
+/**
+ * Formatiert eine Dateigröße in Bytes lesbar (deutsch, 1 Nachkommastelle,
+ * ganze Bytes ohne Komma): 0 B, 532 B, 1,5 KB, 4,8 MB.
+ */
+export function formatBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined || Number.isNaN(bytes) || bytes < 0) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = bytes;
+  let unit = 0;
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit += 1;
+  }
+  const formatted = new Intl.NumberFormat("de-DE", {
+    maximumFractionDigits: unit === 0 ? 0 : 1,
+  }).format(size);
+  return `${formatted} ${units[unit]}`;
+}

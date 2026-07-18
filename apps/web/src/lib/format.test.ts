@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatDate, formatDateTime, formatCurrency, formatNumber, initials } from "@/lib/format";
+import { formatDate, formatDateTime, formatCurrency, formatNumber, initials, formatBytes } from "@/lib/format";
 
 describe("formatDate / formatDateTime", () => {
   it("formatiert ISO-Strings deutsch", () => {
@@ -28,6 +28,22 @@ describe("formatCurrency / formatNumber", () => {
   it("gibt — für null/undefined", () => {
     expect(formatCurrency(null)).toBe("—");
     expect(formatNumber(undefined)).toBe("—");
+  });
+});
+
+describe("formatBytes", () => {
+  it("formatiert Bytes lesbar mit deutscher Dezimalstelle", () => {
+    expect(formatBytes(0)).toBe("0 B");
+    expect(formatBytes(532)).toBe("532 B");
+    expect(formatBytes(1536)).toBe("1,5 KB");
+    expect(formatBytes(5 * 1024 * 1024)).toBe("5 MB");
+    expect(formatBytes(Math.round(4.8 * 1024 * 1024))).toBe("4,8 MB");
+  });
+
+  it("gibt — für leere/kaputte Werte", () => {
+    expect(formatBytes(null)).toBe("—");
+    expect(formatBytes(undefined)).toBe("—");
+    expect(formatBytes(-1)).toBe("—");
   });
 });
 
