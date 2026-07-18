@@ -1,6 +1,5 @@
 import { useRef, useState, type DragEvent } from "react";
-import { ExternalLink, File, FileCheck, FileSignature, FileText, Files, Map, Plus, Receipt, Trash2 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ExternalLink, Files, Plus, Trash2 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -12,6 +11,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import { useDocuments, useUploadDocument, useDeleteDocument, openDocumentInNewTab } from "@/hooks/useDocuments";
 import { formatBytes, formatDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { CATEGORY_META } from "@/components/documents/categoryMeta";
 import {
   DOCUMENT_CATEGORY_LABELS,
   DOCUMENT_UPLOAD_CATEGORIES,
@@ -24,17 +24,6 @@ import {
 // Ruhige Tabellen-Optik nach dem freigegebenen Zielbild: farbige Kategorie-Kachel,
 // Titel + Unterzeile, Kategorie-Badge, Datum/Größe mono, Aktionen rechts.
 // Der Bucket ist privat — Öffnen läuft über kurzlebige signierte URLs.
-
-/** Farbige Kachel + Badge je Kategorie (Design-Tokens, keine Roh-Farben). */
-const CATEGORY_META: Record<DocumentCategory, { icon: LucideIcon; text: string; bg: string }> = {
-  genehmigung: { icon: FileCheck, text: "text-status-wartung", bg: "bg-status-wartung-bg" },
-  bauplan: { icon: Map, text: "text-status-ausgeliehen", bg: "bg-status-ausgeliehen-bg" },
-  eingangsrechnung: { icon: Receipt, text: "text-job-laeuft", bg: "bg-job-laeuft/10" },
-  vertrag: { icon: FileSignature, text: "text-job-planung", bg: "bg-job-planung/10" },
-  angebot: { icon: FileText, text: "text-job-rueckgabe", bg: "bg-job-rueckgabe/10" },
-  rechnung: { icon: FileText, text: "text-status-verfuegbar", bg: "bg-status-verfuegbar-bg" },
-  sonstiges: { icon: File, text: "text-ink-muted", bg: "bg-bg-raised" },
-};
 
 /** Welcher Bereich zum Bearbeiten berechtigt — spiegelt can_edit_document() aus Migration 0038. */
 function useMayEditDocuments(entityType: DocumentEntityType): boolean {

@@ -21,6 +21,7 @@ const ReportsPage = lazy(() => import("@/pages/ReportsPage").then((m) => ({ defa
 const CalendarPage = lazy(() => import("@/pages/CalendarPage").then((m) => ({ default: m.CalendarPage })));
 const ScanPage = lazy(() => import("@/pages/ScanPage").then((m) => ({ default: m.ScanPage })));
 const TasksPage = lazy(() => import("@/pages/TasksPage").then((m) => ({ default: m.TasksPage })));
+const DocumentsPage = lazy(() => import("@/pages/DocumentsPage").then((m) => ({ default: m.DocumentsPage })));
 const AdminPage = lazy(() => import("@/pages/AdminPage").then((m) => ({ default: m.AdminPage })));
 
 /** Suspense-Hülle für Routen außerhalb des AppShell (z.B. Login). */
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
           { path: "kalender", element: <RequireArea area="kalender"><CalendarPage /></RequireArea> },
           { path: "scan", element: <RequireArea area="inventar"><ScanPage /></RequireArea> },
           { path: "aufgaben", element: <TasksPage /> },
+          { path: "dokumente", element: <DocumentsPage /> },
           { path: "admin", element: <RequireManager><AdminPage /></RequireManager> },
         ],
       },

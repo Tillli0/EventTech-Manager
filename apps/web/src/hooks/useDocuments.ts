@@ -11,6 +11,79 @@ const DOCUMENTS_KEY = ["documents"] as const;
 
 const DOCUMENTS_BUCKET = "documents";
 
+/** Ein Dokument samt aufgelöstem Vorgang (Anzeigename + Ziel-Link) für die zentrale Sicht. */
+export interface DocumentWithEntity extends DocumentRecord {
+  entityLabel: string;
+  /** Interner Link zum Vorgang, falls auflösbar (sonst null). */
+  entityHref: string | null;
+}
+
+const ENTITY_FALLBACK_LABEL: Record<DocumentEntityType, string> = {
+  job: "Job",
+  customer: "Kunde",
+  offer: "Angebot",
+  invoice: "Rechnung",
+  company: "Firma",
+};
+
+function customerName(c: { company_name: string | null; first_name: string | null; last_name: string | null }): string {
+  return c.company_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || "Kunde";
+}
+
+/**
+ * Alle für den Nutzer sichtbaren Dokumente (RLS filtert zeilenweise) für die zentrale
+ * Dokumente-Seite. Löst den Vorgang je Zeile über Sammel-Abfragen auf: Job-Titel und
+ * Kundennamen inkl. Ziel-Link. Andere Vorgangs-Typen bekommen ein generisches Label.
+ */
+export function useAllDocuments() {
+  return useQuery({
+    queryKey: [...DOCUMENTS_KEY, "all"],
+    queryFn: async (): Promise<DocumentWithEntity[]> => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const docs = (data ?? []) as DocumentRecord[];
+
+      const jobIds = [...new Set(docs.filter((d) => d.entity_type === "job").map((d) => d.entity_id))];
+      const customerIds = [...new Set(docs.filter((d) => d.entity_type === "customer").map((d) => d.entity_id))];
+
+      const [jobsRes, customersRes] = await Promise.all([
+        jobIds.length
+          ? supabase.from("jobs").select("id, title").in("id", jobIds)
+          : Promise.resolve({ data: [], error: null }),
+        customerIds.length
+          ? supabase.from("customers").select("id, company_name, first_name, last_name").in("id", customerIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (jobsRes.error) throw jobsRes.error;
+      if (customersRes.error) throw customersRes.error;
+
+      const jobTitle = new Map((jobsRes.data ?? []).map((j) => [j.id, j.title as string]));
+      const customerLabel = new Map((customersRes.data ?? []).map((c) => [c.id, customerName(c)]));
+
+      return docs.map((d): DocumentWithEntity => {
+        if (d.entity_type === "job") {
+          return {
+            ...d,
+            entityLabel: jobTitle.get(d.entity_id) ?? "Job (gelöscht)",
+            entityHref: jobTitle.has(d.entity_id) ? `/jobs/${d.entity_id}` : null,
+          };
+        }
+        if (d.entity_type === "customer") {
+          return {
+            ...d,
+            entityLabel: customerLabel.get(d.entity_id) ?? "Kunde (gelöscht)",
+            entityHref: customerLabel.has(d.entity_id) ? `/kunden/${d.entity_id}` : null,
+          };
+        }
+        return { ...d, entityLabel: ENTITY_FALLBACK_LABEL[d.entity_type], entityHref: null };
+      });
+    },
+  });
+}
+
 /** Alle Dokumente eines Vorgangs (Job, Kunde, …), neueste zuerst. */
 export function useDocuments(entityType: DocumentEntityType, entityId: string | undefined) {
   return useQuery({

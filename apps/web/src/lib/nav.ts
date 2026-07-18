@@ -1,4 +1,4 @@
-import { Package, Briefcase, Users, Calendar, ScanLine, CheckSquare, FileText, Receipt, Shield, BarChart3 } from "lucide-react";
+import { Package, Briefcase, Users, Calendar, ScanLine, CheckSquare, FileText, Receipt, Shield, BarChart3, Files } from "lucide-react";
 import type { AppArea } from "@/types/database";
 
 export interface NavItem {
@@ -18,6 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/angebote", label: "Angebote", icon: FileText, area: "angebote" },
   { to: "/rechnungen", label: "Rechnungen", icon: Receipt, area: "angebote" },
   { to: "/auswertungen", label: "Auswertungen", icon: BarChart3, area: "angebote" },
+  { to: "/dokumente", label: "Dokumente", icon: Files },
   { to: "/kalender", label: "Kalender", icon: Calendar, area: "kalender" },
   { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
   { to: "/admin", label: "Verwaltung", icon: Shield, managerOnly: true },
