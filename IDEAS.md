@@ -124,6 +124,20 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **U2 — Umstieg auf helles Design** (2026-07-19): Die App startet jetzt in **Creme**
+  (Schwarz als Aktionsfarbe); im Konto-Dialog umschaltbar auf **Weiß+Indigo** oder das
+  frühere **Dunkel**. Möglich wurde das, weil alle Farben jetzt über CSS-Variablen laufen
+  statt als feste Hex-Werte einkompiliert zu sein — vorher war ein Umschalten zur Laufzeit
+  schlicht unmöglich. Nebenbei sind vier verstreute Status-Farbtabellen zu **einer**
+  Registry (`lib/statusTone.ts`) zusammengeführt.
+  **Der eigentliche Härtetest waren die Kontraste:** Alle zwölf bisherigen Statusfarben
+  lagen auf hellem Grund unter der Lesbarkeitsschwelle (1,87:1 bis 4,23:1 statt 4,5:1) —
+  ein reiner Hintergrundtausch hätte die Job-Status praktisch unsichtbar gemacht.
+  Voll bewiesen (15/15 E2E, Browser mit Daten, 375 px, Kontraste gemessen).
+- **U1 — Mockup des Gesamtkonzepts** (2026-07-19): `docs/mockups/konzept-gesamt.html` —
+  Navigation in drei Gruppen, Startseite in **drei Rollen** (Till/Verwaltung/Freelancer),
+  Job-Detailseite mit Abschnitten, Dokumente als Job-Ordner.
+
 - **V1 abgesichert — Teil A komplett** (2026-07-18/19, `PLAN-V1-ABSICHERN.md`): vier
   Etappen vor dem UI-Umbau.
   **A4:** Backup-Falle „grün heißt nicht gesichert" in `DEPLOY.md` benannt (der Workflow
