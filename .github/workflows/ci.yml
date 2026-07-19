@@ -134,14 +134,35 @@ jobs:
         # Die lesenden Tests laufen auch ohne Rechte gruen — nur das Anlegen scheitert
         # dann, und zwar mit einem irrefuehrenden "Element nicht gefunden".
         # Deshalb hier hart pruefen, BEVOR die Tests starten.
+        #
+        # Die Diagnose landet zusaetzlich in der Job-Zusammenfassung: Die ist ohne
+        # Login lesbar, die Schritt-Protokolle nicht. Ohne das haengt jede weitere
+        # Fehlersuche daran, dass jemand die Logs von Hand kopiert.
         run: |
-          set -euo pipefail
-          ROLLE=$(psql "postgresql://postgres:postgres@localhost:54322/postgres" -tAc \
-            "select p.role from public.profiles p join auth.users u on u.id = p.id
-              where u.email = 'admin@eventtech.local';")
-          echo "Rolle des Testnutzers: '${ROLLE:-<kein Profil>}'"
+          set -uo pipefail
+          DB="postgresql://postgres:postgres@localhost:54322/postgres"
+          AUTH_N=$(psql "$DB" -tAc "select count(*) from auth.users where email='admin@eventtech.local';")
+          PROF_N=$(psql "$DB" -tAc "select count(*) from public.profiles p join auth.users u on u.id=p.id where u.email='admin@eventtech.local';")
+          ROLLE=$(psql "$DB" -tAc "select p.role from public.profiles p join auth.users u on u.id=p.id where u.email='admin@eventtech.local';")
+          ALLE=$(psql "$DB" -tAc "select coalesce(string_agg(coalesce(email,'<ohne E-Mail>')||' = '||role, ' ; '), '<profiles ist leer>') from public.profiles;")
+          SPALTEN=$(psql "$DB" -tAc "select string_agg(column_name, ', ' order by ordinal_position) from information_schema.columns where table_schema='public' and table_name='profiles';")
+
+          {
+            echo "### E2E — Testnutzer-Diagnose"
+            echo ""
+            echo "| Prüfung | Wert |"
+            echo "|---|---|"
+            echo "| auth.users-Eintraege | \`$AUTH_N\` |"
+            echo "| profiles-Eintraege dazu | \`$PROF_N\` |"
+            echo "| Rolle | \`${ROLLE:-<leer>}\` |"
+            echo "| Alle Profile | \`$ALLE\` |"
+            echo "| Spalten in profiles | \`$SPALTEN\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "auth.users=$AUTH_N profiles=$PROF_N rolle='${ROLLE:-}' alle='$ALLE'"
+
           if [ "$ROLLE" != "admin" ]; then
-            echo "::error::Testnutzer ist nicht 'admin' (sondern '${ROLLE:-kein Profil}') — schreibende E2E-Tests wuerden an der Rechtepruefung scheitern."
+            echo "::error::Testnutzer ist nicht 'admin' (sondern '${ROLLE:-kein Profil}') — schreibende E2E-Tests wuerden an der Rechtepruefung scheitern. Details in der Job-Zusammenfassung."
             exit 1
           fi
 
