@@ -104,6 +104,21 @@ jobs:
             -d '{"email":"admin@eventtech.local","password":"EventTech2026!"}' \
             -o signup.json -w "signup HTTP %{http_code}\n"
 
+          # Warten, bis der Nutzer in auth.users wirklich sichtbar ist. Ohne das
+          # lief das folgende SQL ins Leere: Der Login klappte danach zwar, das
+          # Profil war aber nie angelegt worden — und die schreibenden E2E-Tests
+          # scheiterten dann an der Rechtepruefung.
+          for i in $(seq 1 30); do
+            N=$(psql "postgresql://postgres:postgres@localhost:54322/postgres" -tAc \
+              "select count(*) from auth.users where email='admin@eventtech.local';")
+            [ "$N" = "1" ] && { echo "Nutzer nach ${i}s in auth.users sichtbar"; break; }
+            sleep 1
+          done
+          if [ "${N:-0}" != "1" ]; then
+            echo "::error::Testnutzer taucht nicht in auth.users auf — signup fehlgeschlagen?"
+            head -c 400 signup.json; exit 1
+          fi
+
           # Bestaetigung erzwingen (falls Mail-Confirm aktiv) + Rolle setzen.
           # Rolle ueber die ID zuordnen, nicht ueber die E-Mail-Spalte in profiles:
           # profiles.id == auth.users.id ist garantiert, die gespiegelte E-Mail nicht.
