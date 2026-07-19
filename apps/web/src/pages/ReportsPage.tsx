@@ -21,6 +21,7 @@ import {
 import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { kpiToneClass, type KpiTone } from "@/lib/statusTone";
 
 /**
  * Auswertungen — Finanz-, Job- und Geräte-Kennzahlen aus den bestehenden
@@ -102,14 +103,14 @@ export function ReportsPage() {
               label={`Zahlungseingang ${now.getFullYear()}`}
               value={formatCurrency(finance.paidYear)}
               sub="nach Zahldatum"
-              tone="green"
+              tone="gut"
             />
             <KpiCard
               icon={Receipt}
               label="Aktuell offen"
               value={formatCurrency(finance.openTotal)}
               sub={`${finance.openCount} offene Rechnung${finance.openCount === 1 ? "" : "en"}`}
-              tone="amber"
+              tone="mittel"
             />
             <KpiCard
               icon={AlertTriangle}
@@ -120,7 +121,7 @@ export function ReportsPage() {
                   ? `${finance.overdueCount} Rechnung${finance.overdueCount === 1 ? "" : "en"} mahnen?`
                   : "nichts überfällig"
               }
-              tone={finance.overdueCount > 0 ? "red" : "green"}
+              tone={finance.overdueCount > 0 ? "schlecht" : "gut"}
             />
           </div>
 
@@ -241,13 +242,6 @@ export function ReportsPage() {
   );
 }
 
-const KPI_TONE = {
-  accent: "bg-accent-soft text-accent",
-  green: "bg-status-verfuegbar-bg text-status-verfuegbar",
-  amber: "bg-status-wartung-bg text-status-wartung",
-  red: "bg-status-defekt-bg text-status-defekt",
-} as const;
-
 function KpiCard({
   icon: Icon,
   label,
@@ -259,13 +253,13 @@ function KpiCard({
   label: string;
   value: string;
   sub: string;
-  tone: keyof typeof KPI_TONE;
+  tone: KpiTone;
 }) {
   return (
     <div className="rounded-xl border border-border bg-bg-surface p-3.5">
       <div className="flex items-start justify-between">
         <span className="text-xs text-ink-muted">{label}</span>
-        <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", KPI_TONE[tone])}>
+        <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", kpiToneClass(tone))}>
           <Icon size={16} />
         </span>
       </div>

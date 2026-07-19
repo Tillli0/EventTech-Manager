@@ -28,7 +28,7 @@ import { DEVICE_STATUS_OPTIONS, invoiceDerivedStatus, offerTotals, invoicePaidSu
 import { formatDate, formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Job, Task } from "@/types/database";
-import { deviceTone } from "@/lib/statusTone";
+import { deviceTone, kpiToneClass, type KpiTone } from "@/lib/statusTone";
 import { Avatar } from "@/components/ui/Avatar";
 
 function prefersReducedMotion(): boolean {
@@ -118,7 +118,7 @@ export function DashboardPage() {
           <MetricCard
             to="/rechnungen"
             icon={Receipt}
-            tone={ueberfaellig > 0 ? "red" : "green"}
+            tone={ueberfaellig > 0 ? "schlecht" : "gut"}
             label="Offene Rechnungen"
             value={offeneSumme}
             format={(v) => formatCurrency(v)}
@@ -128,7 +128,7 @@ export function DashboardPage() {
           <MetricCard
             to="/inventar"
             icon={Package}
-            tone="green"
+            tone="gut"
             label="Geräte verfügbar"
             value={available}
             sub={`von ${totalDevices} gesamt`}
@@ -145,7 +145,7 @@ export function DashboardPage() {
         <MetricCard
           to="/aufgaben"
           icon={ListChecks}
-          tone="amber"
+          tone="mittel"
           label="Offene Aufgaben"
           value={openTaskCount}
           sub={overdueTasks.length > 0 ? `${overdueTasks.length} überfällig` : "nichts überfällig"}
@@ -263,13 +263,6 @@ export function DashboardPage() {
 // Bausteine
 // ============================================================
 
-const TONE: Record<string, string> = {
-  accent: "bg-accent/15 text-accent",
-  green: "bg-status-verfuegbar/15 text-status-verfuegbar",
-  amber: "bg-status-wartung/15 text-status-wartung",
-  red: "bg-status-defekt/15 text-status-defekt",
-};
-
 function MetricCard({
   to,
   icon: Icon,
@@ -281,7 +274,7 @@ function MetricCard({
 }: {
   to: string;
   icon: LucideIcon;
-  tone: keyof typeof TONE;
+  tone: KpiTone;
   label: string;
   value: number;
   sub: string;
@@ -295,7 +288,7 @@ function MetricCard({
     >
       <div className="flex items-start justify-between">
         <span className="text-xs text-ink-muted">{label}</span>
-        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", TONE[tone])}>
+        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", kpiToneClass(tone))}>
           <Icon size={16} />
         </span>
       </div>

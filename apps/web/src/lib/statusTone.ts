@@ -156,6 +156,19 @@ export function levelTone(level: ToneLevel): Tone {
 }
 
 /**
+ * Kachel-Ton für Kennzahl-Karten (Dashboard/Auswertungen): Ampel-Level plus
+ * ein neutrales „accent" für rein informative Kennzahlen ohne Wertung.
+ * Ersetzt die vormals doppelt geführten `TONE`/`KPI_TONE`-Tabellen.
+ */
+export type KpiTone = ToneLevel | "accent";
+
+export function kpiToneClass(tone: KpiTone): string {
+  if (tone === "accent") return "bg-accent-soft text-accent";
+  const t = levelTone(tone);
+  return `${t.bg} ${t.text}`;
+}
+
+/**
  * Marge → Ampel. Schwellen aus dem freigegebenen Zielbild der Neuausrichtung
  * (grün ab 30 %, amber 10–30 %, rot darunter).
  */
