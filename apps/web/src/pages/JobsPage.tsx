@@ -25,6 +25,7 @@ import { exportToCsv } from "@/lib/csv";
 import type { Job } from "@/types/database";
 import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
+import { jobTone } from "@/lib/statusTone";
 
 function customerLabel(job: Job): string | null {
   const c = job.customer;
@@ -33,17 +34,6 @@ function customerLabel(job: Job): string | null {
 }
 
 // Literal Klassennamen (nicht interpoliert), damit Tailwinds JIT sie findet.
-const STATUS_TONE: Record<JobStatus, string> = {
-  anfrage: "bg-job-anfrage/15 text-job-anfrage",
-  bestaetigt: "bg-job-bestaetigt/15 text-job-bestaetigt",
-  planung: "bg-job-planung/15 text-job-planung",
-  packen: "bg-job-packen/15 text-job-packen",
-  laeuft: "bg-job-laeuft/15 text-job-laeuft",
-  rueckgabe: "bg-job-rueckgabe/15 text-job-rueckgabe",
-  abgeschlossen: "bg-job-abgeschlossen/15 text-job-abgeschlossen",
-  storniert: "bg-job-storniert/15 text-job-storniert",
-};
-
 export function JobsPage() {
   const { canEdit, isManager, profile, user, refresh } = useAuth();
   const mayEdit = canEdit("jobs");
@@ -153,7 +143,7 @@ export function JobsPage() {
             <StatusChip
               key={opt.value}
               active={statusFilter === opt.value}
-              tone={STATUS_TONE[opt.value]}
+              tone={`${jobTone(opt.value).bg} ${jobTone(opt.value).text}`}
               onClick={() => setStatusFilter(opt.value)}
             >
               {opt.label} <ChipCount n={statusCounts[opt.value] ?? 0} />

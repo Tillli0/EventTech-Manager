@@ -154,6 +154,14 @@ Details + typische Fehlerbilder: Skill `feature-fertigstellen`.
 - **Vitest v2.x** behalten (v4 inkompatibel mit Vite 5). ESLint läuft mit
   `--max-warnings 0` — auch ungenutzte eslint-disable-Direktiven sind Fehler.
 - **Kein NBSP/Sonderzeichen** blind in Tests tippen — ` ` als Escape schreiben.
+- **Supabase startet nicht: „ports are not available … forbidden by its access
+  permissions"** (Windows, nach Docker-/System-Neustart). Windows hat den Portbereich
+  reserviert, in dem 54321/54322 liegen — prüfbar mit
+  `netsh interface ipv4 show excludedportrange protocol=tcp` (blockiert war z. B.
+  54282–54381). **Fix (Administrator-Terminal nötig):** `net stop winnat` und
+  `net start winnat`, danach `supabase start`. Ohne Admin-Rechte ist hier Endstation —
+  Claude kann das **nicht** selbst beheben. Symptom vorher: Container laufen und melden
+  „healthy", aber `docker port` zeigt keine Weiterleitung und die API antwortet nicht.
 - **Verwaiste Dev-Server:** hängt Port 5173, gehört der node-Prozess fast immer einem
   alten Vite — Kommandozeile prüfen (`wmic process where ProcessId=<pid> get CommandLine`),
   dann killen und Preview neu starten.
