@@ -78,3 +78,41 @@ export function useDeletePersonalBlock() {
     },
   });
 }
+
+interface CreateRecurringInput {
+  category: PersonalBlockCategory;
+  title?: string | null;
+  weekday: number;
+  start_time: string;
+  end_time: string;
+  valid_from: string;
+  valid_to?: string | null;
+}
+
+export function useCreatePersonalRecurringBlock() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (input: CreateRecurringInput) => {
+      if (!user) throw new Error("Nicht angemeldet.");
+      const { error } = await supabase.from("personal_recurring_blocks").insert({ ...input, user_id: user.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PERSONAL_RECURRING_KEY });
+    },
+  });
+}
+
+export function useDeletePersonalRecurringBlock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("personal_recurring_blocks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PERSONAL_RECURRING_KEY });
+    },
+  });
+}

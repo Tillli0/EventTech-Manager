@@ -17,6 +17,9 @@ export type PersonalBlockCategory =
   | "krank"
   | "sonstiges";
 
+/** 0 = Montag … 6 = Sonntag (interne Wochentags-Zählung, siehe Migration 0039). */
+export const WEEKDAY_LABELS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+
 export const PERSONAL_BLOCK_CATEGORY_LABELS: Record<PersonalBlockCategory, string> = {
   koeln_schicht: "Köln-Schicht",
   schule: "Schule",

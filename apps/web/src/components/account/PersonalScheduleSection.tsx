@@ -4,8 +4,15 @@ import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
-import { usePersonalBlocks, useCreatePersonalBlock, useDeletePersonalBlock } from "@/hooks/usePersonalBlocks";
-import { PERSONAL_BLOCK_CATEGORY_LABELS, type PersonalBlockCategory } from "@/lib/personalSchedule";
+import {
+  usePersonalBlocks,
+  useCreatePersonalBlock,
+  useDeletePersonalBlock,
+  usePersonalRecurringBlocks,
+  useCreatePersonalRecurringBlock,
+  useDeletePersonalRecurringBlock,
+} from "@/hooks/usePersonalBlocks";
+import { PERSONAL_BLOCK_CATEGORY_LABELS, WEEKDAY_LABELS, type PersonalBlockCategory } from "@/lib/personalSchedule";
 import { formatDate } from "@/lib/format";
 
 const CATEGORY_OPTIONS = Object.entries(PERSONAL_BLOCK_CATEGORY_LABELS) as [PersonalBlockCategory, string][];
@@ -148,6 +155,136 @@ export function PersonalScheduleSection() {
                   title="Löschen"
                   onClick={() => void handleDelete(b.id, label)}
                 >
+                  <Trash2 size={14} />
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <RecurringRules />
+    </div>
+  );
+}
+
+/** Wöchentliche Regeln (Stundenplan, feste Schichtmuster) — nutzt personal_recurring_blocks. */
+function RecurringRules() {
+  const { data: rules } = usePersonalRecurringBlocks();
+  const create = useCreatePersonalRecurringBlock();
+  const remove = useDeletePersonalRecurringBlock();
+  const toast = useToast();
+  const confirm = useConfirm();
+
+  const [open, setOpen] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [category, setCategory] = useState<PersonalBlockCategory>("schule");
+  const [weekday, setWeekday] = useState(0);
+  const [startTime, setStartTime] = useState("08:00");
+  const [endTime, setEndTime] = useState("13:00");
+  const [validFrom, setValidFrom] = useState(today);
+  const [validTo, setValidTo] = useState("");
+
+  async function handleAdd() {
+    if (endTime <= startTime) {
+      toast.error("Ende muss nach dem Start liegen.");
+      return;
+    }
+    try {
+      await create.mutateAsync({
+        category,
+        weekday,
+        start_time: startTime,
+        end_time: endTime,
+        valid_from: validFrom,
+        valid_to: validTo || null,
+      });
+      toast.success("Regel gespeichert.");
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Konnte nicht gespeichert werden.");
+    }
+  }
+
+  async function handleDelete(id: string, label: string) {
+    const ok = await confirm({ title: "Regel löschen", message: `„${label}" wird entfernt.`, confirmLabel: "Löschen", danger: true });
+    if (!ok) return;
+    try {
+      await remove.mutateAsync(id);
+      toast.success("Entfernt.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Löschen fehlgeschlagen.");
+    }
+  }
+
+  return (
+    <div className="mt-4 space-y-3 border-t border-border pt-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-ink">Wöchentlich (Stundenplan, feste Schichten)</p>
+        <Button variant="secondary" size="sm" onClick={() => setOpen((v) => !v)}>
+          <Plus size={14} />
+          Regel
+        </Button>
+      </div>
+
+      {open && (
+        <div className="space-y-3 rounded-md border border-border bg-bg-raised p-3">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Art">
+              <Select value={category} onChange={(e) => setCategory(e.target.value as PersonalBlockCategory)}>
+                {(Object.entries(PERSONAL_BLOCK_CATEGORY_LABELS) as [PersonalBlockCategory, string][]).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField label="Wochentag">
+              <Select value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>
+                {WEEKDAY_LABELS.map((l, i) => (
+                  <option key={i} value={i}>{l}</option>
+                ))}
+              </Select>
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Von (Uhrzeit)">
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            </FormField>
+            <FormField label="Bis (Uhrzeit)">
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Gültig ab">
+              <Input type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} />
+            </FormField>
+            <FormField label="Gültig bis (optional)">
+              <Input type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} />
+            </FormField>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Abbrechen</Button>
+            <Button size="sm" onClick={() => void handleAdd()} disabled={create.isPending}>
+              {create.isPending ? "Speichert …" : "Speichern"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {rules && rules.length > 0 && (
+        <ul className="space-y-1">
+          {rules.map((r) => {
+            const label = `${WEEKDAY_LABELS[r.weekday]} ${r.start_time.slice(0, 5)}–${r.end_time.slice(0, 5)}`;
+            return (
+              <li key={r.id} className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-bg-raised">
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-ink">
+                    {PERSONAL_BLOCK_CATEGORY_LABELS[r.category]} · {label}
+                  </p>
+                  <p className="text-xs text-ink-faint">
+                    wöchentlich{r.valid_to ? ` bis ${formatDate(r.valid_to)}` : ""}
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" aria-label={`„${label}" löschen`} title="Löschen" onClick={() => void handleDelete(r.id, label)}>
                   <Trash2 size={14} />
                 </Button>
               </li>
