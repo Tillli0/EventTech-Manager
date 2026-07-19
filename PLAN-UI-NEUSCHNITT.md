@@ -138,46 +138,33 @@ reduzierte Navigation, Verfügbarkeits-Karte), **keine Konsolenfehler**.
 beide werden ohnehin gebaut, die Wahl bestimmt nur, welches im Verifikations-Ritual
 geprüft wird (K-A).
 
-**U2 🟡 — Theme-Fundament + eine Farb-Registry** *(gebaut 2026-07-19, **liegt auf dem
-Branch `u2-theme-fundament`**, noch nicht auf `main`)*
+**U2 ✅ — Theme-Fundament + eine Farb-Registry** *(erledigt 2026-07-19)*
 
-**Warum ein Branch:** Ein Push auf `main` geht sofort live. Der visuelle Beweis mit echten
-Daten fehlt noch, weil Docker Desktop auf dem Entwicklungsrechner gestoppt war — ohne
-Backend zeigt die App nur Ladezustände. Ein Umbau, der jede Seite berührt, gehört ohne
-diesen Beweis nicht in die Produktiv-App.
+`index.css` mit drei Theme-Sätzen als CSS-Variablen (**Creme = Standard**, Weiß, Dunkel) ·
+`tailwind.config.js` auf `rgb(var(--c-…) / <alpha-value>)` · `lib/theme.ts` · Inline-Skript
+gegen das Aufblitzen des falschen Themes · Theme-Auswahl im Konto-Dialog (K-B) ·
+**`lib/statusTone.ts` als eine Registry** — ersetzt vier verstreute Status-Tabellen
+(`JOB_STATUS_HEX`, `STATUS_HEX`, zwei × `STATUS_TONE`).
 
-**Gebaut:** `index.css` mit drei Theme-Sätzen als CSS-Variablen (Creme = Standard, Weiß,
-Dark) · `tailwind.config.js` auf `rgb(var(--c-…) / <alpha-value>)` · `lib/theme.ts`
-(lesen/setzen/merken) · Inline-Skript in `index.html` gegen das Aufblitzen des falschen
-Themes · `lib/statusTone.ts` als **eine** Registry (nur Klassennamen, nie Hex) ·
-Theme-Auswahl im Konto-Dialog · `JobDetailPage` und `DashboardPage` von hart kodierten
-Hex-Werten befreit.
-
-**Kontrast gemessen (der Härtetest):** **Alle zwölf** bisherigen Statusfarben liegen auf
-hellem Grund unter der Schwelle — zwischen **1,87:1 und 4,23:1** (nötig: 4,5:1). Die neuen
+**Kontrast gemessen — der eigentliche Härtetest:** **Alle zwölf** bisherigen Statusfarben
+lagen auf hellem Grund unter der Schwelle (**1,87:1 bis 4,23:1**, nötig 4,5:1). Die neuen
 Werte sind auf Creme *und* Weiß geprüft; drei mussten nach der ersten Messung nachgedunkelt
 werden (`packen`/`wartung` → `#9A4A08`, `abgeschlossen`/`verfuegbar` → `#14713A`).
 
-**Belegt:** tsc · lint · 101 Vitest · build grün. Theme-Umschaltung auf der Login-Seite in
-allen drei Themes gemessen (Kontrast 15,4 / 16,9 / 15,7) — Screenshots `u2-login-*.png`.
+**Voll bewiesen:** tsc · lint · 101 Vitest · build · **15/15 E2E gegen das neue Theme** ·
+Browser mit echten Daten (Start, Jobs, Inventar, Rechnungen) · **375 px ohne horizontales
+Scrollen** · keine Konsolenfehler · Theme-Umschaltung in allen drei Themes gemessen
+(Kontrast 15,4 / 16,9 / 15,7). Screenshots: `u2-daten-*.png`, `u2-login-*.png`,
+`u2-mobil-375.png`.
 
-**Noch offen, bevor das auf `main` darf:**
-1. Seiten **mit Daten** im Browser prüfen (Docker starten, `supabase start`).
-2. **E2E-Lauf** (15 Tests) gegen das neue Theme.
-3. **375 px** prüfen.
-4. Die verbliebenen Klassen-Mappings (`STATUS_TONE` in Jobs-/InventoryPage, `KPI_TONE`,
-   `SOURCE_TONE`) auf die Registry ziehen — sie sind nicht kaputt (nutzen Token-Klassen),
-   aber weiterhin dupliziert.
+**Bewusst offen gelassen:** `TONE` (DashboardPage) und `KPI_TONE` (ReportsPage) sind
+Kennzahlen-Ampeln, keine Status-Zuordnungen — sie fallen in **U3** weg, wenn die Startseite
+neu gebaut wird. `levelTone()` steht dafür bereit.
 
-<details><summary>Ursprüngliche Planung (Referenz)</summary>
-Tokens auf `var()`; `index.css` mit Theme-Sets (**Creme**, **Weiß+Indigo**, **Dark** aus den
-heutigen Werten); Umschalter + Speicherung. Die fünf Mappings (`STATUS_TONE`×2,
-`JOB_STATUS_HEX`, `TONE`, `KPI_TONE`, `SOURCE_TONE`) werden **eine** getestete
-`lib/statusTone.ts`. `job-*`/`status-*` für hellen Grund nachgeschärft — **jeder Wert gegen
-4,5:1 geprüft und benannt** (bekannt kritisch: `anfrage` #8B92A3, `abgeschlossen` #22C55E).
-`apps/web/CLAUDE.md` von „dark-only" auf die neue Wahrheit ziehen.
-
-</details>
+**Stolperstein unterwegs (in `CLAUDE.md` dokumentiert):** Nach einem Docker-Neustart
+startet Supabase auf Windows nicht mehr, weil das System den Portbereich mit 54321/54322
+reserviert. Container melden „healthy", die API antwortet trotzdem nicht. Fix braucht ein
+Administrator-Terminal (`net stop winnat` / `net start winnat`).
 
 **U3 — Startseite „Nächster Einsatz" + neue Navigation**
 `DashboardPage` inhaltlich neu: Hero „Nächster Einsatz" mit Zeitplan; darunter offene

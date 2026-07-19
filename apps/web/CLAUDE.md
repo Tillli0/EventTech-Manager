@@ -2,11 +2,26 @@
 
 Vite + React + TypeScript + TanStack Query + Tailwind. Deutsche UI-Texte, Premium-Look.
 
-> ⚠️ **Im Umbruch (Entscheidung 2026-07-18):** Die App ist **heute** dark-only mit
-> Indigo-Akzent — das wird auf ein **helles Theme** umgestellt, mit umschaltbaren Paletten
-> (Creme · Weiß+Indigo · Dark) über CSS-Variablen. Details und Reihenfolge:
-> `PLAN-UI-NEUSCHNITT.md` (Etappe U2). **Bis U2 gilt der Bestand unten** — aber keine neuen
-> hart kodierten Hex-Werte mehr anlegen, sie sind der Blocker für den Umschalter.
+## Themes (seit U2, 2026-07-19)
+
+Die App ist **hell** — Standard ist **Creme** (Schwarz als Aktionsfarbe). Umschaltbar im
+Konto-Dialog: **Creme · Weiß+Indigo · Dunkel**. Das frühere dunkle Theme bleibt damit
+wählbar, wird aber **nicht aktiv gepflegt** (nur das Standard-Theme läuft im
+Verifikations-Ritual mit).
+
+- **Farben kommen ausschließlich aus CSS-Variablen** (`src/index.css`, Sätze je
+  `:root[data-theme="…"]`), Tailwind bindet sie über
+  `rgb(var(--c-…) / <alpha-value>)` ein. **Niemals Hex-Werte in Komponenten** — sie
+  wechseln beim Theme-Wechsel nicht mit und erzeugen dunkle Flecken im hellen Design.
+  Erlaubte Ausnahmen: Nutzer-Farben aus der DB (Job-/Kategorie-/Ortsfarbe), PDF-Erzeugung
+  (`@react-pdf/renderer` kennt kein CSS) und die Theme-Vorschaukacheln.
+- **Status → Farbe kommt aus `lib/statusTone.ts`** (`jobTone`, `deviceTone`, `levelTone`,
+  `marginLevel`) — nicht neu zuordnen. Dort stehen nur Klassennamen, nie Hex.
+- **Statusfarben gibt es je Theme in eigenen Werten.** Die dunklen Töne fallen auf hellem
+  Grund unter 4,5:1 (gemessen: alle zwölf lagen zwischen 1,87:1 und 4,23:1). Neue
+  Statusfarben deshalb **immer gegen Creme UND Weiß messen**.
+- Theme setzen/lesen über `lib/theme.ts`; ein Inline-Skript in `index.html` setzt es vor
+  dem ersten Rendern (sonst blitzt kurz das falsche Theme auf).
 
 ## Design-System (Token-first, keine Roh-Farben)
 
