@@ -183,6 +183,10 @@ jobs:
 
           # Beweis, dass die Anmeldung wirklich funktioniert — sonst scheitern die
           # Tests spaeter mit einem irrefuehrenden Timeout statt hier mit Klartext.
+          # ANON hier NEU ermitteln: Jeder Workflow-Schritt startet eine frische
+          # Shell — die Variable aus dem Anlege-Schritt existiert hier nicht mehr
+          # (genau daran scheiterte Lauf #45: "ANON: unbound variable").
+          ANON=$(supabase status -o json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).ANON_KEY))")
           CODE=$(curl -s -o login.json -w "%{http_code}" -X POST \
             "http://localhost:54321/auth/v1/token?grant_type=password" \
             -H "apikey: $ANON" -H "Content-Type: application/json" \
