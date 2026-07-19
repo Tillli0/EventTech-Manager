@@ -1,9 +1,29 @@
 <!doctype html>
-<html lang="de" class="dark">
+<html lang="de" data-theme="creme">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0F1115" />
+    <meta name="theme-color" content="#F2EFE9" />
+    <!--
+      Gespeichertes Theme VOR dem ersten Rendern setzen. Liefe das erst in React,
+      würde die Seite kurz im Standard-Theme aufblitzen und dann umspringen
+      (der bekannte „Theme-Flash"). Bewusst inline und ohne Abhängigkeiten.
+    -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("eventtech.theme");
+          if (t === "creme" || t === "weiss" || t === "dark") {
+            document.documentElement.dataset.theme = t;
+            var farbe = t === "dark" ? "#0F1115" : t === "weiss" ? "#F6F7FA" : "#F2EFE9";
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute("content", farbe);
+          }
+        } catch (e) {
+          /* Kein Zugriff auf localStorage — dann bleibt der Standard stehen. */
+        }
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="EventTech" />

@@ -2,13 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================================================
+   Farb-Themes (PLAN-UI-NEUSCHNITT.md, Etappe U2)
+   ---------------------------------------------------------------------------
+   Alle Farben laufen über CSS-Variablen, damit sie ZUR LAUFZEIT umschaltbar
+   sind. Vorher standen feste Hex-Werte in tailwind.config.js — die werden beim
+   Bauen in die Klassen einkompiliert und lassen sich nicht mehr wechseln.
+
+   Werte als "R G B" (ohne rgb()), damit Tailwind weiterhin Transparenz-Stufen
+   wie `bg-accent/10` erzeugen kann.
+
+   WICHTIG — Statusfarben gibt es je Theme in EIGENEN Werten: Die dunklen Töne
+   sind für dunklen Grund gewählt und fallen auf Hell unter die Lesbarkeits-
+   schwelle (gemessen: alle zwischen 1,87:1 und 4,23:1, nötig sind 4,5:1).
+   Die hellen Werte sind nachgeschärft und auf Creme UND Weiß geprüft.
+   =========================================================================== */
+
+:root,
+:root[data-theme="creme"] {
+  color-scheme: light;
+  --c-bg: 242 239 233;         --c-bg-surface: 255 255 255;  --c-bg-raised: 247 245 241;
+  --c-border: 227 222 212;     --c-border-subtle: 237 233 226;
+  --c-ink: 26 24 21;           --c-ink-muted: 107 102 93;    --c-ink-faint: 155 149 138;
+  --c-accent: 31 29 26;        --c-accent-hover: 56 52 46;   --c-accent-soft: 237 233 225;
+  --c-on-accent: 255 255 255;
+}
+
+:root[data-theme="weiss"] {
+  color-scheme: light;
+  --c-bg: 246 247 250;         --c-bg-surface: 255 255 255;  --c-bg-raised: 241 243 248;
+  --c-border: 226 229 236;     --c-border-subtle: 237 239 244;
+  --c-ink: 20 22 28;           --c-ink-muted: 93 100 114;    --c-ink-faint: 142 150 166;
+  --c-accent: 79 70 229;       --c-accent-hover: 67 56 202;  --c-accent-soft: 238 237 252;
+  --c-on-accent: 255 255 255;
+}
+
+/* Statusfarben für HELLE Themes (Kontrast auf Creme und Weiß >= 4,5:1). */
+:root,
+:root[data-theme="creme"],
+:root[data-theme="weiss"] {
+  --c-job-anfrage: 90 98 115;        --c-job-bestaetigt: 29 78 216;
+  --c-job-planung: 109 40 217;       --c-job-packen: 154 74 8;
+  --c-job-laeuft: 194 65 12;         --c-job-rueckgabe: 15 118 110;
+  --c-job-abgeschlossen: 20 113 58;  --c-job-storniert: 185 28 28;
+  --c-status-verfuegbar: 20 113 58;  --c-status-ausgeliehen: 29 78 216;
+  --c-status-defekt: 185 28 28;      --c-status-wartung: 154 74 8;
+  /* Gedämpfte Flächen hinter Status-Badges */
+  --c-status-verfuegbar-bg: 232 244 236; --c-status-ausgeliehen-bg: 231 238 252;
+  --c-status-defekt-bg: 252 233 233;     --c-status-wartung-bg: 250 240 227;
+}
+
+/* Das frühere Theme bleibt wählbar. Bewusst NICHT aktiv gepflegt: Es wird nicht
+   bei jeder Änderung mitgeprüft (sonst verdreifacht sich die Prüfarbeit). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: 15 17 21;            --c-bg-surface: 23 26 33;     --c-bg-raised: 29 33 43;
+  --c-border: 38 43 54;        --c-border-subtle: 29 33 43;
+  --c-ink: 232 234 237;        --c-ink-muted: 139 146 163;   --c-ink-faint: 91 98 115;
+  --c-accent: 99 102 241;      --c-accent-hover: 79 70 229;  --c-accent-soft: 30 33 71;
+  --c-on-accent: 255 255 255;
+
+  --c-job-anfrage: 139 146 163;      --c-job-bestaetigt: 59 130 246;
+  --c-job-planung: 139 92 246;       --c-job-packen: 245 158 11;
+  --c-job-laeuft: 249 115 22;        --c-job-rueckgabe: 20 184 166;
+  --c-job-abgeschlossen: 34 197 94;  --c-job-storniert: 239 68 68;
+  --c-status-verfuegbar: 34 197 94;  --c-status-ausgeliehen: 59 130 246;
+  --c-status-defekt: 239 68 68;      --c-status-wartung: 245 158 11;
+  --c-status-verfuegbar-bg: 20 42 28;    --c-status-ausgeliehen-bg: 17 32 59;
+  --c-status-defekt-bg: 44 20 20;        --c-status-wartung-bg: 44 33 16;
+}
+
 @layer base {
   * {
     @apply border-border;
-  }
-
-  html {
-    color-scheme: dark;
   }
 
   body {

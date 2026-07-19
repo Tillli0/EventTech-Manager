@@ -35,20 +35,11 @@ import { useAuth } from "@/auth/AuthProvider";
 import type { Job } from "@/types/database";
 import { Users } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { jobTone } from "@/lib/statusTone";
 
 // Muss zu den job.*-Farben in tailwind.config.js passen (dort für Badges/Punkte
 // genutzt). Hier als Hex für farbig getönte Status-Buttons (inline style statt
 // dynamischer Tailwind-Klassen, da JIT keine berechneten Klassennamen erkennt).
-const JOB_STATUS_HEX: Record<JobStatus, string> = {
-  anfrage: "#8B92A3",
-  bestaetigt: "#3B82F6",
-  planung: "#8B5CF6",
-  packen: "#F59E0B",
-  laeuft: "#F97316",
-  rueckgabe: "#14B8A6",
-  abgeschlossen: "#22C55E",
-  storniert: "#EF4444",
-};
 
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -186,7 +177,7 @@ export function JobDetailPage() {
               {mayEdit ? (
                 <div className="flex flex-col">
                   {JOB_STATUS_OPTIONS.filter((o) => o.value !== "storniert").map((opt, i, arr) => {
-                    const hex = JOB_STATUS_HEX[opt.value];
+                    const tone = jobTone(opt.value as JobStatus);
                     const active = job.status === opt.value;
                     return (
                       <div key={opt.value} className="flex flex-col items-stretch">
@@ -194,16 +185,12 @@ export function JobDetailPage() {
                           onClick={() => updateStatus.mutate({ id: job.id, status: opt.value as JobStatus })}
                           className={cn(
                             "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-medium transition-all",
+                            tone.bg, tone.text,
+                            active ? `${tone.border} ring-1 ring-current` : tone.border,
                             !active && "hover:translate-x-0.5",
                           )}
-                          style={{
-                            backgroundColor: `${hex}1A`,
-                            color: hex,
-                            borderColor: active ? hex : `${hex}33`,
-                            boxShadow: active ? `0 0 0 1px ${hex}` : undefined,
-                          }}
                         >
-                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: hex }} aria-hidden />
+                          <span className={cn("h-2 w-2 shrink-0 rounded-full", tone.solid)} aria-hidden />
                           {opt.label}
                         </button>
                         {i < arr.length - 1 && (
@@ -219,23 +206,19 @@ export function JobDetailPage() {
 
                   {(() => {
                     const opt = JOB_STATUS_OPTIONS.find((o) => o.value === "storniert")!;
-                    const hex = JOB_STATUS_HEX.storniert;
+                    const tone = jobTone("storniert");
                     const active = job.status === "storniert";
                     return (
                       <button
                         onClick={() => updateStatus.mutate({ id: job.id, status: "storniert" })}
                         className={cn(
                           "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-medium transition-all",
+                          tone.bg, tone.text,
+                          active ? `${tone.border} ring-1 ring-current` : tone.border,
                           !active && "hover:translate-x-0.5",
                         )}
-                        style={{
-                          backgroundColor: `${hex}1A`,
-                          color: hex,
-                          borderColor: active ? hex : `${hex}33`,
-                          boxShadow: active ? `0 0 0 1px ${hex}` : undefined,
-                        }}
                       >
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: hex }} aria-hidden />
+                        <span className={cn("h-2 w-2 shrink-0 rounded-full", tone.solid)} aria-hidden />
                         {opt.label}
                       </button>
                     );

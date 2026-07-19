@@ -28,6 +28,7 @@ import { ManageSetsDialog } from "@/components/inventory/ManageSetsDialog";
 import { ImportDevicesDialog } from "@/components/inventory/ImportDevicesDialog";
 import { exportToCsv } from "@/lib/csv";
 import { cn } from "@/lib/cn";
+import { deviceTone } from "@/lib/statusTone";
 import { useAuth } from "@/auth/AuthProvider";
 
 type SortKey = "name" | "stock" | "status" | "value";
@@ -54,13 +55,6 @@ function setBuildableNow(
 }
 
 /** Farbton je Gerätestatus für Kennzahlen-Karten (Zahl + Mini-Balken). */
-const STATUS_TONE: Record<DeviceStatus, { text: string; bar: string }> = {
-  verfuegbar: { text: "text-status-verfuegbar", bar: "bg-status-verfuegbar" },
-  ausgeliehen: { text: "text-status-ausgeliehen", bar: "bg-status-ausgeliehen" },
-  defekt: { text: "text-status-defekt", bar: "bg-status-defekt" },
-  wartung: { text: "text-status-wartung", bar: "bg-status-wartung" },
-};
-
 
 export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
   const navigate = useNavigate();
@@ -424,14 +418,14 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
           {DEVICE_STATUS_OPTIONS.map((opt) => {
             const count = statusCounts[opt.value] ?? 0;
             const share = devices && devices.length > 0 ? (count / devices.length) * 100 : 0;
-            const tone = STATUS_TONE[opt.value];
+            const tone = deviceTone(opt.value);
             return (
               <Card key={opt.value} className="px-4 py-3">
                 <p className="text-xs text-ink-muted">{opt.label}</p>
                 <p className={cn("mt-1 text-2xl font-semibold", count > 0 ? tone.text : "text-ink")}>{count}</p>
                 <div className="mt-2 h-1 overflow-hidden rounded-full bg-bg-raised">
                   <div
-                    className={cn("h-full rounded-full transition-all duration-500", tone.bar)}
+                    className={cn("h-full rounded-full transition-all duration-500", tone.solid)}
                     style={{ width: `${share}%` }}
                   />
                 </div>
