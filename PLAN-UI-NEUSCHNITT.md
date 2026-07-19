@@ -192,10 +192,15 @@ horizontales Scrollen · keine Konsolenfehler. Dabei fiel eine **doppelte Zeitpl
 auf (Hero + alter Block) — behoben. Testdaten restlos entfernt (Gegenprobe: 0).
 
 **Noch offen in U3:**
-- Karte **„Zuletzt abgelegte Dokumente"** (`useAllDocuments` existiert seit D3).
+- ~~Karte „Zuletzt abgelegte Dokumente"~~ ✅ 2026-07-19 — nutzt `useAllDocuments`
+  (seit D3), zeigt die letzten 5 mit Kategorie-Icon, Vorgang und Datum; Klick öffnet
+  die signierte URL wie in `DocumentsCard`.
 - Rest-Inventar auf eine **schmale Fußzeile** eindampfen (aktuell noch zwei Karten).
-- `ui/Avatar.tsx` als geteilte Komponente (heute 4× nachgebaut).
-- `TONE`/`KPI_TONE` auf `levelTone()` ziehen.
+- ~~`ui/Avatar.tsx` als geteilte Komponente~~ ✅ 2026-07-19 — sechs Nachbauten
+  (Jobs, Job-Zuweisung ×2, Kundenliste, Website-Anfragen, Dashboard) auf
+  `components/ui/Avatar.tsx` gezogen.
+- ~~`TONE`/`KPI_TONE` auf `levelTone()` ziehen~~ ✅ 2026-07-19 — `kpiToneClass()`
+  in `lib/statusTone.ts` ersetzt beide Kopien (Dashboard, Auswertungen).
 - **Rollen-Beweis mit einem zweiten Nutzer** (ohne Manager-Rechte) — steht noch aus.
 
 **U4 — Kalender als Ebenen-Modell**

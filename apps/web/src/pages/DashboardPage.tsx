@@ -12,6 +12,7 @@ import {
   Settings,
   ArrowUpRight,
   Receipt,
+  Files,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +23,8 @@ import { TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useWebsiteLeads } from "@/hooks/useWebsiteLeads";
 import { useInvoices } from "@/hooks/useInvoices";
+import { useAllDocuments, openDocumentInNewTab } from "@/hooks/useDocuments";
+import { CATEGORY_META } from "@/components/documents/categoryMeta";
 import { NextJobHero } from "@/components/dashboard/NextJobHero";
 import { useAuth } from "@/auth/AuthProvider";
 import { DEVICE_STATUS_OPTIONS, invoiceDerivedStatus, offerTotals, invoicePaidSum } from "@/types/database";
@@ -46,6 +49,7 @@ export function DashboardPage() {
     useDashboard();
   const { data: leads } = useWebsiteLeads();
   const { data: invoices } = useInvoices();
+  const { data: documents } = useAllDocuments();
   const { user, profile, isAdmin, hasArea } = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -250,6 +254,45 @@ export function DashboardPage() {
                 {otherOpenTasks.slice(0, Math.max(0, 4 - overdueTasks.length)).map((task) => (
                   <TaskRow key={task.id} task={task} />
                 ))}
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title={
+              <span className="flex items-center gap-2">
+                <Files size={15} className="text-accent" />
+                Zuletzt abgelegte Dokumente
+              </span>
+            }
+            action={<CardLink to="/dokumente" label="Alle Dokumente" />}
+          >
+            {!documents || documents.length === 0 ? (
+              <p className="py-3 text-center text-sm text-ink-faint">Noch keine Dokumente abgelegt.</p>
+            ) : (
+              <div className="space-y-1">
+                {documents.slice(0, 5).map((doc) => {
+                  const meta = CATEGORY_META[doc.category] ?? CATEGORY_META.sonstiges;
+                  const Icon = meta.icon;
+                  return (
+                    <button
+                      key={doc.id}
+                      type="button"
+                      onClick={() => void openDocumentInNewTab(doc)}
+                      className="flex w-full items-center gap-2.5 rounded-md py-1.5 text-left transition-colors hover:bg-bg-raised"
+                    >
+                      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", meta.bg)}>
+                        <Icon size={15} className={meta.text} strokeWidth={1.75} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-ink">{doc.title}</p>
+                        <p className="truncate text-xs text-ink-faint">
+                          {doc.entityLabel} · {formatDate(doc.created_at)}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </SectionCard>
