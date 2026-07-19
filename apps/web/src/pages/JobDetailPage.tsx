@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LoadingState, ErrorState } from "@/components/ui/States";
+import { Tabs } from "@/components/ui/Tabs";
+import { Boxes, Euro, LayoutList, FolderClosed } from "lucide-react";
 import { useJob, useUpdateJobStatus, useUpdateJob, useSoftDeleteJob } from "@/hooks/useJobs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useOffersForJob, fetchOfferWithItems } from "@/hooks/useOffers";
@@ -36,6 +38,8 @@ import { jobTone } from "@/lib/statusTone";
 // genutzt). Hier als Hex für farbig getönte Status-Buttons (inline style statt
 // dynamischer Tailwind-Klassen, da JIT keine berechneten Klassennamen erkennt).
 
+type JobSection = "uebersicht" | "material" | "geld" | "ablage";
+
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -47,6 +51,9 @@ export function JobDetailPage() {
   const softDeleteJob = useSoftDeleteJob();
   const confirm = useConfirm();
   const toast = useToast();
+  // Abschnitte statt Endlos-Spalte (PLAN-UI-NEUSCHNITT.md K-D/U6). Dieselbe ui/Tabs
+  // wie überall. Erst dadurch zieht Block B (Anmietung/Kalkulation) ohne Chaos ein.
+  const [section, setSection] = useState<JobSection>("uebersicht");
 
   async function handleMoveToTrash() {
     if (!job) return;
@@ -121,46 +128,70 @@ export function JobDetailPage() {
         }
       />
 
+      <Tabs
+        className="mb-6"
+        options={[
+          { value: "uebersicht", label: "Übersicht", icon: LayoutList },
+          { value: "material", label: "Material", icon: Boxes },
+          { value: "geld", label: "Geld", icon: Euro },
+          { value: "ablage", label: "Ablage", icon: FolderClosed },
+        ]}
+        value={section}
+        onChange={setSection}
+      />
+
       <div className="grid gap-6 md:grid-cols-3">
         <div className="space-y-6 md:col-span-2">
-          <Card>
-            <CardHeader>
-              <h2 className="text-sm font-semibold text-ink">Packliste</h2>
-            </CardHeader>
-            <CardBody>
-              <PacklistProgress items={job.packlist_items ?? []} />
-              <PacklistSection job={job} canEdit={mayEdit} />
-            </CardBody>
-          </Card>
+          {section === "uebersicht" && (
+            <>
+              <Card>
+                <CardHeader>
+                  <h2 className="text-sm font-semibold text-ink">Zeitplan</h2>
+                  <p className="mt-0.5 text-xs text-ink-faint">
+                    Programmablauf des Jobs — z.B. Aufbau, Soundcheck, Eventstart, Abbau. Wird zeitlich sortiert und im Kalender unter dem Job angezeigt.
+                  </p>
+                </CardHeader>
+                <CardBody>
+                  <JobMilestonesSection jobId={job.id} milestones={job.milestones ?? []} defaultAt={job.start_date} />
+                </CardBody>
+              </Card>
 
-          <JobOffersCard jobId={job.id} />
+              <JobNotesCard job={job} mayEdit={mayEdit} />
+            </>
+          )}
 
-          <JobInvoicesCard jobId={job.id} />
+          {section === "material" && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-sm font-semibold text-ink">Packliste</h2>
+              </CardHeader>
+              <CardBody>
+                <PacklistProgress items={job.packlist_items ?? []} />
+                <PacklistSection job={job} canEdit={mayEdit} />
+              </CardBody>
+            </Card>
+          )}
 
-          <DocumentsCard entityType="job" entityId={job.id} />
+          {section === "geld" && (
+            <>
+              <JobOffersCard jobId={job.id} />
+              <JobInvoicesCard jobId={job.id} />
+            </>
+          )}
 
-          <Card>
-            <CardHeader>
-              <h2 className="text-sm font-semibold text-ink">Aufgaben</h2>
-            </CardHeader>
-            <CardBody>
-              <JobTasksSection jobId={job.id} jobTitle={job.title} jobColor={job.color} />
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h2 className="text-sm font-semibold text-ink">Zeitplan</h2>
-              <p className="mt-0.5 text-xs text-ink-faint">
-                Programmablauf des Jobs — z.B. Aufbau, Soundcheck, Eventstart, Abbau. Wird zeitlich sortiert und im Kalender unter dem Job angezeigt.
-              </p>
-            </CardHeader>
-            <CardBody>
-              <JobMilestonesSection jobId={job.id} milestones={job.milestones ?? []} defaultAt={job.start_date} />
-            </CardBody>
-          </Card>
-
-          <JobNotesCard job={job} mayEdit={mayEdit} />
+          {section === "ablage" && (
+            <>
+              <DocumentsCard entityType="job" entityId={job.id} />
+              <Card>
+                <CardHeader>
+                  <h2 className="text-sm font-semibold text-ink">Aufgaben</h2>
+                </CardHeader>
+                <CardBody>
+                  <JobTasksSection jobId={job.id} jobTitle={job.title} jobColor={job.color} />
+                </CardBody>
+              </Card>
+            </>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -262,15 +293,14 @@ function JobOffersCard({ jobId }: { jobId: string }) {
     }
   }
 
-  return (
-    <LinkedOffersCard offers={offers} onDownload={handleDownload} downloadingId={downloadingId} hideWhenEmpty />
-  );
+  // Im „Geld"-Abschnitt bewusst immer sichtbar (auch leer), damit der Tab nicht leer wirkt.
+  return <LinkedOffersCard offers={offers} onDownload={handleDownload} downloadingId={downloadingId} />;
 }
 
 /** Rechnungen, die zu diesem Job gehören — mit Status und offenem Betrag. */
 function JobInvoicesCard({ jobId }: { jobId: string }) {
   const { data: invoices } = useInvoicesForJob(jobId);
-  return <LinkedInvoicesCard invoices={invoices} hideWhenEmpty />;
+  return <LinkedInvoicesCard invoices={invoices} />;
 }
 
 /** Notizen / weitere Infos zum Job — editierbar (übernimmt u.a. die Website-Anfrage-Nachricht). */
