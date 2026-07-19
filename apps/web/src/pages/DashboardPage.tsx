@@ -21,17 +21,11 @@ import { TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useWebsiteLeads } from "@/hooks/useWebsiteLeads";
 import { useAuth } from "@/auth/AuthProvider";
-import { DEVICE_STATUS_OPTIONS, type DeviceStatus } from "@/types/database";
+import { DEVICE_STATUS_OPTIONS } from "@/types/database";
 import { formatDate, formatDateTime, initials } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Job, JobMilestone, Task } from "@/types/database";
-
-const STATUS_HEX: Record<DeviceStatus, string> = {
-  verfuegbar: "#22C55E",
-  ausgeliehen: "#3B82F6",
-  defekt: "#EF4444",
-  wartung: "#F59E0B",
-};
+import { deviceTone } from "@/lib/statusTone";
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -355,10 +349,9 @@ function DeviceStatusBars({ counts, total }: { counts: Record<string, number>; t
             <span className="w-20 shrink-0 text-xs text-ink-muted">{opt.label}</span>
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-bg-raised">
               <div
-                className="h-full rounded-full"
+                className={cn("h-full rounded-full", deviceTone(opt.value).solid)}
                 style={{
                   width: mounted ? `${pct}%` : "0%",
-                  backgroundColor: STATUS_HEX[opt.value],
                   transition: "width 0.8s cubic-bezier(0.2,0.7,0.3,1)",
                 }}
               />
