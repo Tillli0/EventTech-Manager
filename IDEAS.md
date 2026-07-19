@@ -124,6 +124,14 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **U5 + U6 — Dokumente als Ordner, Job-Detailseite in Abschnitte** (2026-07-19,
+  `PLAN-UI-NEUSCHNITT.md`): Dokumente-Seite als aufklappbare Ordner (Nach Job / Kategorie /
+  Datum, Standard Nach Job) mit CSV-Export; die doppelte „verknüpfte Angebote/Rechnungen"-
+  Karte zu `LinkedOffersCard`/`LinkedInvoicesCard` vereinheitlicht. Job-Detailseite jetzt
+  in vier Tabs (Übersicht/Material/Geld/Ablage) statt Endlos-Spalte — die Struktur, in die
+  Block B (Anmietung/Kalkulation) einzieht. Kalender-Ebene „Meine Zeiten" jetzt in allen
+  vier Ansichten (Monat/Woche/Tag/Agenda).
+
 - **U4-Kern — Kalender als Ebenen-Modell, M1-Fundament vorgezogen** (2026-07-19,
   `PLAN-UI-NEUSCHNITT.md` + `PLAN-MEIN-PLAN.md`): Migration `0039` — `personal_blocks`/
   `personal_recurring_blocks` mit bewusst strikter Eigen-Sicht-RLS (auch Admins sehen

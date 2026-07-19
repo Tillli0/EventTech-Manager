@@ -288,14 +288,20 @@ keine Konsolenfehler. Testdaten restlos entfernt.
 - Kollisionswarnung bezieht sich weiterhin nur auf Firmen-Termine — persönliche Blöcke
   gegen Jobs prüfen ist M5 (Team-Verfügbarkeit), eigenes Vorhaben.
 
-**U5 — Dokumente als Job-Ordner**
-Umsetzung von K-E. Löst zugleich Review-Befund #4 und #6 (die doppelte „verknüpfte
-Angebote/Rechnungen"-Karte in `JobDetailPage`/`CustomerDetailPage` wird **eine** Komponente
-mit `entityType`-Prop — Muster liefert `DocumentsCard` bereits).
+**U5 ✅ — Dokumente als Job-Ordner** *(erledigt 2026-07-19)*
+`DocumentsPage` zeigt jetzt Ordner je Vorgang: Umschalter **Nach Job · Nach Kategorie ·
+Nach Datum** (Standard Nach Job) auf `ui/Tabs`, aufklappbare Ordner mit Anzahl + Größe,
+`Folder`/`FolderOpen`-Icon, „Öffnen"→Vorgang. `CategoryButton`-Eigenbau entfällt, nutzt
+`entityLabel`/`entityHref` aus `useAllDocuments` (seit D3). CSV-Export ergänzt.
+Review-Befund #4/#6: `LinkedOffersCard`/`LinkedInvoicesCard` in
+`components/shared/LinkedFinanceCards.tsx` ersetzen die doppelte „verknüpfte
+Angebote/Rechnungen"-Karte in Job- und Kundendetail (~130 Zeilen Duplikat weg).
 
-**U6 — Job-Detailseite in Abschnitte**
-Umsetzung von K-D inkl. Zeitplan nach K-G. Bewusst **zuletzt**, damit Block B direkt in die
-fertige Struktur einzieht statt in eine, die kurz darauf wieder umgebaut wird.
+**U6 ✅ — Job-Detailseite in Abschnitte** *(erledigt 2026-07-19)*
+Vier Anker über `ui/Tabs`: **Übersicht** (Zeitplan + Notizen), **Material** (Packliste),
+**Geld** (Angebote + Rechnungen), **Ablage** (Dokumente + Aufgaben). Status/Zugewiesene/
+Farbe bleiben als Sidebar. Erst dadurch zieht Block B ohne Chaos in die Struktur ein.
+Browser-geprüft (Übersicht/Material/Geld durchgeklickt, Sidebar bleibt).
 
 ## 5. Verhältnis zu den anderen Plänen ⚠️
 
