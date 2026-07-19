@@ -442,7 +442,7 @@ function DevicePhotosCard({ deviceId, canEdit }: { deviceId: string; canEdit: bo
                   )}
                 />
                 {photo.is_cover && (
-                  <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-on">
                     <Star size={9} className="fill-current" />
                     Cover
                   </span>

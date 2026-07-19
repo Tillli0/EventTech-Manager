@@ -99,7 +99,7 @@ export function TimeField({
               }}
               className={cn(
                 "flex h-8 w-full items-center justify-center rounded-md text-sm transition-colors",
-                s === value ? "bg-accent font-semibold text-white" : "text-ink hover:bg-bg-raised",
+                s === value ? "bg-accent font-semibold text-accent-on" : "text-ink hover:bg-bg-raised",
               )}
             >
               {s}

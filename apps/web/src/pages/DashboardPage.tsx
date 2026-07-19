@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Settings,
   ArrowUpRight,
+  Receipt,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -20,11 +21,13 @@ import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useWebsiteLeads } from "@/hooks/useWebsiteLeads";
+import { useInvoices } from "@/hooks/useInvoices";
+import { NextJobHero } from "@/components/dashboard/NextJobHero";
 import { useAuth } from "@/auth/AuthProvider";
-import { DEVICE_STATUS_OPTIONS } from "@/types/database";
-import { formatDate, formatDateTime, initials } from "@/lib/format";
+import { DEVICE_STATUS_OPTIONS, invoiceDerivedStatus, offerTotals, invoicePaidSum } from "@/types/database";
+import { formatDate, formatCurrency, initials } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import type { Job, JobMilestone, Task } from "@/types/database";
+import type { Job, Task } from "@/types/database";
 import { deviceTone } from "@/lib/statusTone";
 
 function prefersReducedMotion(): boolean {
@@ -41,7 +44,8 @@ export function DashboardPage() {
   const { isLoading, error, todayJobs, nextJob, upcomingJobs, deviceStatusCounts, totalDevices, overdueTasks, otherOpenTasks } =
     useDashboard();
   const { data: leads } = useWebsiteLeads();
-  const { user, profile, isAdmin } = useAuth();
+  const { data: invoices } = useInvoices();
+  const { user, profile, isAdmin, hasArea } = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
 
   if (isLoading) return <LoadingState label="Überblick wird geladen …" />;
@@ -51,6 +55,21 @@ export function DashboardPage() {
   const myTasks = [...overdueTasks, ...otherOpenTasks].filter((t) => t.assigned_user_id === user?.id);
   const upcomingCount = todayJobs.length + upcomingJobs.length;
   const openTaskCount = overdueTasks.length + otherOpenTasks.length;
+  // Offene Rechnungssumme: gestellt, noch nicht bezahlt, ohne Storno. Der Status
+  // wird abgeleitet (nie gespeichert) — deshalb hier über invoiceDerivedStatus.
+  const offeneRechnungen = (invoices ?? []).filter((inv) => {
+    const status = invoiceDerivedStatus(inv, inv.items, inv.payments);
+    return status === "gestellt" || status === "teilbezahlt" || status === "ueberfaellig";
+  });
+  const offeneSumme = offeneRechnungen.reduce((summe, inv) => {
+    const { gross } = offerTotals(inv.items ?? [], inv.tax_rate);
+    return summe + Math.max(0, gross - invoicePaidSum(inv.payments));
+  }, 0);
+  const ueberfaellig = offeneRechnungen.filter(
+    (inv) => invoiceDerivedStatus(inv, inv.items, inv.payments) === "ueberfaellig",
+  ).length;
+  const darfGeldSehen = hasArea("angebote");
+
   const available = deviceStatusCounts["verfuegbar"] ?? 0;
   const onLoan = deviceStatusCounts["ausgeliehen"] ?? 0;
   const utilization = totalDevices > 0 ? Math.round((onLoan / totalDevices) * 100) : 0;
@@ -78,6 +97,12 @@ export function DashboardPage() {
       </div>
       <AccountDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
 
+      {/* Kopf der Seite: der eine Job, der als Nächstes zählt (Leitidee U3).
+          Für Nutzer, die Jobs nur zugewiesen bekommen, heißt er „Dein nächster Einsatz". */}
+      {nextJob && (
+        <NextJobHero job={nextJob} eigenerEinsatz={!isAdmin} zeigeDokumente={darfGeldSehen} />
+      )}
+
       {/* Kennzahlen */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard
@@ -88,14 +113,26 @@ export function DashboardPage() {
           value={upcomingCount}
           sub={todayJobs.length > 0 ? `${todayJobs.length} heute aktiv` : "in 14 Tagen"}
         />
-        <MetricCard
-          to="/inventar"
-          icon={Package}
-          tone="green"
-          label="Geräte verfügbar"
-          value={available}
-          sub={`von ${totalDevices} gesamt`}
-        />
+        {darfGeldSehen ? (
+          <MetricCard
+            to="/rechnungen"
+            icon={Receipt}
+            tone={ueberfaellig > 0 ? "red" : "green"}
+            label="Offene Rechnungen"
+            value={offeneSumme}
+            format={(v) => formatCurrency(v)}
+            sub={ueberfaellig > 0 ? `${ueberfaellig} überfällig` : "nichts überfällig"}
+          />
+        ) : (
+          <MetricCard
+            to="/inventar"
+            icon={Package}
+            tone="green"
+            label="Geräte verfügbar"
+            value={available}
+            sub={`von ${totalDevices} gesamt`}
+          />
+        )}
         <MetricCard
           to="/kunden"
           icon={Globe}
@@ -132,9 +169,6 @@ export function DashboardPage() {
                 {[...todayJobs, ...upcomingJobs].slice(0, 5).map((job) => (
                   <JobRow key={job.id} job={job} />
                 ))}
-                {nextJob && (nextJob.milestones?.length ?? 0) > 0 && (
-                  <NextJobSchedule milestones={nextJob.milestones ?? []} />
-                )}
               </div>
             ) : (
               <EmptyState
@@ -170,7 +204,7 @@ export function DashboardPage() {
             }
             action={
               newLeads.length > 0 ? (
-                <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-white">
+                <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-on">
                   {newLeads.length}
                 </span>
               ) : undefined
@@ -234,6 +268,7 @@ const TONE: Record<string, string> = {
   accent: "bg-accent/15 text-accent",
   green: "bg-status-verfuegbar/15 text-status-verfuegbar",
   amber: "bg-status-wartung/15 text-status-wartung",
+  red: "bg-status-defekt/15 text-status-defekt",
 };
 
 function MetricCard({
@@ -243,6 +278,7 @@ function MetricCard({
   label,
   value,
   sub,
+  format,
 }: {
   to: string;
   icon: LucideIcon;
@@ -250,6 +286,8 @@ function MetricCard({
   label: string;
   value: number;
   sub: string;
+  /** Optionale Aufbereitung, z. B. als Währung. Ohne sie zählt die Zahl hoch. */
+  format?: (v: number) => string;
 }) {
   return (
     <Link
@@ -263,7 +301,7 @@ function MetricCard({
         </span>
       </div>
       <p className="mt-2 text-2xl font-semibold text-ink">
-        <CountUp value={value} />
+        {format ? format(value) : <CountUp value={value} />}
       </p>
       <p className="mt-0.5 text-xs text-ink-faint">{sub}</p>
     </Link>
@@ -389,25 +427,6 @@ function CardLink({ to, label }: { to: string; label: string }) {
     <Link to={to} className="flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-ink">
       {label} <ArrowRight size={12} />
     </Link>
-  );
-}
-
-function NextJobSchedule({ milestones }: { milestones: JobMilestone[] }) {
-  const sorted = [...milestones].sort((a, b) => a.at.localeCompare(b.at));
-  return (
-    <div className="rounded-lg bg-bg-raised px-3 py-2.5">
-      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-ink-muted">
-        <CalendarClock size={12} /> Zeitplan nächster Job
-      </p>
-      <ul className="space-y-1">
-        {sorted.map((m) => (
-          <li key={m.id} className="flex items-center justify-between gap-3 text-xs">
-            <span className="truncate text-ink">{m.title}</span>
-            <span className="shrink-0 text-ink-faint">{formatDateTime(m.at)}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

@@ -719,7 +719,7 @@ function AddControl({ select }: { select: SelectProps }) {
       type="button"
       onClick={onAdd}
       disabled={soldOut}
-      className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-on transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
     >
       <Plus size={14} />
       {soldOut ? "nicht verfügbar" : "Hinzufügen"}

@@ -44,7 +44,7 @@ export function CustomersPage() {
               <>
                 Website-Anfragen
                 {newLeadCount > 0 && (
-                  <span className="ml-1 rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-white">
+                  <span className="ml-1 rounded-full bg-accent px-1.5 py-0.5 text-xs font-semibold text-accent-on">
                     {newLeadCount}
                   </span>
                 )}

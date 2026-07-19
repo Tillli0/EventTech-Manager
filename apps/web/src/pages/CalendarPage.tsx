@@ -153,7 +153,7 @@ export function CalendarPage() {
               onClick={() => setView(opt.value)}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                view === opt.value ? "bg-accent text-white" : "text-ink-muted hover:text-ink",
+                view === opt.value ? "bg-accent text-accent-on" : "text-ink-muted hover:text-ink",
               )}
             >
               {opt.label}

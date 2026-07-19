@@ -120,7 +120,7 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
           <p className="text-sm text-ink-muted">Noch keine Geräte auf der Packliste.</p>
           <Link
             to={`/jobs/${job.id}/packliste`}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-accent-on transition-colors hover:bg-accent-hover"
           >
             <ListPlus size={16} />
             Geräte auswählen

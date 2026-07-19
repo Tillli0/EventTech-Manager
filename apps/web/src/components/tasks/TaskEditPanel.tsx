@@ -252,7 +252,7 @@ export function TaskEditPanel({ taskId, onDeleted }: Props) {
                       onClick={() => { setStatus(opt.value); updateStatus.mutate({ id: task.id, status: opt.value }); }}
                       className={cn(
                         "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-                        status === opt.value ? "border-accent bg-accent text-white" : "border-border text-ink-muted hover:text-ink",
+                        status === opt.value ? "border-accent bg-accent text-accent-on" : "border-border text-ink-muted hover:text-ink",
                       )}
                     >
                       {opt.label}

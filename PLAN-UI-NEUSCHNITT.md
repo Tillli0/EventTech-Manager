@@ -166,13 +166,37 @@ startet Supabase auf Windows nicht mehr, weil das System den Portbereich mit 543
 reserviert. Container melden „healthy", die API antwortet trotzdem nicht. Fix braucht ein
 Administrator-Terminal (`net stop winnat` / `net start winnat`).
 
-**U3 — Startseite „Nächster Einsatz" + neue Navigation**
-`DashboardPage` inhaltlich neu: Hero „Nächster Einsatz" mit Zeitplan; darunter offene
-Rechnungen, anstehende Jobs, neue Anfragen, fällige Aufgaben, zuletzt abgelegte Dokumente;
-Rest-Inventar als schmale Fußzeile. **Rollen-adaptiv** über vorhandene Helfer (`hasArea`,
-`is_manager`, `job_view_mode`). `lib/nav.ts` auf K-C. Eine `SummaryStats`-Variante ersetzt
-`MetricCard`/`KpiCard`. Neu: `ui/Avatar.tsx` (heute 4× nachgebaut).
-→ **Erledigt zugleich E8** aus `PLAN-NEUAUSRICHTUNG.md`.
+**U3 🟡 — Startseite „Nächster Einsatz" + neue Navigation** *(Kern erledigt 2026-07-19)*
+
+**Navigation (K-C) fertig:** `lib/nav.ts` liefert jetzt `NAV_GROUPS` in drei Gruppen
+(**Arbeit · Kaufmännisch · Ablage**), die Sidebar rendert sie mit Überschriften. Leere
+Gruppen fallen automatisch weg — ein Mitarbeiter ohne kaufmännische Rechte sieht keine
+verwaiste Überschrift. `Inventar` steht jetzt unter „Ablage" (E8/F6). Mobile Fußleiste:
+**Überblick · Jobs · Kalender · Aufgaben**.
+
+**Startseite:** Neue Komponente `components/dashboard/NextJobHero.tsx` — der nächste
+Einsatz steht oben mit Zeitraum, Kunde, Ort, Status und **Zeitplan** (erledigte Punkte
+durchgestrichen, der nächste offene hervorgehoben). Beschriftung ist rollen-abhängig
+(„Dein nächster Einsatz" für Zugewiesene). Die Kennzahl **„Offene Rechnungen"** ersetzt
+„Geräte verfügbar" — aber nur mit `angebote`-Recht, sonst bleibt die Geräte-Kachel stehen.
+Beträge werden als Währung ausgegeben statt hochgezählt.
+
+**Nebenbei behoben:** `text-white` auf Akzentflächen wurde in **20 Dateien** durch
+`text-accent-on` ersetzt. Aktuell sind alle drei Akzente dunkel, das Ergebnis also gleich —
+aber sobald ein heller Akzent dazukommt (Tills Gelb-Variante), wäre weiße Schrift darauf
+unlesbar gewesen.
+
+**Bewiesen:** tsc · lint · 101 Vitest · build · **15/15 E2E** · Browser mit einem echten
+Testjob (Hero + Zeitplan sichtbar, „Nächster Einsatz — in 3 Tagen") · 375 px ohne
+horizontales Scrollen · keine Konsolenfehler. Dabei fiel eine **doppelte Zeitplan-Anzeige**
+auf (Hero + alter Block) — behoben. Testdaten restlos entfernt (Gegenprobe: 0).
+
+**Noch offen in U3:**
+- Karte **„Zuletzt abgelegte Dokumente"** (`useAllDocuments` existiert seit D3).
+- Rest-Inventar auf eine **schmale Fußzeile** eindampfen (aktuell noch zwei Karten).
+- `ui/Avatar.tsx` als geteilte Komponente (heute 4× nachgebaut).
+- `TONE`/`KPI_TONE` auf `levelTone()` ziehen.
+- **Rollen-Beweis mit einem zweiten Nutzer** (ohne Manager-Rechte) — steht noch aus.
 
 **U4 — Kalender als Ebenen-Modell**
 Ebenen ein-/ausschaltbar: **Firmenjobs · Meine Einsätze · Köln · Schule**. Ansichts-

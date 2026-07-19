@@ -145,7 +145,7 @@ export function WeekView({
             <span
               className={cn(
                 "mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg font-normal",
-                isToday(d) ? "bg-accent font-medium text-white" : "text-ink",
+                isToday(d) ? "bg-accent font-medium text-accent-on" : "text-ink",
               )}
             >
               {format(d, "d")}

@@ -21,7 +21,7 @@ export function RouteErrorPage() {
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90"
+        className="flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-on transition-colors hover:bg-accent/90"
       >
         <RotateCw size={15} />
         Seite neu laden

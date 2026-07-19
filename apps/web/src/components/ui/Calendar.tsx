@@ -94,7 +94,7 @@ export function Calendar({
               className={cn(
                 "flex h-8 items-center justify-center rounded-md text-sm transition-colors",
                 selected
-                  ? "bg-accent font-semibold text-white"
+                  ? "bg-accent font-semibold text-accent-on"
                   : isRangeStart
                     ? "bg-accent/15 font-semibold text-accent ring-1 ring-inset ring-accent"
                     : inRange

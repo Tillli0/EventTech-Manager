@@ -204,7 +204,7 @@ export function MonthGrid({
                         className={cn(
                           "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs",
                           isToday(d)
-                            ? "bg-accent font-semibold text-white"
+                            ? "bg-accent font-semibold text-accent-on"
                             : inMonth
                               ? "text-ink"
                               : "text-ink-faint",

@@ -101,7 +101,7 @@ export function DayView({
           <span
             className={cn(
               "inline-flex h-12 w-12 items-center justify-center rounded-full text-2xl",
-              isToday(currentDate) ? "bg-accent font-medium text-white" : "text-ink",
+              isToday(currentDate) ? "bg-accent font-medium text-accent-on" : "text-ink",
             )}
           >
             {format(currentDate, "d")}

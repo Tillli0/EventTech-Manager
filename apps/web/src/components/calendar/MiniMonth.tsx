@@ -117,7 +117,7 @@ export function MiniMonth({
               className={cn(
                 "relative flex h-7 items-center justify-center rounded-full text-xs transition-colors",
                 selected
-                  ? "bg-accent font-semibold text-white"
+                  ? "bg-accent font-semibold text-accent-on"
                   : today
                     ? "font-semibold text-accent hover:bg-bg-raised"
                     : inMonth

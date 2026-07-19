@@ -462,7 +462,7 @@ function JobAssigneesCard({ job, canEdit }: { job: Job; canEdit: boolean }) {
                   <span
                     className={cn(
                       "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
-                      active ? "bg-accent text-white" : "bg-bg-raised text-ink-faint",
+                      active ? "bg-accent text-accent-on" : "bg-bg-raised text-ink-faint",
                     )}
                   >
                     {initials(profileLabel(p))}

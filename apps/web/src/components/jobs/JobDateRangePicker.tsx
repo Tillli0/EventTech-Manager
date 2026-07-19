@@ -123,7 +123,7 @@ export function JobDateRangePicker({
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                 start && end
-                  ? "bg-accent text-white hover:bg-accent/90"
+                  ? "bg-accent text-accent-on hover:bg-accent/90"
                   : "cursor-not-allowed bg-bg-raised text-ink-faint",
               )}
             >

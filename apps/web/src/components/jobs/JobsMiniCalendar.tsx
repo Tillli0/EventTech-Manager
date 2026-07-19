@@ -127,7 +127,7 @@ export function JobsMiniCalendar({
               className={cn(
                 "flex h-9 flex-col items-center justify-start rounded py-1 text-xs transition-colors",
                 !isSameMonth(day, month) && "text-ink-faint/50",
-                selected ? "bg-accent text-white" : "text-ink-muted",
+                selected ? "bg-accent text-accent-on" : "text-ink-muted",
                 onSelectDay && !selected && "hover:bg-bg-raised hover:text-ink",
               )}
             >
