@@ -90,26 +90,40 @@ jobs:
         run: supabase start
 
       - name: Erst-Admin anlegen
-        # Die Tests brauchen einen Login. Anlage ueber die Standard-Verbindung der
-        # lokalen Instanz (postgres:postgres@localhost:54322) — das ist stabiler,
-        # als den Container-Namen zu erraten. Nur CI-Wegwerf-Umgebung.
-        # `profiles` entsteht per Trigger aus auth.users.
+        # Anlage ueber die Auth-API statt per SQL-INSERT: GoTrue verlangt in
+        # auth.users mehr Pflichtfelder, als man von Hand sauber trifft — ein
+        # handgeschriebener INSERT erzeugt einen Nutzer, der sich nicht anmelden
+        # kann. Die API legt ihn korrekt an; die Rolle setzen wir danach per SQL
+        # (profiles entsteht per Trigger). Nur CI-Wegwerf-Umgebung.
         run: |
-          psql "postgresql://postgres:postgres@localhost:54322/postgres" <<'SQL'
-          insert into auth.users (
-            instance_id, id, aud, role, email, encrypted_password,
-            email_confirmed_at, created_at, updated_at,
-            raw_app_meta_data, raw_user_meta_data
-          )
-          select
-            '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
-            'admin@eventtech.local', crypt('EventTech2026!', gen_salt('bf')),
-            now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}'
-          where not exists (select 1 from auth.users where email = 'admin@eventtech.local');
+          set -euo pipefail
+          ANON=$(supabase status -o json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).ANON_KEY))")
 
+          curl -sS -X POST "http://localhost:54321/auth/v1/signup" \
+            -H "apikey: $ANON" -H "Content-Type: application/json" \
+            -d '{"email":"admin@eventtech.local","password":"EventTech2026!"}' \
+            -o signup.json -w "signup HTTP %{http_code}\n"
+
+          # Bestaetigung erzwingen (falls Mail-Confirm aktiv) + Rolle setzen.
+          psql "postgresql://postgres:postgres@localhost:54322/postgres" <<'SQL'
+          update auth.users
+             set email_confirmed_at = coalesce(email_confirmed_at, now())
+           where email = 'admin@eventtech.local';
           update public.profiles set role = 'admin' where email = 'admin@eventtech.local';
           select email, role from public.profiles;
           SQL
+
+          # Beweis, dass die Anmeldung wirklich funktioniert — sonst scheitern die
+          # Tests spaeter mit einem irrefuehrenden Timeout statt hier mit Klartext.
+          CODE=$(curl -s -o login.json -w "%{http_code}" -X POST \
+            "http://localhost:54321/auth/v1/token?grant_type=password" \
+            -H "apikey: $ANON" -H "Content-Type: application/json" \
+            -d '{"email":"admin@eventtech.local","password":"EventTech2026!"}')
+          echo "login HTTP $CODE"
+          if [ "$CODE" != "200" ]; then
+            echo "::error::Testnutzer kann sich nicht anmelden (HTTP $CODE) — E2E waere sinnlos."
+            head -c 400 login.json; exit 1
+          fi
 
       - name: Anon-Key fuer die Web-App setzen
         # Der Dev-Server liest VITE_SUPABASE_ANON_KEY; auf dem Runner gibt es keine
