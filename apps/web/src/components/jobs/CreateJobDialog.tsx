@@ -7,7 +7,6 @@ import { useToast } from "@/components/ui/Toast";
 import type { Job } from "@/types/database";
 import { useCreateJob, useJobs } from "@/hooks/useJobs";
 import { JobDateRangePicker } from "@/components/jobs/JobDateRangePicker";
-import { useSetJobAssignees } from "@/hooks/useJobAssignees";
 import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
 import { useCustomers } from "@/hooks/useCustomers";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
@@ -40,7 +39,6 @@ export function CreateJobDialog({
   onCreated,
 }: CreateJobDialogProps) {
   const createJob = useCreateJob();
-  const setAssignees = useSetJobAssignees();
   const { data: jobs } = useJobs();
   const { data: customers } = useCustomers();
   const { data: allProfiles } = useProfiles();
@@ -115,11 +113,8 @@ export function CreateJobDialog({
         notes: notes.trim() || null,
         color,
         customerLabel: selectedCustomer ? customerLabel(selectedCustomer) : null,
+        assigneeIds,
       });
-
-      if (assigneeIds.length > 0) {
-        await setAssignees.mutateAsync({ jobId: job.id, userIds: assigneeIds });
-      }
 
       reset();
       onCreated?.(job);

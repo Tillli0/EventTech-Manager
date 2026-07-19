@@ -134,37 +134,56 @@ interface CreateJobInput {
   color?: string;
   /** Optional vorab geladener Kunde, um einen zweiten Request für den Kalendertitel zu sparen. */
   customerLabel?: string | null;
+  /** Direkt beim Anlegen zugewiesene Nutzer (siehe Reihenfolge-Hinweis unten). */
+  assigneeIds?: string[];
 }
 
 /**
  * Legt einen Job an und erzeugt automatisch einen passenden Kalendereintrag
  * (1:1 zu Job-Start/Ende, Titel = Kundenname, Fallback Job-Titel).
  * Die Job-Farbe wird, falls nicht explizit übergeben, zufällig aus der Palette gewählt.
+ *
+ * Reihenfolge bewusst: Job **ohne** `.select()` anlegen (kein RLS-Zwang, die neue
+ * Zeile sofort sehen zu müssen), dann Zuweisungen schreiben, erst danach den Job
+ * zurückholen. Grund: `can_see_job()` lässt Nutzer mit `job_view_mode: zugewiesene`
+ * nur Jobs sehen, denen sie zugewiesen sind — direkt nach dem Insert (vor der
+ * Zuweisung) wäre das noch nicht der Fall, ein `.select()` an dieser Stelle schlug
+ * für solche Nutzer mit „403, RLS-Policy verletzt" fehl (gefunden 2026-07-19 beim
+ * Rollen-Beweis, PLAN-UI-NEUSCHNITT.md U3).
  */
 export function useCreateJob() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ customerLabel, color, ...input }: CreateJobInput) => {
-      const { data: job, error } = await supabase
-        .from("jobs")
-        .insert({ ...input, color: color ?? randomJobColor() })
-        .select()
-        .single();
+    mutationFn: async ({ customerLabel, color, assigneeIds, ...input }: CreateJobInput) => {
+      const id = crypto.randomUUID();
+      const row = { ...input, id, color: color ?? randomJobColor() };
+
+      const { error } = await supabase.from("jobs").insert(row);
       if (error) throw error;
 
+      if (assigneeIds && assigneeIds.length > 0) {
+        const { error: assigneeError } = await supabase
+          .from("job_assignees")
+          .insert(assigneeIds.map((user_id) => ({ job_id: id, user_id })));
+        if (assigneeError) throw assigneeError;
+      }
+
       const { error: calendarError } = await supabase.from("calendar_entries").insert({
-        job_id: job.id,
-        title: customerLabel?.trim() || job.title,
-        start_at: job.start_date,
-        end_at: job.end_date,
-        all_day: isMultiDay(job.start_date, job.end_date),
+        job_id: id,
+        title: customerLabel?.trim() || row.title,
+        start_at: row.start_date,
+        end_at: row.end_date,
+        all_day: isMultiDay(row.start_date, row.end_date),
         source: "intern",
       });
       // Der Job ist bereits angelegt; ein Kalenderfehler soll das nicht rückgängig machen,
       // wird aber sichtbar gemacht statt verschluckt.
       if (calendarError) throw calendarError;
 
-      return job as Job;
+      // Erneutes Lesen kann für Nutzer ohne Sicht auf eigene, unzugewiesene Jobs ins
+      // Leere laufen (s.o.) — dann reicht die lokal zusammengesetzte Zeile als Rückgabe.
+      const { data: job } = await supabase.from("jobs").select().eq("id", id).maybeSingle();
+      return (job ?? { ...row, status: "anfrage", created_by: null, deleted_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }) as Job;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: JOBS_KEY });

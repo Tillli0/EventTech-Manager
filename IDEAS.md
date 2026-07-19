@@ -36,11 +36,6 @@
 
 ## 🚀 Größere Features (Freigabe nötig — Claude schlägt vor)
 
-- [ ] **🐛 Bug: Job anlegen schlägt fehl bei `job_view_mode: zugewiesene`** — betrifft
-      vermutlich jeden Mitarbeiter/Freelancer mit dieser (üblichen) Einstellung, der Jobs
-      anlegen darf, und wahrscheinlich den seit Wochen roten CI-E2E-Job. Ursache + zwei
-      Lösungswege in `PLAN-UI-NEUSCHNITT.md` bei U3 (RLS-Änderung, deshalb Freigabe nötig
-      statt Auto). · S · ★★★ · Freigabe
 - [ ] **Globale Suche + Änderungsprotokoll** — projektweite Suche (Geräte/Jobs/Kunden/Angebote)
       und ein Audit-Log, wer wann was geändert hat. · L · ★★★ · Freigabe
 - [ ] **E2E-Tests (Playwright)** — Smoke-Flow Login → Job → Packliste → Rechnung;
@@ -137,12 +132,14 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
   **Rollen-Beweis mit echtem Nicht-Manager-Nutzer** (Max Deger, `job_view_mode:
   zugewiesene`): Startseite zeigt „Dein nächster Einsatz" personalisiert, keine leeren
   Kacheln, „Verwaltung" korrekt ausgeblendet.
-  **Dabei gefunden, nicht selbst behoben (RLS):** Nutzer mit `job_view_mode: zugewiesene`
-  können aktuell **keinen Job über die UI anlegen** (`POST /jobs → 403`, weil `useCreateJob`
-  die neu angelegte Zeile per `.select()` zurückholt, aber `can_see_job` den Ersteller vor
-  der Zuweisung noch nicht durchlässt). **Wahrscheinlich dieselbe Ursache wie der seit
-  Wochen rote CI-E2E-Job** — Details und zwei Lösungsvorschläge in
-  `PLAN-UI-NEUSCHNITT.md` bei U3.
+  **Dabei gefunden und noch in derselben Session behoben:** Nutzer mit `job_view_mode:
+  zugewiesene` konnten über die UI **keinen Job anlegen** (`POST /jobs → 403`) — Ursache
+  war `useCreateJob`, das die neu angelegte Zeile sofort per `.select()` zurückholte,
+  während `can_see_job` den Ersteller vor der Zuweisung noch nicht durchließ. Reiner
+  Frontend-Fix (Reihenfolge: anlegen ohne RETURNING → zuweisen → erst dann zurückholen),
+  keine RLS-Änderung nötig. Mit Max' Login **verifiziert** (mit und ohne Selbstzuweisung).
+  **Wahrscheinlich zugleich die Ursache des seit Wochen roten CI-E2E-Jobs** — nächster
+  CI-Lauf zeigt, ob er jetzt grün wird. Details in `PLAN-UI-NEUSCHNITT.md` bei U3.
 
 - **U2 — Umstieg auf helles Design** (2026-07-19): Die App startet jetzt in **Creme**
   (Schwarz als Aktionsfarbe); im Konto-Dialog umschaltbar auf **Weiß+Indigo** oder das

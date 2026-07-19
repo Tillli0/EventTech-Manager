@@ -206,32 +206,38 @@ auf (Hero + alter Block) — behoben. Testdaten restlos entfernt (Gegenprobe: 0)
 - ~~Rollen-Beweis mit einem zweiten Nutzer~~ ✅ 2026-07-19 — als „Max Deger" (Rolle
   `mitarbeiter`, `job_view_mode: zugewiesene`) angemeldet: „Dein nächster Einsatz —
   in 2 Tagen" personalisiert, Kennzahlen/Listen zeigen echten Inhalt statt leerer
-  Kacheln, „Verwaltung" korrekt ausgeblendet. **Nebenfund (siehe unten): Nutzer mit
-  `job_view_mode: zugewiesene` können aktuell keinen Job über die UI anlegen** — der
-  Testjob musste als Admin angelegt werden.
+  Kacheln, „Verwaltung" korrekt ausgeblendet.
 
-**⚠️ Nebenfund 2026-07-19 — Job anlegen schlägt fehl für `job_view_mode: zugewiesene`:**
+**✅ Bug behoben 2026-07-19 — Job anlegen schlug fehl für `job_view_mode: zugewiesene`:**
 Beim Rollen-Beweis wollte ich testweise als „Max Deger" (Rechte `jobs: can_edit=true`,
 aber `job_view_mode: zugewiesene`) einen Job anlegen — Fehlermeldung „Job konnte nicht
-angelegt werden", Netzwerk zeigt `POST .../jobs → 403`. **Root Cause gefunden und mit
+angelegt werden", Netzwerk zeigte `POST .../jobs → 403`. **Root Cause gefunden und mit
 curl gegen die reine RLS-Schicht reproduziert** (kein UI-Bug): `useCreateJob`
-(`apps/web/src/hooks/useJobs.ts`) macht `.insert(...).select().single()` — die
+(`apps/web/src/hooks/useJobs.ts`) machte `.insert(...).select().single()` — die
 RETURNING-Zeile muss die `jobs_sel`-Policy (`can_see_job`) erfüllen. `can_see_job` lässt
 den Ersteller nur durch, wenn er bereits in `job_assignees` steht **oder**
 `job_view_mode = 'alle'` **oder** (`'eigene'` und `created_by = auth.uid()`) — bei
-`'zugewiesene'` keins von beidem, und die Zuweisung passiert erst **nach** dem Insert
-(zweiter Request). Mit `Prefer: return=minimal` gelingt derselbe Insert (201) — bestätigt
-die Diagnose. **Das ist wahrscheinlich auch die Ursache des seit Wochen roten
-CI-E2E-Jobs** (`job-flow.spec.ts`, „Abgelehnte Schreibzugriffe: POST 403") — der
-Testnutzer dort dürfte denselben `job_view_mode` haben. **Nicht selbst behoben** (RLS-
-Änderung, laut `CLAUDE.md` nicht eigenständig) — zwei Lösungsrichtungen zur Wahl:
-1. **Frontend:** `useCreateJob` postet mit `return=minimal`, holt den Job danach separat
-   (nach dem Anlegen der `job_assignees`-Zeile) — keine RLS-Änderung nötig.
-2. **RLS:** `can_see_job` lässt den Ersteller unabhängig vom `job_view_mode` kurzzeitig
-   auf eigene, gerade erst angelegte Jobs zu (z. B. `or j.created_by = auth.uid()`
-   generell statt nur unter `'eigene'`) — ändert Sicherheitslogik, braucht Rücksprache.
-Betrifft vermutlich **jeden Mitarbeiter mit `job_view_mode: zugewiesene`**, der Jobs
-anlegen darf — nicht nur Testnutzer.
+`'zugewiesene'` keins von beidem, und die Zuweisung passierte erst **nach** dem Insert
+(zweiter Request, aus `CreateJobDialog`). Mit `Prefer: return=minimal` gelang derselbe
+Insert (201) — bestätigte die Diagnose. **Wahrscheinlich dieselbe Ursache wie der seit
+Wochen rote CI-E2E-Job** (`job-flow.spec.ts`, „Abgelehnte Schreibzugriffe: POST 403").
+
+**Fix (reines Frontend, keine RLS-Änderung nötig):** `useCreateJob` nimmt jetzt optional
+`assigneeIds` entgegen und schreibt in dieser Reihenfolge: (1) Job **ohne** `.select()`
+anlegen (erzwingt keine sofortige Sichtbarkeit), (2) `job_assignees` schreiben — braucht
+nur `can_edit_area('jobs')`, keine `SELECT`-Sicht —, (3) `calendar_entries` aus den schon
+bekannten Werten, (4) den Job **danach** per `.maybeSingle()` zurückholen (jetzt sichtbar,
+weil zugewiesen). Bleibt der Ersteller unzugewiesen (Randfall bei `zugewiesene`), liefert
+ein lokal zusammengesetzter Fallback statt eines Fehlers — der Job entsteht trotzdem
+korrekt, ist für den Ersteller danach nur konsistent unsichtbar (wie jeder unzugewiesene
+Job). `CreateJobDialog` reicht `assigneeIds` direkt durch, der separate
+`useSetJobAssignees`-Aufruf entfällt dort.
+
+**Bewiesen:** tsc · lint · 101 Vitest · build · Browser als „Max Deger" (`zugewiesene`):
+Job **mit** Selbstzuweisung → `POST 201`, danach `GET .../jobs?id=eq…` → `200` (vorher
+`403`) · Job **ohne** Zuweisung → kein Absturz, Zeile korrekt in der DB (`created_by` =
+Max, Status `anfrage`), erwartungsgemäß nicht in seiner Liste. Testdaten restlos entfernt
+(Gegenprobe: Job-Anzahl wieder bei 6, keine verwaisten `calendar_entries`).
 
 **U4 — Kalender als Ebenen-Modell**
 Ebenen ein-/ausschaltbar: **Firmenjobs · Meine Einsätze · Köln · Schule**. Ansichts-
