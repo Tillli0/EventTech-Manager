@@ -112,10 +112,17 @@ jobs:
              set email_confirmed_at = coalesce(email_confirmed_at, now())
            where email = 'admin@eventtech.local';
 
-          update public.profiles p
-             set role = 'admin', email = coalesce(p.email, u.email)
+          -- Profil NICHT dem Trigger ueberlassen: In der CI hat sich gezeigt, dass
+          -- nach dem signup kein Profil mit Admin-Rolle vorlag (der Rechte-Check
+          -- schlug fehl). Deshalb hier selbst anlegen bzw. hochstufen — das ist
+          -- unabhaengig davon, ob und wann handle_new_user() greift.
+          insert into public.profiles (id, full_name, email, role)
+          select u.id, 'E2E Testnutzer', u.email, 'admin'
             from auth.users u
-           where p.id = u.id and u.email = 'admin@eventtech.local';
+           where u.email = 'admin@eventtech.local'
+          on conflict (id) do update
+             set role = 'admin',
+                 email = coalesce(public.profiles.email, excluded.email);
 
           \echo '--- Profil des Testnutzers ---'
           select p.id, p.email, p.role from public.profiles p
