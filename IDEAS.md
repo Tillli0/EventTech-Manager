@@ -36,6 +36,11 @@
 
 ## 🚀 Größere Features (Freigabe nötig — Claude schlägt vor)
 
+- [ ] **🐛 Bug: Job anlegen schlägt fehl bei `job_view_mode: zugewiesene`** — betrifft
+      vermutlich jeden Mitarbeiter/Freelancer mit dieser (üblichen) Einstellung, der Jobs
+      anlegen darf, und wahrscheinlich den seit Wochen roten CI-E2E-Job. Ursache + zwei
+      Lösungswege in `PLAN-UI-NEUSCHNITT.md` bei U3 (RLS-Änderung, deshalb Freigabe nötig
+      statt Auto). · S · ★★★ · Freigabe
 - [ ] **Globale Suche + Änderungsprotokoll** — projektweite Suche (Geräte/Jobs/Kunden/Angebote)
       und ein Audit-Log, wer wann was geändert hat. · L · ★★★ · Freigabe
 - [ ] **E2E-Tests (Playwright)** — Smoke-Flow Login → Job → Packliste → Rechnung;
@@ -123,6 +128,21 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **U3 komplett — Startseite „Nächster Einsatz" fertig** (2026-07-19,
+  `PLAN-UI-NEUSCHNITT.md`): Restpunkte aus dem U3-Kern nachgezogen — Karte „Zuletzt
+  abgelegte Dokumente" (`useAllDocuments`), Rest-Inventar von zwei Kacheln (Balken + Ring)
+  auf eine schmale Fußzeile eingedampft, `ui/Avatar.tsx` als geteilte Komponente (statt
+  6× Nachbau), `TONE`/`KPI_TONE` zu einer Registry (`kpiToneClass`) zusammengeführt.
+  **Rollen-Beweis mit echtem Nicht-Manager-Nutzer** (Max Deger, `job_view_mode:
+  zugewiesene`): Startseite zeigt „Dein nächster Einsatz" personalisiert, keine leeren
+  Kacheln, „Verwaltung" korrekt ausgeblendet.
+  **Dabei gefunden, nicht selbst behoben (RLS):** Nutzer mit `job_view_mode: zugewiesene`
+  können aktuell **keinen Job über die UI anlegen** (`POST /jobs → 403`, weil `useCreateJob`
+  die neu angelegte Zeile per `.select()` zurückholt, aber `can_see_job` den Ersteller vor
+  der Zuweisung noch nicht durchlässt). **Wahrscheinlich dieselbe Ursache wie der seit
+  Wochen rote CI-E2E-Job** — Details und zwei Lösungsvorschläge in
+  `PLAN-UI-NEUSCHNITT.md` bei U3.
 
 - **U2 — Umstieg auf helles Design** (2026-07-19): Die App startet jetzt in **Creme**
   (Schwarz als Aktionsfarbe); im Konto-Dialog umschaltbar auf **Weiß+Indigo** oder das

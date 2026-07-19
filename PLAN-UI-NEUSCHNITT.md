@@ -166,7 +166,7 @@ startet Supabase auf Windows nicht mehr, weil das System den Portbereich mit 543
 reserviert. Container melden „healthy", die API antwortet trotzdem nicht. Fix braucht ein
 Administrator-Terminal (`net stop winnat` / `net start winnat`).
 
-**U3 🟡 — Startseite „Nächster Einsatz" + neue Navigation** *(Kern erledigt 2026-07-19)*
+**U3 ✅ — Startseite „Nächster Einsatz" + neue Navigation** *(komplett 2026-07-19)*
 
 **Navigation (K-C) fertig:** `lib/nav.ts` liefert jetzt `NAV_GROUPS` in drei Gruppen
 (**Arbeit · Kaufmännisch · Ablage**), die Sidebar rendert sie mit Überschriften. Leere
@@ -203,7 +203,35 @@ auf (Hero + alter Block) — behoben. Testdaten restlos entfernt (Gegenprobe: 0)
   `components/ui/Avatar.tsx` gezogen.
 - ~~`TONE`/`KPI_TONE` auf `levelTone()` ziehen~~ ✅ 2026-07-19 — `kpiToneClass()`
   in `lib/statusTone.ts` ersetzt beide Kopien (Dashboard, Auswertungen).
-- **Rollen-Beweis mit einem zweiten Nutzer** (ohne Manager-Rechte) — steht noch aus.
+- ~~Rollen-Beweis mit einem zweiten Nutzer~~ ✅ 2026-07-19 — als „Max Deger" (Rolle
+  `mitarbeiter`, `job_view_mode: zugewiesene`) angemeldet: „Dein nächster Einsatz —
+  in 2 Tagen" personalisiert, Kennzahlen/Listen zeigen echten Inhalt statt leerer
+  Kacheln, „Verwaltung" korrekt ausgeblendet. **Nebenfund (siehe unten): Nutzer mit
+  `job_view_mode: zugewiesene` können aktuell keinen Job über die UI anlegen** — der
+  Testjob musste als Admin angelegt werden.
+
+**⚠️ Nebenfund 2026-07-19 — Job anlegen schlägt fehl für `job_view_mode: zugewiesene`:**
+Beim Rollen-Beweis wollte ich testweise als „Max Deger" (Rechte `jobs: can_edit=true`,
+aber `job_view_mode: zugewiesene`) einen Job anlegen — Fehlermeldung „Job konnte nicht
+angelegt werden", Netzwerk zeigt `POST .../jobs → 403`. **Root Cause gefunden und mit
+curl gegen die reine RLS-Schicht reproduziert** (kein UI-Bug): `useCreateJob`
+(`apps/web/src/hooks/useJobs.ts`) macht `.insert(...).select().single()` — die
+RETURNING-Zeile muss die `jobs_sel`-Policy (`can_see_job`) erfüllen. `can_see_job` lässt
+den Ersteller nur durch, wenn er bereits in `job_assignees` steht **oder**
+`job_view_mode = 'alle'` **oder** (`'eigene'` und `created_by = auth.uid()`) — bei
+`'zugewiesene'` keins von beidem, und die Zuweisung passiert erst **nach** dem Insert
+(zweiter Request). Mit `Prefer: return=minimal` gelingt derselbe Insert (201) — bestätigt
+die Diagnose. **Das ist wahrscheinlich auch die Ursache des seit Wochen roten
+CI-E2E-Jobs** (`job-flow.spec.ts`, „Abgelehnte Schreibzugriffe: POST 403") — der
+Testnutzer dort dürfte denselben `job_view_mode` haben. **Nicht selbst behoben** (RLS-
+Änderung, laut `CLAUDE.md` nicht eigenständig) — zwei Lösungsrichtungen zur Wahl:
+1. **Frontend:** `useCreateJob` postet mit `return=minimal`, holt den Job danach separat
+   (nach dem Anlegen der `job_assignees`-Zeile) — keine RLS-Änderung nötig.
+2. **RLS:** `can_see_job` lässt den Ersteller unabhängig vom `job_view_mode` kurzzeitig
+   auf eigene, gerade erst angelegte Jobs zu (z. B. `or j.created_by = auth.uid()`
+   generell statt nur unter `'eigene'`) — ändert Sicherheitslogik, braucht Rücksprache.
+Betrifft vermutlich **jeden Mitarbeiter mit `job_view_mode: zugewiesene`**, der Jobs
+anlegen darf — nicht nur Testnutzer.
 
 **U4 — Kalender als Ebenen-Modell**
 Ebenen ein-/ausschaltbar: **Firmenjobs · Meine Einsätze · Köln · Schule**. Ansichts-
