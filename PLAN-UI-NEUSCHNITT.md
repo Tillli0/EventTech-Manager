@@ -120,11 +120,23 @@ hineinpasst. Kein Code, kein Schema jetzt — nur keine Tür zumauern.
 > **U1 ist ein Mockup** — Till entscheidet visuell, bevor Code entsteht (`ARBEITSWEISE.md`).
 > Baubeginn erst nach `PLAN-V1-ABSICHERN.md` **A3**.
 
-**U1 — Mockup des Gesamtkonzepts** *(kein Produktionscode)*
-Erweitert `docs/mockups/dashboard-hell.html` (Paletten A/B/C bereits drin) um die
-**Struktur**: neue Navigation (K-C), Startseite in **drei Rollen-Zuständen**
-(Till · Verwaltung · Freelancer), Job-Detailseite mit Abschnitten (K-D), Dokumente als
-Job-Ordner (K-E). *Ziel:* Till entscheidet danach das **Standard-Theme**.
+**U1 ✅ — Mockup des Gesamtkonzepts** *(kein Produktionscode; erledigt 2026-07-19)*
+Als **eigene** Datei `docs/mockups/konzept-gesamt.html` gebaut statt das Farbmockup zu
+erweitern — getrennte Zwecke: `dashboard-hell.html` zeigt **Farbwelten**,
+`konzept-gesamt.html` zeigt **Struktur**. Beide teilen dieselben Tokens.
+
+Enthalten: Navigation in drei Gruppen (K-C) · Startseite in **drei Rollen** über einen
+Umschalter (Till · Verwaltung · Freelancer) · Job-Detailseite mit Abschnitten (K-D) ·
+Dokumente als **Job-Ordner** (K-E) · Paletten-Umschalter Creme / Weiß+Indigo · markierte
+Vorschau-Kacheln für noch fehlende Daten (`E2`, `E7`).
+
+Screenshots im selben Ordner (`konzept-1-start-till.png` … `konzept-5-weiss-indigo.png`).
+Gerendert und geprüft: Rollenwechsel greift (Freelancer sieht „Dein nächster Einsatz",
+reduzierte Navigation, Verfügbarkeits-Karte), **keine Konsolenfehler**.
+
+**Offen für Till:** Entscheidung über das **Standard-Theme** (Creme oder Weiß+Indigo) —
+beide werden ohnehin gebaut, die Wahl bestimmt nur, welches im Verifikations-Ritual
+geprüft wird (K-A).
 
 **U2 — Theme-Fundament + eine Farb-Registry** *(betrifft alles, deshalb zuerst)*
 Tokens auf `var()`; `index.css` mit Theme-Sets (**Creme**, **Weiß+Indigo**, **Dark** aus den

@@ -1,5 +1,16 @@
 # Vision — Dashboard hell & Neuschnitt
 
+> **Fortsetzung (2026-07-19):** Das **Gesamtkonzept** liegt jetzt als eigenes Mockup daneben:
+> [`konzept-gesamt.html`](./konzept-gesamt.html) — Navigation in drei Gruppen, Startseite in
+> **drei Rollen** (Till · Verwaltung · Freelancer), Job-Detailseite mit Abschnitten,
+> Dokumente als Job-Ordner. Screenshots: `konzept-1-start-till.png`,
+> `konzept-2-start-freelancer.png`, `konzept-3-job.png`, `konzept-4-dokumente.png`,
+> `konzept-5-weiss-indigo.png`. Steuerung des Vorhabens: `PLAN-UI-NEUSCHNITT.md` (Etappe U1).
+>
+> Diese Datei hier bleibt der **Farbwelten**-Vergleich; das neue Mockup zeigt die **Struktur**.
+> Till hat sich für **hell** entschieden, Creme vs. Weiß+Indigo wird als **umschaltbares
+> Theme** gebaut (Entscheidung K-A) — beide Mockups haben denselben Umschalter.
+
 > **Für parallele Sessions:** läuft neben der strukturellen Änderung, an der Till gerade
 > in einer anderen Session arbeitet. Reiner Design-Vorschlag, **noch nicht entschieden,
 > noch nicht gebaut** — keine Datei unter `apps/web/` wurde angefasst. Wenn du (Claude, in

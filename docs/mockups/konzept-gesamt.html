@@ -1,0 +1,515 @@
+<!doctype html>
+<!-- data-palette muss von Anfang an stehen: sonst greifen die Farbvariablen erst
+     nach dem ersten Klick und die Seite startet ohne Palette (weiß/flach). -->
+<html lang="de" data-palette="creme">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EventTech — Gesamtkonzept (U1)</title>
+<style>
+/* ===========================================================================
+   Mockup zu PLAN-UI-NEUSCHNITT.md, Etappe U1.
+   Zweck: die STRUKTUR zeigen (Navigation, Startseite in drei Rollen,
+   Job-Abschnitte, Dokumente-Ordner). Die Farbwelten stehen in dashboard-hell.html.
+   Selbstständige Datei, keine Abhängigkeiten.
+   =========================================================================== */
+
+:root[data-palette="creme"] {
+  --bg:#F2EFE9; --bg-surface:#FFFFFF; --bg-raised:#F7F5F1;
+  --border:#E3DED4; --border-subtle:#EDE9E2;
+  --ink:#1A1815; --ink-muted:#6B665D; --ink-faint:#9B958A;
+  --accent:#1F1D1A; --accent-hover:#38342E; --accent-soft:#EDE9E1; --on-accent:#FFFFFF;
+  --shadow:0 1px 2px rgba(26,24,21,.05), 0 8px 24px -12px rgba(26,24,21,.14);
+}
+:root[data-palette="weiss"] {
+  --bg:#F6F7FA; --bg-surface:#FFFFFF; --bg-raised:#F1F3F8;
+  --border:#E2E5EC; --border-subtle:#EDEFF4;
+  --ink:#14161C; --ink-muted:#5D6472; --ink-faint:#8E96A6;
+  --accent:#4F46E5; --accent-hover:#4338CA; --accent-soft:#EEEDFC; --on-accent:#FFFFFF;
+  --shadow:0 1px 2px rgba(20,22,28,.05), 0 8px 24px -12px rgba(20,22,28,.16);
+}
+/* Status-Farben: auf hellem Grund nachgeschärft (Kontrast >= 4.5:1).
+   Der Härtetest dazu steht in dashboard-hell.html. */
+:root {
+  --st-anfrage:#5A6273; --st-bestaetigt:#1D4ED8; --st-planung:#6D28D9;
+  --st-packen:#B45309;  --st-laeuft:#C2410C;     --st-rueckgabe:#0F766E;
+  --st-fertig:#15803D;  --st-storno:#B91C1C;
+  --ok:#15803D; --warn:#B45309; --bad:#B91C1C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-size:15px; line-height:1.5;
+  font-family:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased;
+  transition:background-color .25s ease,color .25s ease;
+}
+.mono{font-family:ui-monospace,"SFMono-Regular",Menlo,monospace}
+
+/* --- Steuerleiste des Mockups (gehört nicht zur App) --------------------- */
+.demo-bar{
+  position:sticky; top:0; z-index:50; display:flex; flex-wrap:wrap; gap:14px;
+  align-items:center; padding:10px 18px; background:var(--bg-surface);
+  border-bottom:1px solid var(--border); box-shadow:var(--shadow);
+}
+.demo-bar strong{font-size:13px; letter-spacing:.02em}
+.demo-bar .grp{display:flex; gap:4px; background:var(--bg-raised); padding:3px; border-radius:9px}
+.demo-bar button{
+  border:0; background:transparent; color:var(--ink-muted); cursor:pointer;
+  padding:6px 12px; border-radius:7px; font:inherit; font-size:13px; font-weight:500;
+}
+.demo-bar button[aria-pressed="true"]{background:var(--bg-surface); color:var(--ink); box-shadow:var(--shadow); font-weight:600}
+.demo-hint{font-size:12.5px; color:var(--ink-faint); margin-left:auto}
+
+/* --- Grundgerüst --------------------------------------------------------- */
+.app{display:grid; grid-template-columns:232px 1fr; min-height:calc(100vh - 52px)}
+.side{background:var(--bg-surface); border-right:1px solid var(--border); padding:18px 12px; display:flex; flex-direction:column}
+.brand{display:flex; align-items:center; gap:10px; padding:0 8px 18px}
+.brand .logo{width:32px;height:32px;border-radius:9px;background:var(--accent);color:var(--on-accent);
+  display:grid;place-items:center;font-weight:700;font-size:14px}
+.brand b{font-size:14.5px; letter-spacing:-.01em}
+.navgrp{margin-top:14px}
+.navgrp .lbl{font-size:10.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--ink-faint); padding:0 10px 6px}
+.nav a{display:flex; align-items:center; gap:9px; padding:7px 10px; border-radius:8px;
+  color:var(--ink-muted); text-decoration:none; font-size:14px; margin-bottom:1px}
+.nav a:hover{background:var(--bg-raised); color:var(--ink)}
+.nav a.on{background:var(--accent-soft); color:var(--ink); font-weight:600}
+.nav .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;flex:none}
+.nav .cnt{margin-left:auto; font-size:11.5px; font-weight:600; background:var(--accent); color:var(--on-accent);
+  border-radius:999px; padding:1px 7px}
+.side-foot{margin-top:auto; border-top:1px solid var(--border-subtle); padding-top:12px}
+.userbtn{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;width:100%;
+  border:0;background:transparent;cursor:pointer;font:inherit;text-align:left}
+.userbtn:hover{background:var(--bg-raised)}
+.ava{width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--ink);
+  display:grid;place-items:center;font-size:11.5px;font-weight:700;flex:none}
+.userbtn small{display:block;color:var(--ink-faint);font-size:11.5px}
+
+.main{padding:26px 30px 60px; max-width:1180px}
+h1{font-size:25px; letter-spacing:-.022em; font-weight:680}
+.sub{color:var(--ink-muted); font-size:13.5px; margin-top:3px}
+
+.card{background:var(--bg-surface); border:1px solid var(--border); border-radius:13px; box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border-subtle)}
+.card-h h2{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted)}
+.card-h .more{margin-left:auto;font-size:12.5px;color:var(--ink-muted);text-decoration:none}
+.row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border-subtle)}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--bg-raised)}
+
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;
+  padding:2.5px 9px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.badge i{width:6px;height:6px;border-radius:50%;background:currentColor;font-style:normal}
+/* Status auch ohne Farbe erkennbar: Punktform + Text (Barrierefreiheit). */
+.b-anfrage{color:var(--st-anfrage)} .b-bestaetigt{color:var(--st-bestaetigt)}
+.b-planung{color:var(--st-planung)} .b-packen{color:var(--st-packen)}
+.b-laeuft{color:var(--st-laeuft)}   .b-fertig{color:var(--st-fertig)}
+
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--bg-surface);
+  color:var(--ink);padding:8px 14px;border-radius:9px;font:inherit;font-size:13.5px;font-weight:550;cursor:pointer;text-decoration:none}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn:hover{background:var(--bg-raised)} .btn.primary:hover{background:var(--accent-hover)}
+
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:18px 0}
+.kpi{background:var(--bg-surface);border:1px solid var(--border);border-radius:13px;padding:14px 16px;box-shadow:var(--shadow)}
+.kpi .k{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted)}
+.kpi .v{font-size:27px;font-weight:660;letter-spacing:-.03em;margin-top:5px}
+.kpi .s{font-size:12.5px;color:var(--ink-faint);margin-top:2px}
+.kpi.soon{border-style:dashed;opacity:.72}
+.chip-soon{font-size:10px;font-weight:700;border:1px dashed var(--ink-faint);color:var(--ink-faint);
+  border-radius:999px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+
+.hero{display:grid;grid-template-columns:1.55fr 1fr;gap:0;overflow:hidden}
+.hero-l{padding:20px 22px}
+.hero-r{background:var(--bg-raised);border-left:1px solid var(--border-subtle);padding:18px 20px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-muted);
+  display:flex;align-items:center;gap:7px}
+.eyebrow .pulse{width:7px;height:7px;border-radius:50%;background:var(--st-packen)}
+.hero h2{font-size:23px;font-weight:660;letter-spacing:-.022em;margin:9px 0 8px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 16px;color:var(--ink-muted);font-size:13.5px;margin-bottom:16px}
+.tl{list-style:none;font-size:13.5px}
+.tl li{display:flex;align-items:center;gap:9px;padding:5px 0}
+.tl .t{margin-left:auto;color:var(--ink-muted);font-size:12.5px}
+.tl .mark{width:8px;height:8px;border-radius:50%;border:2px solid var(--ink-faint);flex:none}
+.tl .done{color:var(--ink-faint);text-decoration:line-through}
+.tl .done .mark{background:var(--ok);border-color:var(--ok)}
+.tl .now .mark{background:var(--st-packen);border-color:var(--st-packen);box-shadow:0 0 0 3px color-mix(in srgb,var(--st-packen) 22%,transparent)}
+.tl .now{font-weight:620}
+
+.two{display:grid;grid-template-columns:1.5fr 1fr;gap:18px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:18px}
+.date{width:42px;height:42px;border-radius:9px;background:var(--bg-raised);border:1px solid var(--border-subtle);
+  display:grid;place-items:center;line-height:1;flex:none}
+.date b{font-size:15px;font-weight:670} .date span{font-size:9.5px;color:var(--ink-faint);letter-spacing:.06em}
+.ttl{font-weight:570;font-size:14.5px} .sub2{color:var(--ink-muted);font-size:12.5px;margin-top:1px}
+.spacer{margin-left:auto}
+
+.tabs{display:flex;gap:3px;background:var(--bg-raised);padding:3px;border-radius:10px;margin:16px 0}
+.tabs button{border:0;background:transparent;padding:7px 15px;border-radius:8px;font:inherit;font-size:13.5px;
+  color:var(--ink-muted);cursor:pointer;font-weight:520}
+.tabs button[aria-selected="true"]{background:var(--bg-surface);color:var(--ink);font-weight:620;box-shadow:var(--shadow)}
+.tabs .n{font-size:11px;color:var(--ink-faint);margin-left:5px}
+
+.folder{display:flex;align-items:center;gap:11px;padding:11px 16px;border-bottom:1px solid var(--border-subtle);cursor:pointer}
+.folder:hover{background:var(--bg-raised)}
+.folder .ic{width:34px;height:34px;border-radius:8px;background:var(--accent-soft);display:grid;place-items:center;font-size:15px;flex:none}
+.folder .cnt2{color:var(--ink-faint);font-size:12.5px}
+.file{display:flex;align-items:center;gap:11px;padding:9px 16px 9px 62px;border-bottom:1px solid var(--border-subtle);font-size:13.5px}
+.file:hover{background:var(--bg-raised)}
+.ftag{font-size:10px;font-weight:700;border-radius:4px;padding:2px 5px;background:var(--bg-raised);
+  border:1px solid var(--border);color:var(--ink-muted);font-family:ui-monospace,monospace}
+.auto{font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px;background:var(--accent-soft);color:var(--ink-muted)}
+
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:11px 15px;border-radius:0 10px 10px 0;
+  font-size:13.5px;margin:16px 0}
+.empty{padding:34px 20px;text-align:center;color:var(--ink-faint);font-size:13.5px}
+.hide{display:none !important}
+@media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.grid4{grid-template-columns:repeat(2,1fr)}
+  .hero{grid-template-columns:1fr}.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <strong>Gesamtkonzept</strong>
+  <div class="grp" id="viewSw">
+    <button data-view="start" aria-pressed="true">Startseite</button>
+    <button data-view="job">Job-Detail</button>
+    <button data-view="docs">Dokumente</button>
+  </div>
+  <div class="grp" id="roleSw">
+    <button data-role="till" aria-pressed="true">Till (Inhaber)</button>
+    <button data-role="verw">Verwaltung</button>
+    <button data-role="frei">Freelancer</button>
+  </div>
+  <div class="grp" id="palSw">
+    <button data-pal="creme" aria-pressed="true">Creme</button>
+    <button data-pal="weiss">Weiß + Indigo</button>
+  </div>
+  <span class="demo-hint">Entwurf — noch nichts gebaut</span>
+</div>
+
+<div class="app">
+  <!-- ===================== Navigation (K-C) ===================== -->
+  <aside class="side">
+    <div class="brand"><div class="logo">ET</div><div><b>EventTech</b><br><small style="color:var(--ink-faint);font-size:11.5px">Manager</small></div></div>
+
+    <nav class="nav">
+      <a href="#" class="on"><span class="dot"></span>Überblick</a>
+
+      <div class="navgrp r-till r-verw r-frei">
+        <div class="lbl">Arbeit</div>
+        <a href="#"><span class="dot"></span>Jobs</a>
+        <a href="#"><span class="dot"></span>Kalender</a>
+        <a href="#"><span class="dot"></span>Aufgaben <span class="cnt">2</span></a>
+        <a href="#" class="r-till r-verw"><span class="dot"></span>Anmietung <span class="cnt">3</span></a>
+      </div>
+
+      <div class="navgrp r-till r-verw">
+        <div class="lbl">Kaufmännisch</div>
+        <a href="#"><span class="dot"></span>Anfragen / Kunden <span class="cnt">3</span></a>
+        <a href="#"><span class="dot"></span>Angebote</a>
+        <a href="#"><span class="dot"></span>Rechnungen</a>
+        <a href="#"><span class="dot"></span>Auswertungen</a>
+      </div>
+
+      <div class="navgrp">
+        <div class="lbl">Ablage</div>
+        <a href="#"><span class="dot"></span>Dokumente</a>
+        <a href="#" class="r-till r-verw"><span class="dot"></span>Inventar</a>
+      </div>
+    </nav>
+
+    <div class="side-foot">
+      <nav class="nav r-till r-verw" style="margin-bottom:6px">
+        <a href="#"><span class="dot"></span>Verwaltung</a>
+      </nav>
+      <button class="userbtn">
+        <span class="ava" id="avaTxt">TF</span>
+        <span><b style="font-size:13.5px" id="userName">Till Freude</b><small id="userRole">Inhaber</small></span>
+      </button>
+      <div style="font-size:11.5px;color:var(--ink-faint);padding:4px 10px 0">
+        ↳ <b>Meine Zeiten</b> liegt hier (K-B)
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ===================== ANSICHT: STARTSEITE ===================== -->
+    <section id="v-start">
+      <h1 id="greet">Guten Abend, Till</h1>
+      <p class="sub" id="greetSub">Sonntag, 19. Juli 2026 · 3 neue Anfragen</p>
+
+      <!-- Hero: „Nächster Einsatz" statt Tages-Metapher (Tills Korrektur) -->
+      <div class="card hero" style="margin-top:18px">
+        <div class="hero-l">
+          <div class="eyebrow"><span class="pulse"></span><span id="heroLabel">Nächster Einsatz — in 3 Tagen</span></div>
+          <h2>Stadtfest Bad Vilbel — Bühne, Ton &amp; Licht</h2>
+          <div class="meta">
+            <span>22.–24. Juli</span><span>Stadt Bad Vilbel</span><span>Marktplatz, Bad Vilbel</span>
+            <span class="badge b-packen"><i></i>Packen</span>
+          </div>
+          <div style="display:flex;gap:9px;flex-wrap:wrap">
+            <a class="btn primary" href="#">Job öffnen</a>
+            <a class="btn" href="#">Packliste</a>
+            <a class="btn r-till r-verw" href="#">Dokumente (4)</a>
+          </div>
+          <div class="note r-frei" style="margin-bottom:0">
+            Du bist als <b>Techniker</b> eingeteilt. Aufbau ab Fr 10:00, Treffpunkt Marktplatz.
+          </div>
+        </div>
+        <div class="hero-r">
+          <div class="eyebrow" style="margin-bottom:11px">Zeitplan</div>
+          <ul class="tl">
+            <li class="done"><span class="mark"></span>Abholung Anmietung Weber<span class="t">Fr 06:30</span></li>
+            <li class="done"><span class="mark"></span>Anlieferung Marktplatz<span class="t">Fr 08:00</span></li>
+            <li class="now"><span class="mark"></span>Bühnenaufbau<span class="t">Fr 10:00</span></li>
+            <li><span class="mark"></span>Soundcheck<span class="t">Fr 16:00</span></li>
+            <li><span class="mark"></span>Showbeginn<span class="t">Fr 19:00</span></li>
+            <li><span class="mark"></span>Abbau &amp; Rückgabe<span class="t">So 23:00</span></li>
+          </ul>
+          <div style="font-size:12px;color:var(--ink-faint);border-top:1px solid var(--border);margin-top:11px;padding-top:9px">
+            Später hier: <b>wer macht was</b> (K-G) — Struktur hält den Platz frei.
+          </div>
+        </div>
+      </div>
+
+      <!-- Kennzahlen: rollenabhängig -->
+      <div class="grid4">
+        <div class="kpi"><div class="k" id="kpi1k">Anstehende Jobs</div><div class="v" id="kpi1v">7</div><div class="s" id="kpi1s">1 aktiv · 14 Tage</div></div>
+        <div class="kpi r-till r-verw"><div class="k">Offene Rechnungen</div><div class="v">8.420 €</div><div class="s" style="color:var(--bad)">1.190 € überfällig</div></div>
+        <div class="kpi soon r-till r-verw"><div class="k">Offene Anmietungen <span class="chip-soon">E2</span></div><div class="v">3</div><div class="s">2.150 € EK angefragt</div></div>
+        <div class="kpi"><div class="k">Meine Aufgaben</div><div class="v">6</div><div class="s" style="color:var(--bad)">2 überfällig</div></div>
+      </div>
+
+      <div class="two">
+        <div class="stack">
+          <div class="card">
+            <div class="card-h"><h2 id="jobsTitle">Anstehende Jobs</h2><a class="more" href="#">Alle →</a></div>
+            <div class="row"><div class="date"><b>22</b><span>JUL</span></div>
+              <div><div class="ttl">Stadtfest Bad Vilbel — Bühne, Ton &amp; Licht</div><div class="sub2">Stadt Bad Vilbel · Marktplatz</div></div>
+              <span class="spacer"></span><span class="badge b-packen"><i></i>Packen</span></div>
+            <div class="row"><div class="date"><b>26</b><span>JUL</span></div>
+              <div><div class="ttl">Hochzeit Kraft — Licht &amp; DJ-Ton</div><div class="sub2">Familie Kraft · Gut Hügelheim</div></div>
+              <span class="spacer"></span><span class="badge b-planung"><i></i>Planung</span></div>
+            <div class="row r-till r-verw"><div class="date"><b>02</b><span>AUG</span></div>
+              <div><div class="ttl">Firmenfeier Meyer Logistik</div><div class="sub2">Meyer Logistik GmbH · Werkshalle 2</div></div>
+              <span class="spacer"></span><span class="badge b-bestaetigt"><i></i>Bestätigt</span></div>
+            <div class="row r-till r-verw"><div class="date"><b>09</b><span>AUG</span></div>
+              <div><div class="ttl">Abiball Gymnasium Karben</div><div class="sub2">Förderverein · Stadthalle</div></div>
+              <span class="spacer"></span><span class="badge b-anfrage"><i></i>Anfrage</span></div>
+          </div>
+
+          <div class="card r-till r-verw">
+            <div class="card-h"><h2>Deckungsbeitrag Juli <span class="chip-soon">E7</span></h2><a class="more" href="#">Auswertungen →</a></div>
+            <div style="padding:6px 16px 14px">
+              <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+                <tr><td style="padding:6px 0;color:var(--ink-muted)">Erlös (abgerechnet, netto)</td><td class="mono" style="text-align:right">14.900 €</td></tr>
+                <tr><td style="padding:6px 0;color:var(--ink-muted)">− Anmietung</td><td class="mono" style="text-align:right">−4.320 €</td></tr>
+                <tr><td style="padding:6px 0;color:var(--ink-muted)">− Personal</td><td class="mono" style="text-align:right">−2.680 €</td></tr>
+                <tr><td style="padding:6px 0;color:var(--ink-muted)">− Sonstiges</td><td class="mono" style="text-align:right">−760 €</td></tr>
+                <tr style="border-top:1px solid var(--border)"><td style="padding:9px 0;font-weight:650">Deckungsbeitrag</td>
+                  <td class="mono" style="text-align:right;font-weight:680;font-size:16px">7.140 €</td></tr>
+              </table>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <span style="font-size:20px;font-weight:680;color:var(--ok)">48 %</span>
+                <span style="font-size:12.5px;color:var(--ink-muted)">Marge — Ampel grün ab 30 %</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card r-till r-verw">
+            <div class="card-h"><h2>Neue Anfragen</h2><a class="more" href="#">Bearbeiten →</a></div>
+            <div class="row"><span class="ava">SW</span><div><div class="ttl">Sandra Weiß</div><div class="sub2">Geburtstag · 12. Sep</div></div></div>
+            <div class="row"><span class="ava">MR</span><div><div class="ttl">Milad Rahimi</div><div class="sub2">Hochzeit · 5. Sep</div></div></div>
+            <div class="row"><span class="ava">KN</span><div><div class="ttl">Kulturverein Nidda</div><div class="sub2">Open Air · Termin offen</div></div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><h2>Fällige Aufgaben</h2><a class="more" href="#">Alle →</a></div>
+            <div class="row"><span style="width:9px;height:9px;border-radius:50%;background:var(--bad);flex:none"></span>
+              <div><div class="ttl">Stromplan ans Ordnungsamt</div><div class="sub2" style="color:var(--bad)">Fällig 17.07. — 2 Tage überfällig</div></div></div>
+            <div class="row"><span style="width:9px;height:9px;border-radius:50%;background:var(--bad);flex:none"></span>
+              <div><div class="ttl">Angebot Abiball nachfassen</div><div class="sub2" style="color:var(--bad)">Fällig 15.07. — 4 Tage überfällig</div></div></div>
+            <div class="row"><span style="width:9px;height:9px;border-radius:50%;background:var(--ink-faint);flex:none"></span>
+              <div><div class="ttl">Rückläufer LED-Bars prüfen</div><div class="sub2">Fällig 22.07.</div></div></div>
+          </div>
+
+          <div class="card r-frei hide">
+            <div class="card-h"><h2>Meine Verfügbarkeit</h2><a class="more" href="#">Eintragen →</a></div>
+            <div style="padding:13px 16px;font-size:13.5px;color:var(--ink-muted)">
+              Trag ein, wann du <b>nicht</b> kannst. Till sieht nur „nicht verfügbar" —
+              <b>nie den Grund</b>.
+            </div>
+          </div>
+
+          <div class="card r-till r-verw">
+            <div class="card-h"><h2>Zuletzt abgelegt</h2><a class="more" href="#">Dokumente →</a></div>
+            <div class="row"><span class="ftag">PDF</span><div><div class="ttl">Genehmigung_Marktplatz.pdf</div><div class="sub2">Genehmigung · Stadtfest</div></div></div>
+            <div class="row"><span class="ftag">PDF</span><div><div class="ttl">RE-2026-0043_Stadt-Bad-Vilbel.pdf</div><div class="sub2">Rechnung · <span class="auto">auto</span></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="note r-frei">
+        <b>Der Punkt dieser Rolle:</b> Heute landet ein Freelancer auf einer Firmenübersicht,
+        die ihm die Rechteverwaltung fast komplett ausblendet — praktisch ein leerer Bildschirm.
+        Hier sieht er <b>seinen</b> Einsatz, seine Aufgaben und seine Verfügbarkeit.
+      </div>
+      <div class="note r-till">
+        <b>Schule taucht bewusst nicht auf.</b> Sie blockiert nur Zeit im Kalender und meldet sich,
+        wenn ein Job auf eine Klausur fällt. Arbeit ist sichtbar — Schule nicht.
+      </div>
+    </section>
+
+    <!-- ===================== ANSICHT: JOB-DETAIL (K-D) ===================== -->
+    <section id="v-job" class="hide">
+      <div style="font-size:12.5px;color:var(--ink-muted);margin-bottom:7px">← Jobs</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h1>Stadtfest Bad Vilbel — Bühne, Ton &amp; Licht</h1>
+        <span class="badge b-packen"><i></i>Packen</span>
+      </div>
+      <p class="sub">22.–24. Juli 2026 · Stadt Bad Vilbel · Marktplatz, Bad Vilbel</p>
+
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true">Übersicht</button>
+        <button role="tab" aria-selected="false">Material <span class="n">18</span></button>
+        <button role="tab" aria-selected="false">Geld</button>
+        <button role="tab" aria-selected="false">Ablage <span class="n">4</span></button>
+      </div>
+
+      <div class="note">
+        <b>Das Problem, das die Abschnitte lösen:</b> Heute liegen 7 Karten untereinander.
+        Mit Anmietung und Kalkulation (Block B) werden es 9–10 — eine Seite, die man nur noch scrollt.
+        Deshalb <b>vor</b> Block B gliedern, damit die neuen Inhalte in eine fertige Struktur einziehen.
+      </div>
+
+      <div class="two" style="margin-top:16px">
+        <div class="stack">
+          <div class="card">
+            <div class="card-h"><h2>Zeitplan</h2><a class="more" href="#">Bearbeiten →</a></div>
+            <div style="padding:12px 16px">
+              <ul class="tl">
+                <li class="done"><span class="mark"></span>Abholung Anmietung Weber
+                  <span style="color:var(--ink-faint);font-size:12px;margin-left:7px">— später: Max</span><span class="t">Fr 06:30</span></li>
+                <li class="done"><span class="mark"></span>Anlieferung Marktplatz<span class="t">Fr 08:00</span></li>
+                <li class="now"><span class="mark"></span>Bühnenaufbau
+                  <span style="color:var(--ink-faint);font-size:12px;margin-left:7px">— später: Bela</span><span class="t">Fr 10:00</span></li>
+                <li><span class="mark"></span>Soundcheck<span class="t">Fr 16:00</span></li>
+              </ul>
+              <div style="font-size:12px;color:var(--ink-faint);border-top:1px solid var(--border-subtle);margin-top:10px;padding-top:9px">
+                <b>K-G:</b> Die Spalte „wer macht was" passt hier später ohne Umbau hinein —
+                gebaut wird sie jetzt <b>nicht</b>.
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><h2>Packliste</h2><span class="spacer"></span><span style="font-size:12.5px;color:var(--ink-muted)">14 / 18 gepackt</span></div>
+            <div class="row"><div><div class="ttl">LED-Bar RGBW</div><div class="sub2">8 Stück · 6 eigen + 2 angemietet</div></div>
+              <span class="spacer"></span><span class="badge b-fertig"><i></i>gepackt</span></div>
+            <div class="row"><div><div class="ttl">Funkstrecke Handsender</div><div class="sub2">4 Stück</div></div>
+              <span class="spacer"></span><span class="badge b-packen"><i></i>offen</span></div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="card-h"><h2>Status</h2></div>
+            <div style="padding:12px 16px;font-size:13.5px;color:var(--ink-muted)">
+              Anfrage → Bestätigt → Planung → <b style="color:var(--st-packen)">Packen</b> → Läuft → Rückgabe → Abgeschlossen
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h2>Team</h2></div>
+            <div class="row"><span class="ava">MD</span><div><div class="ttl">Max Deger</div><div class="sub2">verfügbar</div></div></div>
+            <div class="row"><span class="ava">BB</span><div><div class="ttl">Bela B.</div><div class="sub2" style="color:var(--warn)">am 24.07. nicht verfügbar</div></div></div>
+            <div style="padding:10px 16px;font-size:12px;color:var(--ink-faint);border-top:1px solid var(--border-subtle)">
+              Der Grund wird <b>nie</b> angezeigt (E-G).
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ANSICHT: DOKUMENTE (K-E) ===================== -->
+    <section id="v-docs" class="hide">
+      <h1>Dokumente</h1>
+      <p class="sub">Nach Jobs geordnet — wie in professioneller Software</p>
+
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true">Nach Job</button>
+        <button role="tab" aria-selected="false">Nach Kategorie</button>
+        <button role="tab" aria-selected="false">Nach Datum</button>
+      </div>
+
+      <div class="note">
+        <b>Kein Neubau:</b> Die Job-Namen werden bereits je Zeile aufgelöst
+        (<span class="mono">useAllDocuments</span>), und die Gruppierungs-Mechanik
+        (<span class="mono">listGrouping</span> + <span class="mono">GroupRow</span>) liegt
+        ungenutzt herum — sie wurde auf dieser Seite nur nie verwendet.
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="folder"><span class="ic">📁</span>
+          <div><div class="ttl">Stadtfest Bad Vilbel</div><div class="sub2">22.–24. Juli 2026 · Stadt Bad Vilbel</div></div>
+          <span class="spacer"></span><span class="cnt2">4 Dateien · 1,7 MB</span></div>
+        <div class="file"><span class="ftag">PDF</span><span>Genehmigung_Marktplatz_Stadtfest.pdf</span>
+          <span class="spacer"></span><span class="cnt2">heute · 240 kB</span></div>
+        <div class="file"><span class="ftag">PNG</span><span>Buehnenplan_Marktplatz_v3.png</span>
+          <span class="spacer"></span><span class="cnt2">16. Jul · 1,2 MB</span></div>
+        <div class="file"><span class="ftag">PDF</span><span>RE-2026-0043_Stadt-Bad-Vilbel.pdf</span>
+          <span class="auto">auto</span><span class="spacer"></span><span class="cnt2">gestern · 18 kB</span></div>
+        <div class="file"><span class="ftag">PDF</span><span>Verleiher-Rechnung_Weber.pdf</span>
+          <span class="spacer"></span><span class="cnt2">14. Jul · 96 kB</span></div>
+
+        <div class="folder"><span class="ic">📁</span>
+          <div><div class="ttl">Hochzeit Kraft</div><div class="sub2">26. Juli 2026 · Familie Kraft</div></div>
+          <span class="spacer"></span><span class="cnt2">2 Dateien · 310 kB</span></div>
+        <div class="folder"><span class="ic">📁</span>
+          <div><div class="ttl">Ohne Vorgang</div><div class="sub2">Verträge, Versicherung, Allgemeines</div></div>
+          <span class="spacer"></span><span class="cnt2">5 Dateien · 2,4 MB</span></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+const root = document.documentElement;
+function press(group, attr, val){
+  group.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === val)));
+}
+// Palette
+palSw.addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return;
+  root.dataset.palette = b.dataset.pal; press(palSw, "pal", b.dataset.pal); });
+// Ansicht
+viewSw.addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return;
+  press(viewSw, "view", b.dataset.view);
+  ["start","job","docs"].forEach(v => document.getElementById("v-"+v).classList.toggle("hide", v !== b.dataset.view));
+});
+// Rolle — steuert, welche Bereiche sichtbar sind
+const ROLLEN = {
+  till: { name:"Till Freude", rolle:"Inhaber",     ava:"TF", gruss:"Guten Abend, Till",  jobs:"Anstehende Jobs", kpiK:"Anstehende Jobs", kpi:["7","1 aktiv · 14 Tage"], sub:"Sonntag, 19. Juli 2026 · 3 neue Anfragen", hero:"Nächster Einsatz — in 3 Tagen" },
+  verw: { name:"Anna Berger", rolle:"Verwaltung",  ava:"AB", gruss:"Guten Abend, Anna",  jobs:"Anstehende Jobs", kpiK:"Anstehende Jobs", kpi:["7","1 aktiv · 14 Tage"], sub:"Sonntag, 19. Juli 2026 · 3 neue Anfragen", hero:"Nächster Einsatz — in 3 Tagen" },
+  frei: { name:"Bela B.",     rolle:"Freelancer",  ava:"BB", gruss:"Guten Abend, Bela",  jobs:"Meine Einsätze",  kpiK:"Meine Einsätze", kpi:["2","nächster in 3 Tagen"], sub:"Sonntag, 19. Juli 2026", hero:"Dein nächster Einsatz — in 3 Tagen" }
+};
+function setRole(r){
+  const d = ROLLEN[r];
+  userName.textContent = d.name; userRole.textContent = d.rolle; avaTxt.textContent = d.ava;
+  greet.textContent = d.gruss; greetSub.textContent = d.sub;
+  jobsTitle.textContent = d.jobs; heroLabel.textContent = d.hero;
+  kpi1k.textContent = d.kpiK; kpi1v.textContent = d.kpi[0]; kpi1s.textContent = d.kpi[1];
+  document.querySelectorAll(".r-till,.r-verw,.r-frei").forEach(el => {
+    el.classList.toggle("hide", !el.classList.contains("r-" + r));
+  });
+  press(roleSw, "role", r);
+}
+roleSw.addEventListener("click", e => { const b = e.target.closest("button"); if(b) setRole(b.dataset.role); });
+setRole("till");
+</script>
+</body>
+</html>
