@@ -138,8 +138,11 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
   während `can_see_job` den Ersteller vor der Zuweisung noch nicht durchließ. Reiner
   Frontend-Fix (Reihenfolge: anlegen ohne RETURNING → zuweisen → erst dann zurückholen),
   keine RLS-Änderung nötig. Mit Max' Login **verifiziert** (mit und ohne Selbstzuweisung).
-  **Wahrscheinlich zugleich die Ursache des seit Wochen roten CI-E2E-Jobs** — nächster
-  CI-Lauf zeigt, ob er jetzt grün wird. Details in `PLAN-UI-NEUSCHNITT.md` bei U3.
+  **War zugleich die Ursache des seit Wochen roten CI-E2E-Jobs** — nach dem Push kam ein
+  **zweiter** Fund dazu: Der CI-Testnutzer hatte `job_view_mode` nie auf `'alle'` gesetzt
+  (nur `role='admin'`), sah seinen frisch angelegten Job deshalb nicht in der Liste. Mit
+  beiden Fixes läuft die CI **erstmals seit Wochen komplett grün** (`ci` + `e2e`, Lauf
+  #49). Details in `PLAN-UI-NEUSCHNITT.md` bei U3.
 
 - **U2 — Umstieg auf helles Design** (2026-07-19): Die App startet jetzt in **Creme**
   (Schwarz als Aktionsfarbe); im Konto-Dialog umschaltbar auf **Weiß+Indigo** oder das

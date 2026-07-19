@@ -239,6 +239,16 @@ Job **mit** Selbstzuweisung → `POST 201`, danach `GET .../jobs?id=eq…` → `
 Max, Status `anfrage`), erwartungsgemäß nicht in seiner Liste. Testdaten restlos entfernt
 (Gegenprobe: Job-Anzahl wieder bei 6, keine verwaisten `calendar_entries`).
 
+**✅ CI-E2E jetzt grün (2026-07-19, Lauf #49):** Der Fix behob den 403, deckte danach
+aber einen **zweiten, unabhängigen** Fund auf derselben Baustelle auf: Der CI-Testnutzer
+(`.github/workflows/ci.yml`, Schritt „Erst-Admin anlegen") bekam bisher nur `role='admin'`
+gesetzt — `job_view_mode` blieb beim Spalten-Default `'zugewiesene'`, während der lokale
+Seed-Admin `'alle'` hat. Ergebnis: Der Test legte den Job jetzt zwar an, sah ihn aber
+nicht in der Liste (dieselbe `can_see_job`-Logik, diesmal nicht als Fehler, sondern als
+korrekt gefilterte, aber für einen Testnutzer falsche Sicht). Fix: `job_view_mode='alle'`
+in der Profil-Anlage ergänzt. **Beide Jobs (`ci`, `e2e`) liefen danach grün** — erstmals
+seit Wochen. `e2e/job-flow.spec.ts` bleibt unverändert; es war nie ein Testfehler.
+
 **U4 — Kalender als Ebenen-Modell**
 Ebenen ein-/ausschaltbar: **Firmenjobs · Meine Einsätze · Köln · Schule**. Ansichts-
 Umschalter (Monat/Woche/Tag/Agenda) endlich auf `ui/Tabs`. Kollisionswarnung über das
