@@ -195,7 +195,9 @@ auf (Hero + alter Block) — behoben. Testdaten restlos entfernt (Gegenprobe: 0)
 - ~~Karte „Zuletzt abgelegte Dokumente"~~ ✅ 2026-07-19 — nutzt `useAllDocuments`
   (seit D3), zeigt die letzten 5 mit Kategorie-Icon, Vorgang und Datum; Klick öffnet
   die signierte URL wie in `DocumentsCard`.
-- Rest-Inventar auf eine **schmale Fußzeile** eindampfen (aktuell noch zwei Karten).
+- ~~Rest-Inventar auf eine schmale Fußzeile eindampfen~~ ✅ 2026-07-19 — „Gerätestatus"-
+  und „Geräte im Einsatz"-Karte (Balken + Ring) durch eine Zeile ersetzt: Status-Punkte
+  mit Zahl, Auslastung, Link zu Inventar. `DeviceStatusBars`/`UtilizationRing` entfernt.
 - ~~`ui/Avatar.tsx` als geteilte Komponente~~ ✅ 2026-07-19 — sechs Nachbauten
   (Jobs, Job-Zuweisung ×2, Kundenliste, Website-Anfragen, Dashboard) auf
   `components/ui/Avatar.tsx` gezogen.

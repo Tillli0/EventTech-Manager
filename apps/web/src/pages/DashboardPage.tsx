@@ -183,23 +183,9 @@ export function DashboardPage() {
               />
             )}
           </SectionCard>
-
-          <SectionCard title="Gerätestatus" action={<CardLink to="/inventar" label="Inventar" />}>
-            <DeviceStatusBars counts={deviceStatusCounts} total={totalDevices} />
-          </SectionCard>
         </div>
 
         <div className="space-y-5">
-          <SectionCard title="Geräte im Einsatz">
-            <div className="flex items-center gap-4">
-              <UtilizationRing pct={utilization} />
-              <div>
-                <p className="text-sm text-ink">{onLoan} ausgeliehen</p>
-                <p className="mt-0.5 text-xs text-ink-faint">von {totalDevices} Geräten im Bestand</p>
-              </div>
-            </div>
-          </SectionCard>
-
           <SectionCard
             title={
               <span className="flex items-center gap-2">
@@ -298,6 +284,29 @@ export function DashboardPage() {
           </SectionCard>
         </div>
       </div>
+
+      {/* Rest-Inventar: seit der Neuausrichtung nur noch Randnotiz, keine eigene
+          Kachel mehr wert (PLAN-UI-NEUSCHNITT.md, U3). */}
+      <Link
+        to="/inventar"
+        className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-border bg-bg-surface px-4 py-3 text-xs transition-colors hover:border-accent/40"
+      >
+        <span className="flex items-center gap-1.5 font-medium text-ink-muted">
+          <Package size={14} />
+          Rest-Inventar
+        </span>
+        <div className="flex flex-wrap items-center gap-4">
+          {DEVICE_STATUS_OPTIONS.map((opt) => (
+            <span key={opt.value} className="flex items-center gap-1.5 text-ink-muted">
+              <span className={cn("h-1.5 w-1.5 rounded-full", deviceTone(opt.value).solid)} />
+              {opt.label} <span className="font-mono font-medium text-ink">{deviceStatusCounts[opt.value] ?? 0}</span>
+            </span>
+          ))}
+        </div>
+        <span className="ml-auto text-ink-faint">
+          {utilization}% ausgelastet · {onLoan} von {totalDevices} im Einsatz
+        </span>
+      </Link>
     </div>
   );
 }
@@ -364,77 +373,6 @@ function CountUp({ value }: { value: number }) {
     return () => cancelAnimationFrame(raf);
   }, [value]);
   return <>{display}</>;
-}
-
-const RING_R = 34;
-const RING_C = 2 * Math.PI * RING_R;
-
-function UtilizationRing({ pct }: { pct: number }) {
-  const target = RING_C * (1 - pct / 100);
-  const [offset, setOffset] = useState(prefersReducedMotion() ? target : RING_C);
-  useEffect(() => {
-    if (prefersReducedMotion()) {
-      setOffset(target);
-      return;
-    }
-    const id = requestAnimationFrame(() => setOffset(target));
-    return () => cancelAnimationFrame(id);
-  }, [target]);
-  return (
-    <div className="relative h-[84px] w-[84px] shrink-0">
-      <svg width="84" height="84" viewBox="0 0 80 80">
-        <circle cx="40" cy="40" r={RING_R} fill="none" stroke="currentColor" strokeWidth="8" className="text-border" />
-        <circle
-          cx="40"
-          cy="40"
-          r={RING_R}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="8"
-          strokeLinecap="round"
-          transform="rotate(-90 40 40)"
-          strokeDasharray={RING_C}
-          strokeDashoffset={offset}
-          className="text-accent"
-          style={{ transition: "stroke-dashoffset 1s ease" }}
-        />
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-base font-semibold text-ink">{pct}%</span>
-    </div>
-  );
-}
-
-function DeviceStatusBars({ counts, total }: { counts: Record<string, number>; total: number }) {
-  const [mounted, setMounted] = useState(prefersReducedMotion());
-  useEffect(() => {
-    if (prefersReducedMotion()) return;
-    const id = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-  if (total === 0) return <p className="py-2 text-sm text-ink-faint">Noch keine Geräte erfasst.</p>;
-  return (
-    <div className="space-y-2.5">
-      {DEVICE_STATUS_OPTIONS.map((opt) => {
-        const count = counts[opt.value] ?? 0;
-        const pct = (count / total) * 100;
-        return (
-          <div key={opt.value} className="flex items-center gap-3">
-            <span className="w-20 shrink-0 text-xs text-ink-muted">{opt.label}</span>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-bg-raised">
-              <div
-                className={cn("h-full rounded-full", deviceTone(opt.value).solid)}
-                style={{
-                  width: mounted ? `${pct}%` : "0%",
-                  transition: "width 0.8s cubic-bezier(0.2,0.7,0.3,1)",
-                }}
-              />
-            </div>
-            <span className="w-7 shrink-0 text-right text-xs font-medium text-ink">{count}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 function SectionCard({
