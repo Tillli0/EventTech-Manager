@@ -153,3 +153,14 @@ export function resolvePersonalBlocks(
 
   return [...fromBlocks, ...fromRecurring].sort((a, b) => a.start.getTime() - b.start.getTime());
 }
+
+function stripTime(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/** Aufgelöste Termine, die einen bestimmten Kalendertag berühren — geteilt zwischen
+ * Monats-, Wochen- und Tagesansicht, damit die Ebene überall gleich funktioniert. */
+export function personalItemsForDay(items: ResolvedPersonalBlock[], day: Date): ResolvedPersonalBlock[] {
+  const key = stripTime(day);
+  return items.filter((b) => stripTime(b.start) <= key && stripTime(b.end) >= key);
+}

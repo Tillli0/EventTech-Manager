@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import type { CalendarEntry, JobMilestone } from "@/types/database";
 import { formatTime } from "@/lib/format";
 import { NowLine } from "./NowLine";
+import { personalItemsForDay, type ResolvedPersonalBlock } from "@/lib/personalSchedule";
 
 const HOUR_HEIGHT = 80;
 const START_HOUR = 6;
@@ -63,12 +64,15 @@ function layoutDay(day: Date, entries: CalendarEntry[]) {
 
 export function DayView({
   currentDate, entries, milestones, collidingIds,
+  personalVisible = [], personalBlockers = [],
   onEntryClick, onMilestoneClick, onSlotClick,
 }: {
   currentDate: Date;
   entries: CalendarEntry[];
   milestones: MilestoneWithJob[];
   collidingIds: Set<string>;
+  personalVisible?: ResolvedPersonalBlock[];
+  personalBlockers?: ResolvedPersonalBlock[];
   onEntryClick: (entry: CalendarEntry) => void;
   onMilestoneClick?: (milestone: MilestoneWithJob) => void;
   onSlotClick: (date: Date) => void;
@@ -170,6 +174,33 @@ export function DayView({
           ))}
         </div>
       )}
+
+      {/* Persönliche Ebene: Köln-Schicht als Chip, alles andere nur ein Punkt ohne
+          Beschriftung (nie eine Karte — PLAN-UI-NEUSCHNITT.md U4). */}
+      {(() => {
+        const visible = personalItemsForDay(personalVisible, currentDate);
+        const blockers = personalItemsForDay(personalBlockers, currentDate);
+        if (visible.length === 0 && blockers.length === 0) return null;
+        return (
+          <div className="space-y-1.5 border-b border-border bg-bg-surface/50 px-4 py-3">
+            <p className="text-xs font-medium text-ink-faint">Meine Zeiten</p>
+            {visible.map((b) => (
+              <div key={b.id} className="flex items-center gap-2 rounded-md bg-accent-soft px-2 py-1 text-sm text-accent">
+                <span className="truncate font-medium">Köln-Schicht</span>
+                <span className="font-mono text-xs opacity-80">
+                  {formatTime(b.start.toISOString())}–{formatTime(b.end.toISOString())}
+                </span>
+              </div>
+            ))}
+            {blockers.length > 0 && (
+              <div className="flex items-center gap-1.5 text-xs text-ink-faint">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink-faint" />
+                Blockiert
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Stundenraster */}
       <div className="relative max-h-[75vh] overflow-y-auto scrollbar-thin">

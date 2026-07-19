@@ -12,7 +12,7 @@ import { de } from "date-fns/locale";
 import { cn } from "@/lib/cn";
 import type { CalendarEntry, JobMilestone } from "@/types/database";
 import { formatTime } from "@/lib/format";
-import { PERSONAL_BLOCK_CATEGORY_LABELS, type ResolvedPersonalBlock } from "@/lib/personalSchedule";
+import { PERSONAL_BLOCK_CATEGORY_LABELS, personalItemsForDay, type ResolvedPersonalBlock } from "@/lib/personalSchedule";
 
 const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
@@ -140,15 +140,11 @@ export function MonthGrid({
       .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
   }
 
-  function overlapsDay(item: ResolvedPersonalBlock, d: Date): boolean {
-    const day = stripTime(d).getTime();
-    return stripTime(item.start).getTime() <= day && stripTime(item.end).getTime() >= day;
-  }
   function personalVisibleForDay(d: Date): ResolvedPersonalBlock[] {
-    return personalVisible.filter((b) => overlapsDay(b, d));
+    return personalItemsForDay(personalVisible, d);
   }
   function personalBlockersForDay(d: Date): ResolvedPersonalBlock[] {
-    return personalBlockers.filter((b) => overlapsDay(b, d));
+    return personalItemsForDay(personalBlockers, d);
   }
 
   return (

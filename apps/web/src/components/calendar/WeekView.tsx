@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import type { CalendarEntry, JobMilestone } from "@/types/database";
 import { formatTime } from "@/lib/format";
 import { NowLine } from "./NowLine";
+import { PERSONAL_BLOCK_CATEGORY_LABELS, personalItemsForDay, type ResolvedPersonalBlock } from "@/lib/personalSchedule";
 
 const HOUR_HEIGHT = 64;
 const START_HOUR = 6;
@@ -106,12 +107,15 @@ function allDayEntriesForDay(day: Date, entries: CalendarEntry[]): CalendarEntry
 
 export function WeekView({
   currentDate, entries, milestones, collidingIds,
+  personalVisible = [], personalBlockers = [],
   onEntryClick, onMilestoneClick, onSlotClick,
 }: {
   currentDate: Date;
   entries: CalendarEntry[];
   milestones: MilestoneWithJob[];
   collidingIds: Set<string>;
+  personalVisible?: ResolvedPersonalBlock[];
+  personalBlockers?: ResolvedPersonalBlock[];
   onEntryClick: (entry: CalendarEntry) => void;
   onMilestoneClick?: (milestone: MilestoneWithJob) => void;
   onSlotClick: (date: Date) => void;
@@ -217,6 +221,38 @@ export function WeekView({
           );
         })}
       </div>
+
+      {/* Persönliche Ebene: Köln-Schicht als Chip, alles andere nur ein Punkt (nie eine
+          Karte — PLAN-UI-NEUSCHNITT.md U4). */}
+      {(personalVisible.length > 0 || personalBlockers.length > 0) && (
+        <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-border bg-bg-surface/50">
+          <div />
+          {days.map((d) => {
+            const visible = personalItemsForDay(personalVisible, d);
+            const blockers = personalItemsForDay(personalBlockers, d);
+            if (visible.length === 0 && blockers.length === 0) return <div key={d.toISOString()} className="border-l border-border" />;
+            return (
+              <div key={d.toISOString()} className="flex flex-col gap-0.5 border-l border-border px-2 py-1.5">
+                {visible.map((b) => (
+                  <span
+                    key={b.id}
+                    title={`Köln-Schicht ${formatTime(b.start.toISOString())}–${formatTime(b.end.toISOString())}`}
+                    className="truncate rounded bg-accent-soft px-1.5 py-px text-[11px] font-medium text-accent"
+                  >
+                    Köln {formatTime(b.start.toISOString())}
+                  </span>
+                ))}
+                {blockers.length > 0 && (
+                  <span
+                    title={blockers.map((b) => PERSONAL_BLOCK_CATEGORY_LABELS[b.category]).join(", ")}
+                    className="h-1.5 w-1.5 rounded-full bg-ink-faint"
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Stundenraster */}
       <div className="relative max-h-[70vh] overflow-y-auto scrollbar-thin">

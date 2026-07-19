@@ -7,12 +7,14 @@ import { cn } from "@/lib/cn";
 import type { CalendarEntry, JobMilestone } from "@/types/database";
 import { useJob } from "@/hooks/useJobs";
 import { formatTime, formatDateTime } from "@/lib/format";
+import { PERSONAL_BLOCK_CATEGORY_LABELS, type ResolvedPersonalBlock } from "@/lib/personalSchedule";
 
 type MilestoneWithJob = JobMilestone & { job: { id: string; title: string; color: string } };
 
 type AgendaItem =
   | { kind: "entry"; at: Date; entry: CalendarEntry }
-  | { kind: "milestone"; at: Date; milestone: MilestoneWithJob };
+  | { kind: "milestone"; at: Date; milestone: MilestoneWithJob }
+  | { kind: "personal"; at: Date; block: ResolvedPersonalBlock };
 
 /**
  * Kompakte Listenansicht der kommenden Termine + Job-Zeitplan-Punkte,
@@ -22,12 +24,15 @@ export function AgendaView({
   fromDate,
   entries,
   milestones,
+  personalItems = [],
   onEntryClick,
   onMilestoneClick,
 }: {
   fromDate: Date;
   entries: CalendarEntry[];
   milestones: MilestoneWithJob[];
+  /** Köln-Schichten + Blocker zusammen — die Zeile entscheidet selbst, wie sie sich zeigt. */
+  personalItems?: ResolvedPersonalBlock[];
   onEntryClick: (entry: CalendarEntry) => void;
   onMilestoneClick?: (milestone: MilestoneWithJob) => void;
 }) {
@@ -40,6 +45,7 @@ export function AgendaView({
       ...milestones
         .filter((m) => !!m.job)
         .map((m) => ({ kind: "milestone" as const, at: new Date(m.at), milestone: m })),
+      ...personalItems.map((b) => ({ kind: "personal" as const, at: b.start, block: b })),
     ]
       .filter((i) => i.at.getTime() >= from.getTime() || i.kind === "entry")
       .sort((a, b) => a.at.getTime() - b.at.getTime());
@@ -52,7 +58,7 @@ export function AgendaView({
       byDay.get(key)!.items.push(item);
     }
     return Array.from(byDay.values());
-  }, [entries, milestones, fromDate]);
+  }, [entries, milestones, personalItems, fromDate]);
 
   if (groups.length === 0) {
     return (
@@ -85,29 +91,51 @@ export function AgendaView({
           </div>
 
           <div className="divide-y divide-border">
-            {group.items.map((item) =>
-              item.kind === "entry" ? (
-                <AgendaEntryRow key={`e-${item.entry.id}`} entry={item.entry} onOpen={onEntryClick} />
-              ) : (
-                <button
-                  key={`m-${item.milestone.id}`}
-                  onClick={() => onMilestoneClick?.(item.milestone)}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-bg-raised"
-                >
+            {group.items.map((item) => {
+              if (item.kind === "entry") {
+                return <AgendaEntryRow key={`e-${item.entry.id}`} entry={item.entry} onOpen={onEntryClick} />;
+              }
+              if (item.kind === "milestone") {
+                return (
+                  <button
+                    key={`m-${item.milestone.id}`}
+                    onClick={() => onMilestoneClick?.(item.milestone)}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-bg-raised"
+                  >
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-inset ring-bg-surface"
+                      style={{ backgroundColor: item.milestone.job.color }}
+                    />
+                    <span className="w-24 shrink-0 text-xs tabular-nums text-ink-muted">
+                      {formatTime(item.milestone.at)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">
+                      <span className="text-ink-muted">{item.milestone.job.title}:</span> {item.milestone.title}
+                    </span>
+                    <span className="hidden shrink-0 text-[11px] text-ink-faint sm:block">Zeitplan</span>
+                  </button>
+                );
+              }
+              // Persönlich: Köln-Schicht sichtbar wie ein Termin, alles andere nur ein
+              // stiller Punkt mit generischem Text (nie eine Karte — U4).
+              const isVisible = item.block.category === "koeln_schicht";
+              return (
+                <div key={`p-${item.block.id}`} className="flex w-full items-center gap-3 px-4 py-2.5">
                   <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-inset ring-bg-surface"
-                    style={{ backgroundColor: item.milestone.job.color }}
+                    className={cn(
+                      "h-2.5 w-2.5 shrink-0 rounded-full",
+                      isVisible ? "bg-accent" : "bg-ink-faint",
+                    )}
                   />
                   <span className="w-24 shrink-0 text-xs tabular-nums text-ink-muted">
-                    {formatTime(item.milestone.at)}
+                    {formatTime(item.block.start.toISOString())}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-ink">
-                    <span className="text-ink-muted">{item.milestone.job.title}:</span> {item.milestone.title}
+                  <span className="min-w-0 flex-1 truncate text-sm text-ink-muted">
+                    {isVisible ? "Köln-Schicht" : PERSONAL_BLOCK_CATEGORY_LABELS[item.block.category]}
                   </span>
-                  <span className="hidden shrink-0 text-[11px] text-ink-faint sm:block">Zeitplan</span>
-                </button>
-              ),
-            )}
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}

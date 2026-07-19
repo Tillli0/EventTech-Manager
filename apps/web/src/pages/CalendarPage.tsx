@@ -219,6 +219,8 @@ export function CalendarPage() {
                 entries={entries}
                 milestones={milestones ?? []}
                 collidingIds={collidingIds}
+                personalVisible={personalVisible}
+                personalBlockers={personalBlockers}
                 onSlotClick={(slot) => setDialogState({ prefillDate: slot })}
                 onEntryClick={(entry) => setDialogState({ entry })}
                 onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
@@ -231,6 +233,8 @@ export function CalendarPage() {
                 entries={entries}
                 milestones={milestones ?? []}
                 collidingIds={collidingIds}
+                personalVisible={personalVisible}
+                personalBlockers={personalBlockers}
                 onSlotClick={(slot) => setDialogState({ prefillDate: slot })}
                 onEntryClick={(entry) => setDialogState({ entry })}
                 onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
@@ -242,6 +246,7 @@ export function CalendarPage() {
                 fromDate={currentDate}
                 entries={entries}
                 milestones={milestones ?? []}
+                personalItems={resolvedPersonal}
                 onEntryClick={(entry) => setDialogState({ entry })}
                 onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}
               />
