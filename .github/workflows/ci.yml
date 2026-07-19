@@ -131,12 +131,17 @@ jobs:
           -- nach dem signup kein Profil mit Admin-Rolle vorlag (der Rechte-Check
           -- schlug fehl). Deshalb hier selbst anlegen bzw. hochstufen — das ist
           -- unabhaengig davon, ob und wann handle_new_user() greift.
-          insert into public.profiles (id, full_name, email, role)
-          select u.id, 'E2E Testnutzer', u.email, 'admin'
+          -- job_view_mode explizit auf 'alle': der Spalten-Default ist 'zugewiesene'
+          -- (fuer echte Mitarbeiter richtig) - ein Testnutzer, der selbst Jobs anlegt
+          -- und sie danach in der Liste wiederfinden soll, braucht die volle Sicht,
+          -- so wie der lokale Seed-Admin sie auch hat.
+          insert into public.profiles (id, full_name, email, role, job_view_mode)
+          select u.id, 'E2E Testnutzer', u.email, 'admin', 'alle'
             from auth.users u
            where u.email = 'admin@eventtech.local'
           on conflict (id) do update
              set role = 'admin',
+                 job_view_mode = 'alle',
                  email = coalesce(public.profiles.email, excluded.email);
 
           \echo '--- Profil des Testnutzers ---'
