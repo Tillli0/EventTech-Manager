@@ -54,11 +54,47 @@ test.describe("Job-Durchstich", () => {
       "Zeitraum wurde nicht übernommen",
     ).toBeHidden({ timeout: 10_000 });
 
+    // Fehlgeschlagene Schreibzugriffe mitlesen — ein RLS-Verstoß kommt als 401/403
+    // zurück und wäre sonst nur als „Element nicht gefunden" sichtbar.
+    const schreibFehler: string[] = [];
+    page.on("response", (r) => {
+      if (r.url().includes("/rest/v1/jobs") && r.status() >= 400) {
+        schreibFehler.push(`${r.request().method()} ${r.status()}`);
+      }
+    });
+
     await dialog.getByRole("button", { name: "Job anlegen" }).click();
 
     // --- Prüfen ----------------------------------------------------------
     // Nach dem Anlegen bleibt die App auf der Liste; der neue Job muss dort stehen.
-    await expect(page.getByText(titel).first()).toBeVisible({ timeout: 20_000 });
+    // Schlägt das fehl, wird zuerst die WIRKLICHE Ursache berichtet: eine
+    // Fehlermeldung der App oder ein abgelehnter Schreibzugriff. Ohne das meldet
+    // der Test nur „Element nicht gefunden" und man rät.
+    // ACHTUNG: `isVisible()` prüft SOFORT und wartet nicht — anders als
+    // `expect(...).toBeVisible()`. Deshalb hier die wartende Variante im try,
+    // sonst meldet die Diagnose einen Fehlschlag, obwohl die Liste nur langsam ist.
+    let erschienen = true;
+    try {
+      await expect(page.getByText(titel).first()).toBeVisible({ timeout: 20_000 });
+    } catch {
+      erschienen = false;
+    }
+
+    if (!erschienen) {
+      const meldung = await page
+        .locator('[role="alert"], [role="status"]')
+        .allInnerTexts()
+        .catch(() => []);
+      const dialogOffen = await dialog.isVisible().catch(() => false);
+      throw new Error(
+        [
+          `Job „${titel}" erscheint nicht in der Liste.`,
+          `Meldungen der App: ${meldung.length ? meldung.join(" | ") : "(keine)"}`,
+          `Dialog noch offen: ${dialogOffen ? "ja — Anlegen wurde abgelehnt" : "nein — Anlegen lief durch, Liste zeigt ihn nicht"}`,
+          `Abgelehnte Schreibzugriffe: ${schreibFehler.length ? schreibFehler.join(", ") : "(keine)"}`,
+        ].join("\n"),
+      );
+    }
 
     // Von der Liste in die Detailseite — testet zugleich die Verlinkung.
     await page.getByText(titel).first().click();

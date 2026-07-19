@@ -105,13 +105,38 @@ jobs:
             -o signup.json -w "signup HTTP %{http_code}\n"
 
           # Bestaetigung erzwingen (falls Mail-Confirm aktiv) + Rolle setzen.
+          # Rolle ueber die ID zuordnen, nicht ueber die E-Mail-Spalte in profiles:
+          # profiles.id == auth.users.id ist garantiert, die gespiegelte E-Mail nicht.
           psql "postgresql://postgres:postgres@localhost:54322/postgres" <<'SQL'
           update auth.users
              set email_confirmed_at = coalesce(email_confirmed_at, now())
            where email = 'admin@eventtech.local';
-          update public.profiles set role = 'admin' where email = 'admin@eventtech.local';
-          select email, role from public.profiles;
+
+          update public.profiles p
+             set role = 'admin', email = coalesce(p.email, u.email)
+            from auth.users u
+           where p.id = u.id and u.email = 'admin@eventtech.local';
+
+          \echo '--- Profil des Testnutzers ---'
+          select p.id, p.email, p.role from public.profiles p
+            join auth.users u on u.id = p.id
+           where u.email = 'admin@eventtech.local';
           SQL
+
+      - name: Schreibrechte des Testnutzers pruefen
+        # Die lesenden Tests laufen auch ohne Rechte gruen — nur das Anlegen scheitert
+        # dann, und zwar mit einem irrefuehrenden "Element nicht gefunden".
+        # Deshalb hier hart pruefen, BEVOR die Tests starten.
+        run: |
+          set -euo pipefail
+          ROLLE=$(psql "postgresql://postgres:postgres@localhost:54322/postgres" -tAc \
+            "select p.role from public.profiles p join auth.users u on u.id = p.id
+              where u.email = 'admin@eventtech.local';")
+          echo "Rolle des Testnutzers: '${ROLLE:-<kein Profil>}'"
+          if [ "$ROLLE" != "admin" ]; then
+            echo "::error::Testnutzer ist nicht 'admin' (sondern '${ROLLE:-kein Profil}') — schreibende E2E-Tests wuerden an der Rechtepruefung scheitern."
+            exit 1
+          fi
 
           # Beweis, dass die Anmeldung wirklich funktioniert — sonst scheitern die
           # Tests spaeter mit einem irrefuehrenden Timeout statt hier mit Klartext.
