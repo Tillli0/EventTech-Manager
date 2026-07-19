@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, MapPin, Send, Plus, Download, FileText, Pencil, Receipt } from "lucide-react";
+import { ArrowLeft, Mail, Phone, MapPin, Send, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,15 +16,10 @@ import {
 } from "@/hooks/useCustomers";
 import { useOffersForCustomer, fetchOfferWithItems } from "@/hooks/useOffers";
 import { useInvoicesForCustomer } from "@/hooks/useInvoices";
-import {
-  CUSTOMER_SOURCE_LABELS,
-  isStammkunde,
-  offerTotals,
-  invoicePaidSum,
-  invoiceDerivedStatus,
-} from "@/types/database";
-import { formatDate, formatDateTime, formatCurrency } from "@/lib/format";
-import { JobStatusBadge, OfferStatusBadge, InvoiceStatusBadge, StammkundeBadge } from "@/components/ui/StatusBadge";
+import { LinkedOffersCard, LinkedInvoicesCard } from "@/components/shared/LinkedFinanceCards";
+import { CUSTOMER_SOURCE_LABELS, isStammkunde } from "@/types/database";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { JobStatusBadge, StammkundeBadge } from "@/components/ui/StatusBadge";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { useToast } from "@/components/ui/Toast";
@@ -167,102 +162,14 @@ export function CustomerDetailPage() {
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-ink">Angebote</h2>
-              {mayEditOffers && (
-                <Button size="sm" variant="secondary" onClick={() => setCreateOfferOpen(true)}>
-                  <Plus size={14} />
-                  Neues Angebot
-                </Button>
-              )}
-            </CardHeader>
-            <CardBody>
-              {offers && offers.length > 0 ? (
-                <div className="space-y-2">
-                  {offers.map((offer) => {
-                    const { gross } = offerTotals(offer.items ?? [], offer.tax_rate);
-                    return (
-                      <div
-                        key={offer.id}
-                        className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-ink">{offer.title}</p>
-                          <p className="font-mono text-xs text-ink-muted">
-                            {offer.offer_number} · {formatCurrency(gross)}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <OfferStatusBadge status={offer.status} />
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleDownloadOffer(offer.id)}
-                            disabled={downloadingId === offer.id}
-                          >
-                            <Download size={14} />
-                            {downloadingId === offer.id ? "…" : "PDF"}
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="flex items-center gap-2 text-sm text-ink-faint">
-                  <FileText size={14} />
-                  Noch keine Angebote für diesen Kunden.
-                </p>
-              )}
-            </CardBody>
-          </Card>
+          <LinkedOffersCard
+            offers={offers}
+            onDownload={handleDownloadOffer}
+            downloadingId={downloadingId}
+            onCreate={mayEditOffers ? () => setCreateOfferOpen(true) : undefined}
+          />
 
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-ink">Rechnungen</h2>
-              {(() => {
-                const openTotal = (invoices ?? []).reduce((sum, inv) => {
-                  if (inv.status !== "gestellt") return sum;
-                  const { gross } = offerTotals(inv.items ?? [], inv.tax_rate);
-                  return sum + Math.max(0, gross - invoicePaidSum(inv.payments));
-                }, 0);
-                return openTotal > 0 ? (
-                  <span className="font-mono text-xs text-ink-muted">offen: {formatCurrency(openTotal)}</span>
-                ) : null;
-              })()}
-            </CardHeader>
-            <CardBody>
-              {invoices && invoices.length > 0 ? (
-                <div className="space-y-2">
-                  {invoices.map((invoice) => {
-                    const { gross } = offerTotals(invoice.items ?? [], invoice.tax_rate);
-                    const derived = invoiceDerivedStatus(invoice, invoice.items, invoice.payments);
-                    return (
-                      <Link
-                        key={invoice.id}
-                        to={`/rechnungen?open=${invoice.id}`}
-                        className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 hover:border-accent/50"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-ink">{invoice.title}</p>
-                          <p className="font-mono text-xs text-ink-muted">
-                            {invoice.invoice_number ?? "Entwurf"} · {formatCurrency(gross)}
-                          </p>
-                        </div>
-                        <InvoiceStatusBadge status={derived} />
-                      </Link>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="flex items-center gap-2 text-sm text-ink-faint">
-                  <Receipt size={14} />
-                  Noch keine Rechnungen für diesen Kunden.
-                </p>
-              )}
-            </CardBody>
-          </Card>
+          <LinkedInvoicesCard invoices={invoices} />
 
           <DocumentsCard entityType="customer" entityId={customer.id} />
         </div>

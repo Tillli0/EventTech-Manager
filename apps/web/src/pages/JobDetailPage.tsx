@@ -1,25 +1,19 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, Printer, FileText, Download, Trash2, ChevronDown, Receipt } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Printer, Trash2, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { LoadingState, ErrorState } from "@/components/ui/States";
-import { OfferStatusBadge, InvoiceStatusBadge } from "@/components/ui/StatusBadge";
 import { useJob, useUpdateJobStatus, useUpdateJob, useSoftDeleteJob } from "@/hooks/useJobs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useOffersForJob, fetchOfferWithItems } from "@/hooks/useOffers";
 import { useInvoicesForJob } from "@/hooks/useInvoices";
+import { LinkedOffersCard, LinkedInvoicesCard } from "@/components/shared/LinkedFinanceCards";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { useToast } from "@/components/ui/Toast";
-import {
-  JOB_STATUS_OPTIONS,
-  offerTotals,
-  invoicePaidSum,
-  invoiceDerivedStatus,
-  type JobStatus,
-} from "@/types/database";
-import { formatDateTime, formatCurrency } from "@/lib/format";
+import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
+import { formatDateTime } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";
 import { PacklistProgress } from "@/components/jobs/PacklistProgress";
 import { printPacklist } from "@/lib/printPacklist";
@@ -268,100 +262,15 @@ function JobOffersCard({ jobId }: { jobId: string }) {
     }
   }
 
-  if (!offers || offers.length === 0) return null;
-
   return (
-    <Card>
-      <CardHeader>
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-          <FileText size={14} />
-          Angebote
-        </h2>
-      </CardHeader>
-      <CardBody>
-        <div className="space-y-2">
-          {offers.map((offer) => {
-            const { gross } = offerTotals(offer.items ?? [], offer.tax_rate);
-            return (
-              <div
-                key={offer.id}
-                className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5"
-              >
-                <Link to="/angebote" className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink">{offer.title}</p>
-                  <p className="font-mono text-xs text-ink-muted">
-                    {offer.offer_number} · {formatCurrency(gross)}
-                  </p>
-                </Link>
-                <div className="flex shrink-0 items-center gap-2">
-                  <OfferStatusBadge status={offer.status} />
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => handleDownload(offer.id)}
-                    disabled={downloadingId === offer.id}
-                  >
-                    <Download size={14} />
-                    {downloadingId === offer.id ? "…" : "PDF"}
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardBody>
-    </Card>
+    <LinkedOffersCard offers={offers} onDownload={handleDownload} downloadingId={downloadingId} hideWhenEmpty />
   );
 }
 
 /** Rechnungen, die zu diesem Job gehören — mit Status und offenem Betrag. */
 function JobInvoicesCard({ jobId }: { jobId: string }) {
   const { data: invoices } = useInvoicesForJob(jobId);
-
-  if (!invoices || invoices.length === 0) return null;
-
-  const openTotal = invoices.reduce((sum, inv) => {
-    if (inv.status !== "gestellt") return sum;
-    const { gross } = offerTotals(inv.items ?? [], inv.tax_rate);
-    return sum + Math.max(0, gross - invoicePaidSum(inv.payments));
-  }, 0);
-
-  return (
-    <Card>
-      <CardHeader className="flex items-center justify-between">
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-          <Receipt size={14} />
-          Rechnungen
-        </h2>
-        {openTotal > 0 && (
-          <span className="font-mono text-xs text-ink-muted">offen: {formatCurrency(openTotal)}</span>
-        )}
-      </CardHeader>
-      <CardBody>
-        <div className="space-y-2">
-          {invoices.map((invoice) => {
-            const { gross } = offerTotals(invoice.items ?? [], invoice.tax_rate);
-            const derived = invoiceDerivedStatus(invoice, invoice.items, invoice.payments);
-            return (
-              <Link
-                key={invoice.id}
-                to={`/rechnungen?open=${invoice.id}`}
-                className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 hover:border-accent/50"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink">{invoice.title}</p>
-                  <p className="font-mono text-xs text-ink-muted">
-                    {invoice.invoice_number ?? "Entwurf"} · {formatCurrency(gross)}
-                  </p>
-                </div>
-                <InvoiceStatusBadge status={derived} />
-              </Link>
-            );
-          })}
-        </div>
-      </CardBody>
-    </Card>
-  );
+  return <LinkedInvoicesCard invoices={invoices} hideWhenEmpty />;
 }
 
 /** Notizen / weitere Infos zum Job — editierbar (übernimmt u.a. die Website-Anfrage-Nachricht). */
