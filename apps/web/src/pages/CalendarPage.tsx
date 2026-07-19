@@ -16,11 +16,14 @@ import {
   format,
 } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Download, AlertTriangle, CalendarPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Download, AlertTriangle, CalendarPlus, User } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { Tabs } from "@/components/ui/Tabs";
 import { LoadingState, ErrorState } from "@/components/ui/States";
 import { useCalendarEntries, useJobMilestonesInRange, detectCollisions } from "@/hooks/useCalendar";
+import { usePersonalBlocks, usePersonalRecurringBlocks } from "@/hooks/usePersonalBlocks";
+import { resolvePersonalBlocks, isVisibleBlockCategory } from "@/lib/personalSchedule";
 import { MonthGrid, formatMonthLabel } from "@/components/calendar/MonthGrid";
 import { WeekView, formatWeekLabel } from "@/components/calendar/WeekView";
 import { DayView } from "@/components/calendar/DayView";
@@ -29,7 +32,6 @@ import { MiniMonth } from "@/components/calendar/MiniMonth";
 import { CalendarEntryDialog } from "@/components/calendar/CalendarEntryDialog";
 import { CalendarSubscribeDialog } from "@/components/calendar/CalendarSubscribeDialog";
 import { exportToIcs } from "@/lib/ics";
-import { cn } from "@/lib/cn";
 import type { CalendarEntry } from "@/types/database";
 
 type ViewMode = "month" | "week" | "day" | "agenda";
@@ -49,6 +51,7 @@ export function CalendarPage() {
     null,
   );
   const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const [showPersonal, setShowPersonal] = useState(true);
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (view === "month") {
@@ -78,8 +81,20 @@ export function CalendarPage() {
 
   const { data: entries, isLoading, error } = useCalendarEntries(rangeStart, rangeEnd);
   const { data: milestones, error: milestonesError } = useJobMilestonesInRange(rangeStart, rangeEnd);
+  const { data: personalBlocks } = usePersonalBlocks();
+  const { data: personalRecurring } = usePersonalRecurringBlocks();
 
   const collidingIds = useMemo(() => (entries ? detectCollisions(entries) : new Set<string>()), [entries]);
+
+  // Persönliche Ebene (PLAN-UI-NEUSCHNITT.md U4): Köln-Schichten sind sichtbarer Inhalt,
+  // alles andere (Schule, Klausur, Ferien, Urlaub, Krank) wirkt nur gedämpft als Blocker —
+  // nie als eigene Karte. RLS liefert ohnehin ausschließlich die eigenen Blöcke.
+  const resolvedPersonal = useMemo(() => {
+    if (!showPersonal) return [];
+    return resolvePersonalBlocks(personalBlocks ?? [], personalRecurring ?? [], new Date(rangeStart), new Date(rangeEnd));
+  }, [showPersonal, personalBlocks, personalRecurring, rangeStart, rangeEnd]);
+  const personalVisible = useMemo(() => resolvedPersonal.filter((b) => isVisibleBlockCategory(b.category)), [resolvedPersonal]);
+  const personalBlockers = useMemo(() => resolvedPersonal.filter((b) => !isVisibleBlockCategory(b.category)), [resolvedPersonal]);
 
   function goToPrevious() {
     if (view === "month") setCurrentDate((d) => subMonths(d, 1));
@@ -146,19 +161,17 @@ export function CalendarPage() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-1 rounded-md border border-border bg-bg-raised p-1">
-          {VIEW_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setView(opt.value)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                view === opt.value ? "bg-accent text-accent-on" : "text-ink-muted hover:text-ink",
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showPersonal ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setShowPersonal((v) => !v)}
+            title="Köln-Schichten anzeigen, Schule/Klausur/Ferien/Urlaub/Krank als Blocker"
+          >
+            <User size={14} />
+            Meine Zeiten
+          </Button>
+          <Tabs options={VIEW_OPTIONS} value={view} onChange={setView} size="sm" />
         </div>
       </div>
 
@@ -192,6 +205,8 @@ export function CalendarPage() {
                 entries={entries}
                 milestones={milestones ?? []}
                 collidingIds={collidingIds}
+                personalVisible={personalVisible}
+                personalBlockers={personalBlockers}
                 onDayClick={(day) => setDialogState({ prefillDate: day })}
                 onEntryClick={(entry) => setDialogState({ entry })}
                 onMilestoneClick={(milestone) => navigate(`/jobs/${milestone.job_id}`)}

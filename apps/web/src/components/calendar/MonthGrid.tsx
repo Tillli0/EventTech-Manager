@@ -12,6 +12,7 @@ import { de } from "date-fns/locale";
 import { cn } from "@/lib/cn";
 import type { CalendarEntry, JobMilestone } from "@/types/database";
 import { formatTime } from "@/lib/format";
+import { PERSONAL_BLOCK_CATEGORY_LABELS, type ResolvedPersonalBlock } from "@/lib/personalSchedule";
 
 const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
@@ -96,6 +97,8 @@ export function MonthGrid({
   entries,
   milestones,
   collidingIds,
+  personalVisible = [],
+  personalBlockers = [],
   onDayClick,
   onEntryClick,
   onMilestoneClick,
@@ -104,6 +107,10 @@ export function MonthGrid({
   entries: CalendarEntry[];
   milestones: MilestoneWithJob[];
   collidingIds: Set<string>;
+  /** Köln-Schichten — sichtbarer Inhalt (PLAN-UI-NEUSCHNITT.md U4). */
+  personalVisible?: ResolvedPersonalBlock[];
+  /** Schule/Klausur/Ferien/Urlaub/Krank — nur ein gedämpfter Blocker, nie eine Karte. */
+  personalBlockers?: ResolvedPersonalBlock[];
   onDayClick: (day: Date) => void;
   onEntryClick: (entry: CalendarEntry) => void;
   onMilestoneClick?: (milestone: MilestoneWithJob) => void;
@@ -131,6 +138,17 @@ export function MonthGrid({
     return milestones
       .filter((m) => !!m.job && stripTime(new Date(m.at)).getTime() === key)
       .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  }
+
+  function overlapsDay(item: ResolvedPersonalBlock, d: Date): boolean {
+    const day = stripTime(d).getTime();
+    return stripTime(item.start).getTime() <= day && stripTime(item.end).getTime() >= day;
+  }
+  function personalVisibleForDay(d: Date): ResolvedPersonalBlock[] {
+    return personalVisible.filter((b) => overlapsDay(b, d));
+  }
+  function personalBlockersForDay(d: Date): ResolvedPersonalBlock[] {
+    return personalBlockers.filter((b) => overlapsDay(b, d));
   }
 
   return (
@@ -216,6 +234,37 @@ export function MonthGrid({
                   );
                 })}
               </div>
+
+              {/* Persönliche Ebene: Köln-Schichten als schmale Chips, alles andere nur
+                  als stiller Punkt (nie eine Karte — PLAN-UI-NEUSCHNITT.md U4). */}
+              {(personalVisible.length > 0 || personalBlockers.length > 0) && (
+                <div className="grid grid-cols-7 px-1">
+                  {week.map((d) => {
+                    const visible = personalVisibleForDay(d);
+                    const blockers = personalBlockersForDay(d);
+                    if (visible.length === 0 && blockers.length === 0) return <div key={d.toISOString()} />;
+                    return (
+                      <div key={d.toISOString()} className="flex flex-col gap-px pb-0.5">
+                        {visible.map((b) => (
+                          <span
+                            key={b.id}
+                            title={`Köln-Schicht ${formatTime(b.start.toISOString())}–${formatTime(b.end.toISOString())}`}
+                            className="truncate rounded bg-accent-soft px-1 py-[1px] text-[10px] font-medium text-accent"
+                          >
+                            Köln {formatTime(b.start.toISOString())}
+                          </span>
+                        ))}
+                        {blockers.length > 0 && (
+                          <span
+                            title={blockers.map((b) => PERSONAL_BLOCK_CATEGORY_LABELS[b.category]).join(", ")}
+                            className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-ink-faint"
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Durchgezogene Mehrtages-/Ganztags-Balken */}
               {laneCount > 0 && (

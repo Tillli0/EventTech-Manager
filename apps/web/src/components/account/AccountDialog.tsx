@@ -5,6 +5,7 @@ import { FormField, Input } from "@/components/ui/Input";
 import { useAuth } from "@/auth/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { ThemeAuswahl } from "@/components/account/ThemeAuswahl";
+import { PersonalScheduleSection } from "@/components/account/PersonalScheduleSection";
 
 /**
  * Eigenes Konto: jeder eingeloggte Nutzer darf jederzeit seinen Namen und sein
@@ -100,6 +101,8 @@ export function AccountDialog({ open, onClose }: { open: boolean; onClose: () =>
         </div>
 
         <ThemeAuswahl />
+
+        <PersonalScheduleSection />
 
         <div className="flex justify-end border-t border-border pt-4">
           <Button variant="secondary" onClick={onClose}>Schließen</Button>

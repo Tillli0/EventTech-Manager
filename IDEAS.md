@@ -124,6 +124,17 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **U4-Kern — Kalender als Ebenen-Modell, M1-Fundament vorgezogen** (2026-07-19,
+  `PLAN-UI-NEUSCHNITT.md` + `PLAN-MEIN-PLAN.md`): Migration `0039` — `personal_blocks`/
+  `personal_recurring_blocks` mit bewusst strikter Eigen-Sicht-RLS (auch Admins sehen
+  fremde Zeilen nicht), per psql bewiesen. `lib/personalSchedule.ts` löst wöchentliche
+  Regeln zu Terminen auf (7 Tests, inkl. Sommerzeit). Neu: „Meine Zeiten" im Konto-Dialog
+  (Köln-Schicht/Schule/Klausur/Ferien/Urlaub/Krank eintragen) und ein Umschalter im
+  Kalender, der die eigenen Köln-Schichten als Chip und alles andere als stillen Punkt
+  zeigt — nie als Karte. Ansichts-Umschalter jetzt auf `ui/Tabs`.
+  **Bewusst nur die Monatsansicht, kein „Meine Einsätze"-Layer, keine Regel-UI** — das
+  sind die nächsten U4-Schritte, siehe „Noch offen" in `PLAN-UI-NEUSCHNITT.md`.
+
 - **U3 komplett — Startseite „Nächster Einsatz" fertig** (2026-07-19,
   `PLAN-UI-NEUSCHNITT.md`): Restpunkte aus dem U3-Kern nachgezogen — Karte „Zuletzt
   abgelegte Dokumente" (`useAllDocuments`), Rest-Inventar von zwei Kacheln (Balken + Ring)

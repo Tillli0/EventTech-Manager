@@ -103,14 +103,15 @@ Stundenerfassung (bewusst nicht gewählt).
 
 ## 4. Etappen
 
-**M1 — Fundament** *(1 Migration; wird in U4 vorgezogen)*
-`personal_settings` (PK = `user_id`), `personal_blocks`, `personal_recurring_blocks`;
-RLS strikt `user_id = auth.uid()`, explizite GRANTs (`authenticated`, `service_role`,
-**nie** `anon`), `set_updated_at`-Trigger, FK-Indizes, `notify pgrst, 'reload schema'`.
-Vorlage: `0012_auth_roles_and_access.sql` — **ohne** `has_area`/`is_manager` (E-A), mit
-Begründung im Kopf. `lib/personalSchedule.ts` + Test. „Meine Zeiten" im Nutzer-Menü (E-B).
-**Vor der Migration:** Agent `migrations-pruefer`.
-*Beweis:* psql — zweiter Nutzer sieht 0 Zeilen, **auch als Admin**; `anon` leer.
+**M1 ✅ — Fundament** *(erledigt 2026-07-19, im Rahmen von `PLAN-UI-NEUSCHNITT.md` U4)*
+Migration `0039_personal_blocks.sql`: `personal_blocks`, `personal_recurring_blocks`;
+RLS strikt `user_id = auth.uid()` (E-A), explizite GRANTs (`authenticated`,
+`service_role`, kein `anon`), `set_updated_at`-Trigger, FK-Indizes, `notify pgrst`. Von
+`migrations-pruefer` freigegeben. `lib/personalSchedule.ts` + 7 Vitest-Tests (inkl.
+Sommerzeit). „Meine Zeiten" im Konto-Dialog (E-B). **Bewusst zurückgestellt:**
+`personal_settings` (Geburtsdatum/Stundensatz) — wird erst in M3/M4 gebraucht, kein
+Vorratsbau.
+*Beweis erbracht:* psql — Admin sieht 0 Zeilen von Max, Max sieht seine eigene.
 
 **M2 — Zeitachse** → **geht vollständig in `PLAN-UI-NEUSCHNITT.md` U4 auf.**
 

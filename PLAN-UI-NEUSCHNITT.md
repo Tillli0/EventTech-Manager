@@ -249,12 +249,44 @@ korrekt gefilterte, aber für einen Testnutzer falsche Sicht). Fix: `job_view_mo
 in der Profil-Anlage ergänzt. **Beide Jobs (`ci`, `e2e`) liefen danach grün** — erstmals
 seit Wochen. `e2e/job-flow.spec.ts` bleibt unverändert; es war nie ein Testfehler.
 
-**U4 — Kalender als Ebenen-Modell**
-Ebenen ein-/ausschaltbar: **Firmenjobs · Meine Einsätze · Köln · Schule**. Ansichts-
-Umschalter (Monat/Woche/Tag/Agenda) endlich auf `ui/Tabs`. Kollisionswarnung über das
-vorhandene `detectCollisions` aus `hooks/useCalendar.ts`.
-**Abhängigkeit:** braucht **M1** aus `PLAN-MEIN-PLAN.md` (DB-Fundament) — wird vorgezogen
-und hier miterledigt. Schule erscheint **gedämpft, nie als Karte**.
+**U4 🟡 — Kalender als Ebenen-Modell** *(Kern erledigt 2026-07-19)*
+
+**M1-Fundament (aus `PLAN-MEIN-PLAN.md`, vorgezogen):** Migration `0039_personal_blocks.sql`
+— `personal_blocks` (konkrete Zeiträume) + `personal_recurring_blocks` (wöchentliche
+Regel, für später/Stundenplan). RLS bewusst **strikt `user_id = auth.uid()`** (E-A) —
+auch Admin/Verwaltung sehen fremde Zeilen nicht; per `migrations-pruefer` freigegeben und
+per psql bewiesen (Admin sieht 0 Zeilen von Max, Max sieht seine eigene). `personal_settings`
+(Geburtsdatum/Stundensatz) bewusst **noch nicht gebaut** — wird erst mit M3/M4 gebraucht.
+
+**`lib/personalSchedule.ts`:** reine Auflösung „Regel → Termine im Zeitraum" +
+`isVisibleBlockCategory` (nur `koeln_schicht` ist Inhalt, alles andere nur Blocker).
+7 Vitest-Tests, inkl. Sommerzeit-Wechsel (29.3.2026) — lokale Uhrzeiten bleiben über die
+Umstellung hinweg stabil, weil mit lokalen `Date`-Objekten statt UTC-Arithmetik gerechnet
+wird.
+
+**„Meine Zeiten" im Konto-Dialog (E-B):** `PersonalScheduleSection` — eigene Köln-Schichten/
+Schule/Klausur/Ferien/Urlaub/Krank eintragen und wieder löschen, kommende Einträge als
+Liste. Kein eigener Nav-Punkt.
+
+**Kalender:** Ansichts-Umschalter (Monat/Woche/Tag/Agenda) jetzt auf `ui/Tabs` statt
+Eigenbau. Neuer Umschalter „Meine Zeiten" (an/aus, Standard an) blendet die persönliche
+Ebene in der **Monatsansicht** ein: Köln-Schichten als schmaler Chip (sichtbarer Inhalt),
+alles andere nur als stiller grauer Punkt ohne Beschriftung — nie eine Karte.
+
+**Bewiesen:** tsc · lint · 108 Vitest (7 neu) · build · Browser als „Max Deger": Eintrag
+über „Meine Zeiten" angelegt (Köln-Schicht + Schule) → im Kalender sichtbar (Chip +
+Punkt), Umschalter blendet beides zuverlässig aus/ein, 375 px ohne horizontales Scrollen,
+keine Konsolenfehler. Testdaten restlos entfernt.
+
+**Noch offen (bewusst auf später vertagt, um schnell einen nutzbaren Kern zu liefern):**
+- Persönliche Ebene nur in der **Monatsansicht** — Woche/Tag/Agenda fehlt noch.
+- „Meine Einsätze" als eigene Ebene (Jobs, denen man zugewiesen ist, hervorgehoben) —
+  bräuchte `assignees` im `useCalendarEntries`-Query, noch nicht verdrahtet.
+- Wiederkehrende Regeln (`personal_recurring_blocks`) haben noch **keine UI** — die
+  DB-Tabelle und `resolveRecurringBlock()` sind fertig und getestet, aber „Meine Zeiten"
+  legt bisher nur konkrete Blöcke an. Stundenplan-Eintrag folgt als nächster Schritt.
+- Kollisionswarnung bezieht sich weiterhin nur auf Firmen-Termine — persönliche Blöcke
+  gegen Jobs prüfen ist M5 (Team-Verfügbarkeit), eigenes Vorhaben.
 
 **U5 — Dokumente als Job-Ordner**
 Umsetzung von K-E. Löst zugleich Review-Befund #4 und #6 (die doppelte „verknüpfte
