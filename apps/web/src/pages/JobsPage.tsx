@@ -17,8 +17,9 @@ import {
   type JobStatus,
   type JobViewMode,
 } from "@/types/database";
-import { formatDate, initials } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { CreateJobDialog } from "@/components/jobs/CreateJobDialog";
+import { Avatar } from "@/components/ui/Avatar";
 import { useSetJobViewMode } from "@/hooks/useAdminUsers";
 import { useProfiles, profileLabel } from "@/hooks/useProfiles";
 import { exportToCsv } from "@/lib/csv";
@@ -371,13 +372,7 @@ function JobCard({
             {assignees.length > 0 && (
               <div className="flex -space-x-2">
                 {assignees.slice(0, 3).map((name, i) => (
-                  <span
-                    key={i}
-                    className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-surface bg-accent-soft text-[10px] font-medium text-accent"
-                    title={name}
-                  >
-                    {initials(name)}
-                  </span>
+                  <Avatar key={i} label={name} size="sm" bordered className="font-medium" />
                 ))}
                 {assignees.length > 3 && (
                   <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-bg-surface bg-bg-raised text-[10px] font-medium text-ink-faint">

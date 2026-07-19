@@ -8,9 +8,9 @@ import { StammkundeBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 import { useCustomers, useCustomerJobCounts } from "@/hooks/useCustomers";
 import { CUSTOMER_SOURCE_LABELS, isStammkunde, type Customer, type CustomerSource } from "@/types/database";
-import { initials } from "@/lib/format";
 import { exportToCsv } from "@/lib/csv";
 import { cn } from "@/lib/cn";
+import { Avatar } from "@/components/ui/Avatar";
 
 // Literal Klassennamen (nicht interpoliert), damit Tailwinds JIT sie findet.
 const SOURCE_TONE: Record<CustomerSource, string> = {
@@ -91,14 +91,11 @@ export function CustomerListView() {
             return (
               <Link key={customer.id} to={`/kunden/${customer.id}`}>
                 <Card className="flex items-center gap-3 px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-accent/40">
-                  <span
-                    className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                      stammkunde ? "bg-status-wartung/15 text-status-wartung" : "bg-accent-soft text-accent",
-                    )}
-                  >
-                    {initials(name || "?")}
-                  </span>
+                  <Avatar
+                    label={name || "?"}
+                    size="lg"
+                    className={cn("font-medium", stammkunde && "bg-status-wartung/15 text-status-wartung")}
+                  />
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">

@@ -19,7 +19,7 @@ import {
   invoiceDerivedStatus,
   type JobStatus,
 } from "@/types/database";
-import { formatDateTime, formatCurrency, initials } from "@/lib/format";
+import { formatDateTime, formatCurrency } from "@/lib/format";
 import { PacklistSection } from "@/components/jobs/PacklistSection";
 import { PacklistProgress } from "@/components/jobs/PacklistProgress";
 import { printPacklist } from "@/lib/printPacklist";
@@ -35,6 +35,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import type { Job } from "@/types/database";
 import { Users } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { Avatar } from "@/components/ui/Avatar";
 import { jobTone } from "@/lib/statusTone";
 
 // Muss zu den job.*-Farben in tailwind.config.js passen (dort für Badges/Punkte
@@ -459,14 +460,11 @@ function JobAssigneesCard({ job, canEdit }: { job: Job; canEdit: boolean }) {
                       : "border-border text-ink-muted hover:-translate-y-0.5 hover:border-accent/40 hover:text-ink",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
-                      active ? "bg-accent text-accent-on" : "bg-bg-raised text-ink-faint",
-                    )}
-                  >
-                    {initials(profileLabel(p))}
-                  </span>
+                  <Avatar
+                    label={profileLabel(p)}
+                    size="xs"
+                    className={active ? "bg-accent text-accent-on" : "bg-bg-raised text-ink-faint"}
+                  />
                   {profileLabel(p)}
                 </button>
               );
@@ -479,9 +477,7 @@ function JobAssigneesCard({ job, canEdit }: { job: Job; canEdit: boolean }) {
                 key={p.id}
                 className="flex items-center gap-2 rounded-full bg-bg-raised py-1 pl-1 pr-3 text-xs text-ink-muted"
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[10px] font-semibold text-accent">
-                  {initials(profileLabel(p))}
-                </span>
+                <Avatar label={profileLabel(p)} size="xs" />
                 {profileLabel(p)}
               </span>
             ))}

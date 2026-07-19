@@ -25,10 +25,11 @@ import { useInvoices } from "@/hooks/useInvoices";
 import { NextJobHero } from "@/components/dashboard/NextJobHero";
 import { useAuth } from "@/auth/AuthProvider";
 import { DEVICE_STATUS_OPTIONS, invoiceDerivedStatus, offerTotals, invoicePaidSum } from "@/types/database";
-import { formatDate, formatCurrency, initials } from "@/lib/format";
+import { formatDate, formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Job, Task } from "@/types/database";
 import { deviceTone } from "@/lib/statusTone";
+import { Avatar } from "@/components/ui/Avatar";
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -216,9 +217,7 @@ export function DashboardPage() {
               <div className="space-y-3">
                 {newLeads.slice(0, 4).map((lead) => (
                   <div key={lead.id} className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-medium text-accent">
-                      {initials(lead.name)}
-                    </span>
+                    <Avatar label={lead.name} size="md" className="font-medium" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-ink">{lead.name}</p>
                       <p className="truncate text-xs text-ink-faint">

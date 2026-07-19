@@ -24,9 +24,10 @@ import {
   findCustomerByContact,
 } from "@/hooks/useWebsiteLeads";
 import type { Customer, WebsiteLead, WebsiteLeadStatus } from "@/types/database";
-import { formatDate, initials } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { useAuth } from "@/auth/AuthProvider";
 import { cn } from "@/lib/cn";
+import { Avatar } from "@/components/ui/Avatar";
 
 const STATUS_META: Record<
   WebsiteLeadStatus,
@@ -174,12 +175,12 @@ export function WebsiteLeadsView() {
                 <div className="p-4 pl-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-start gap-3">
-                      <span
-                        className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white"
+                      <Avatar
+                        label={lead.name}
+                        size="xl"
+                        className="mt-0.5 text-white"
                         style={{ backgroundColor: meta.accent }}
-                      >
-                        {initials(lead.name)}
-                      </span>
+                      />
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-semibold text-ink">{lead.name}</p>
