@@ -268,7 +268,7 @@ export interface DeviceDocument {
 // „DocumentRecord" statt „Document", um den DOM-Typ nicht zu verschatten.
 // ============================================================
 
-export type DocumentEntityType = "job" | "customer" | "offer" | "invoice" | "company";
+export type DocumentEntityType = "job" | "customer" | "offer" | "invoice" | "company" | "supplier" | "subrental";
 
 export type DocumentCategory =
   | "genehmigung"

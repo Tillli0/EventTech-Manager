@@ -386,6 +386,11 @@ verify_jwt = false
 [functions.send-dunning]
 verify_jwt = true
 
+# Anmiet-Dokumenten-Erkennung: nur für eingeloggte Nutzer — JWT-Prüfung bleibt bewusst AN,
+# zusätzlich prüft die Funktion can_edit_area('anmietung') des Aufrufers.
+[functions.extract-subrental-document]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

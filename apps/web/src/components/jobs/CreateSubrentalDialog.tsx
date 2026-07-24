@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, FileUp, Sparkles } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
@@ -11,9 +11,13 @@ import {
   useUpdateSubrental,
   type SubrentalItemInput,
 } from "@/hooks/useSubrentals";
+import { useExtractSubrentalDocument } from "@/hooks/useExtractSubrentalDocument";
+import { useUploadDocument } from "@/hooks/useDocuments";
 import { subrentalTotals, SUBRENTAL_LOGISTICS_OPTIONS, SUBRENTAL_STATUS_OPTIONS } from "@/lib/subrentals";
 import { formatCurrency } from "@/lib/format";
 import type { Subrental, SubrentalLogistics, SubrentalStatus } from "@/types/database";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 interface DraftItem extends SubrentalItemInput {
   /** lokale Zeilen-ID nur fürs Rendering */
@@ -42,7 +46,10 @@ export function CreateSubrentalDialog({
   const { data: devices } = useDevices();
   const createSubrental = useCreateSubrental();
   const updateSubrental = useUpdateSubrental();
+  const extractDocument = useExtractSubrentalDocument();
+  const uploadDocument = useUploadDocument();
   const isEdit = !!editSubrental;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [supplierId, setSupplierId] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -53,6 +60,12 @@ export function CreateSubrentalDialog({
   const [items, setItems] = useState<DraftItem[]>([]);
   const [deviceToAdd, setDeviceToAdd] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  // Datei bleibt bis zum Speichern im State — wird danach am Vorgang archiviert
+  // (dieselbe Datei, die zur Erkennung hochgeladen wurde, oder eine ohne Erkennung
+  // angehängte). Rein clientseitig, kein serverseitiger Zwischenspeicher nötig.
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractedSupplierMissing, setExtractedSupplierMissing] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -85,9 +98,49 @@ export function CreateSubrentalDialog({
     }
     setDeviceToAdd("");
     setFormError(null);
+    setPendingFile(null);
+    setExtractError(null);
+    setExtractedSupplierMissing(null);
   }, [open, editSubrental]);
 
   const totals = subrentalTotals(items);
+
+  async function handleFileSelected(file: File) {
+    setPendingFile(file);
+    setExtractError(null);
+    setExtractedSupplierMissing(null);
+    try {
+      const extracted = await extractDocument.mutateAsync(file);
+
+      if (extracted.supplier_name_guess) {
+        const guess = extracted.supplier_name_guess.trim().toLowerCase();
+        const match = suppliers?.find(
+          (s) => s.name.toLowerCase().includes(guess) || guess.includes(s.name.toLowerCase()),
+        );
+        if (match) setSupplierId(match.id);
+        else setExtractedSupplierMissing(extracted.supplier_name_guess);
+      }
+      if (extracted.start_date_guess && ISO_DATE.test(extracted.start_date_guess)) {
+        setStartDate(extracted.start_date_guess);
+      }
+      if (extracted.end_date_guess && ISO_DATE.test(extracted.end_date_guess)) {
+        setEndDate(extracted.end_date_guess);
+      }
+      if (extracted.items.length > 0) {
+        setItems(
+          extracted.items.map((it) => ({
+            key: nextKey(),
+            device_id: null,
+            description: it.description,
+            quantity: Math.max(1, Math.round(it.quantity) || 1),
+            unit_cost: Math.max(0, it.unit_cost || 0),
+          })),
+        );
+      }
+    } catch (err) {
+      setExtractError(err instanceof Error ? err.message : "Erkennung fehlgeschlagen.");
+    }
+  }
 
   function addDevice() {
     if (!deviceToAdd) return;
@@ -132,8 +185,9 @@ export function CreateSubrentalDialog({
     const payloadItems = items.map(({ key: _key, ...rest }) => ({ ...rest, description: rest.description.trim() }));
 
     try {
+      let savedId: string;
       if (editSubrental) {
-        await updateSubrental.mutateAsync({
+        const saved = await updateSubrental.mutateAsync({
           id: editSubrental.id,
           job_id: jobId,
           supplier_id: supplierId,
@@ -144,8 +198,9 @@ export function CreateSubrentalDialog({
           notes: notes.trim() || null,
           items: payloadItems,
         });
+        savedId = saved.id;
       } else {
-        await createSubrental.mutateAsync({
+        const saved = await createSubrental.mutateAsync({
           job_id: jobId,
           supplier_id: supplierId,
           start_date: startDate,
@@ -154,7 +209,25 @@ export function CreateSubrentalDialog({
           notes: notes.trim() || null,
           items: payloadItems,
         });
+        savedId = saved.id;
       }
+
+      // Hochgeladenes Verleiher-PDF am Vorgang archivieren — best-effort: der
+      // Anmiet-Vorgang bleibt gültig, auch wenn die Archivierung scheitert (D4-Muster).
+      if (pendingFile) {
+        try {
+          await uploadDocument.mutateAsync({
+            entityType: "subrental",
+            entityId: savedId,
+            file: pendingFile,
+            title: pendingFile.name,
+            category: "eingangsrechnung",
+          });
+        } catch (archiveErr) {
+          console.warn("Verleiher-Dokument konnte nicht archiviert werden:", archiveErr);
+        }
+      }
+
       onClose();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Anmiet-Vorgang konnte nicht gespeichert werden.");
@@ -171,6 +244,53 @@ export function CreateSubrentalDialog({
       maxWidth="max-w-3xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="rounded-lg border border-dashed border-accent/40 bg-accent/5 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-ink">
+              <Sparkles size={15} className="text-accent" />
+              Verleiher-Angebot oder -Rechnung hochladen
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf,image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleFileSelected(file);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={extractDocument.isPending}
+            >
+              <FileUp size={14} />
+              {extractDocument.isPending ? "Wird gelesen …" : "PDF wählen"}
+            </Button>
+          </div>
+          <p className="mt-1.5 text-xs text-ink-muted">
+            Positionen, Partner und Zeitraum werden automatisch vorgeschlagen — bitte kurz prüfen, bevor du speicherst.
+          </p>
+          {pendingFile && !extractError && (
+            <p className="mt-1.5 text-xs text-status-verfuegbar">
+              „{pendingFile.name}" wird beim Speichern am Vorgang abgelegt.
+            </p>
+          )}
+          {extractedSupplierMissing && (
+            <p className="mt-1.5 text-xs text-status-wartung">
+              Partner „{extractedSupplierMissing}" wurde im Dokument erkannt, ist aber kein bestehender
+              Verleih-Partner — bitte manuell wählen oder zuerst unter „Verleih-Partner" anlegen.
+            </p>
+          )}
+          {extractError && (
+            <p className="mt-1.5 text-xs text-status-defekt">{extractError}</p>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Verleih-Partner *">
             <Select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>

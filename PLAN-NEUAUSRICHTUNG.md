@@ -3,8 +3,10 @@
 > **Großes Vorhaben** nach Skill `grosses-feature`. Dieses Dokument überlebt Sessions
 > und trägt die Ausführung. **Stand: 2026-07-24** — E0 + Block A (Dokumente) komplett;
 > **E1 (Bereich `anmietung` + Verleih-Partner-Stamm) und E2 (Anmiet-Vorgänge am Job)
-> live & bewiesen**; nächste Etappe **E3** (Verfügbarkeits-Zugänge). Nach jeder Etappe:
-> Haken + Datum, Stand-Vermerk oben.
+> live & bewiesen**; **E2b (KI-Dokumenten-Extraktion) gebaut & lokal bewiesen, aber
+> die Edge Function ist noch NICHT deployt** — braucht Tills Gemini-API-Key + explizite
+> Freigabe zum Scharfschalten. Danach: **E3** (Verfügbarkeits-Zugänge). Nach jeder
+> Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -116,15 +118,11 @@ Vier Ansichten in der App-Optik (dark, Indigo-Akzent) mit Till abgestimmt:
   Kalender · Anmietung · Aufgaben (Inventar via Sidebar).
 - **○ E5 Bestell-Mail mit/ohne PDF-Anhang:** V1 ohne Anhang (Positionsliste im Text),
   Anhang als V2 (IDEAS). Vor Scharfschalten Freigabe.
-- **○ E2b KI-Dokumenten-Extraktion — Anbieter:** Till will „kostenlos" statt bezahlter
-  Anthropic-API. Empfehlung nach Recherche (2026-07-24): **Google Gemini API, kostenlose
-  Stufe** (Gemini 3 Flash: 1.500 Anfragen/Tag, natives PDF-Verständnis inkl. Scans,
-  strukturierte JSON-Ausgabe — passt am besten zu Tills Volumen von vermutlich wenigen
-  Dokumenten/Woche). Alternative: NVIDIA NIM (auch kostenlos, `build.nvidia.com`,
-  ~40 Anfragen/Min), aber unklar, ob die Vision-Modelle dort so zuverlässig strukturiert
-  extrahieren wie Gemini — Till wollte das explizit prüfen lassen. Architektur bewusst
-  anbieter-abstrahiert (eine Edge Function als Fassade), damit ein Wechsel später billig
-  bleibt. **Vor dem Bau mit Till final klären** (siehe Etappe E2b unten).
+- **✔ E2b KI-Dokumenten-Extraktion:** Anbieter **Google Gemini API, kostenlose Stufe**
+  (Till entschieden 2026-07-24, statt bezahlter Anthropic-API). Upload geht **sowohl
+  beim Neu-Anlegen als auch nachträglich an einem bestehenden Anmiet-Vorgang** (z. B.
+  Rechnung reicht Endpreise nach). Architektur anbieter-abstrahiert (eine Edge Function
+  als Fassade), damit ein Wechsel später billig bleibt.
 
 ## 5. Etappen
 
@@ -253,9 +251,10 @@ bereits belegt, real vergeben wurde 0042)
   der Anmietung-Seite live, Löschen entfernt den Vorgang; 375px + Desktop, Konsole
   fehlerfrei.
 
-**E2b — KI-Dokumenten-Extraktion für Anmiet-Vorgänge** (○ neu, 2026-07-24 mit Till
-besprochen; Migration TBD `documents`-Erweiterung; **vor dem Bau: Anbieter + Ablauf
-final mit Till klären**, siehe Entscheidung oben)
+**E2b 🔧 — KI-Dokumenten-Extraktion für Anmiet-Vorgänge** (gebaut + lokal bewiesen
+2026-07-24, Migration 0043 `documents`-Erweiterung um supplier/subrental; **Edge
+Function noch NICHT deployt** — braucht Tills Gemini-API-Key als Supabase-Secret +
+ausdrückliche Freigabe zum Scharfschalten, s. u.)
 
 Tills Bauchgefühl: manuelles Abtippen von Verleiher-Angeboten/-Rechnungen nervt. Wunsch:
 PDF hochladen → Positionen (Gerät/Menge/Preis) automatisch ins Formular, kurz prüfen,
@@ -277,19 +276,27 @@ Erfahrungsberichten, direktes PDF-Verständnis inkl. Scans).
   zurück. **„Ruhig by default"**: ohne gesetzten API-Key klare Fehlermeldung, keine
   App-Funktion hängt daran — manuelle Eingabe geht immer.
 - **Frontend:** `CreateSubrentalDialog.tsx` bekommt oben ein Upload-Feld („PDF
-  hochladen"); nach Extraktion befüllt sich das bestehende Formular (Partner-Fuzzy-Match
-  gegen `suppliers`, Zeitraum, Positionsliste) — **bleibt voll editierbar**, kein
-  Blindvertrauen. Kein neuer Persistenz-Pfad nötig — Speichern läuft weiter über
-  `useCreateSubrental`/`useUpdateSubrental` wie bisher.
-- **Offene Entscheidungen (mit Till vor dem Bau klären):**
-  1. Anbieter: Gemini (empfohlen) vs. NVIDIA NIM vs. anders.
-  2. Ablauf: nur beim Neu-Anlegen, oder auch nachträglich an einem bestehenden Vorgang
-     (z. B. Rechnung reicht Endpreise nach, Positionen sollen aktualisiert werden)?
-  3. Was passiert bei Firmen/Geräten, die nicht im Partner-/Gerätestamm existieren
-     (neuer Partner vorschlagen? Freitext-Fallback?).
-- Beweis: echtes Verleiher-PDF hochladen → Formular korrekt befüllt (Stichprobe gegen
-  das Original); Fehlerpfad ohne API-Key; RLS-Probe für die erweiterten
-  `documents`-Helfer (supplier/subrental); Testdaten weg.
+  hochladen"), verfügbar **sowohl beim Neu-Anlegen als auch beim Bearbeiten** eines
+  bestehenden Vorgangs (Tills Entscheidung); nach Extraktion befüllt sich das
+  bestehende Formular (Partner-Fuzzy-Match gegen `suppliers` clientseitig — kein
+  Treffer zeigt einen Hinweis statt zu raten, Zeitraum, Positionsliste als Freitext,
+  `device_id` bleibt null) — **bleibt voll editierbar**, kein Blindvertrauen. Kein
+  neuer Persistenz-Pfad nötig — Speichern läuft weiter über
+  `useCreateSubrental`/`useUpdateSubrental` wie bisher; das hochgeladene PDF wird
+  danach best-effort am Vorgang archiviert (Kategorie `eingangsrechnung`, D4-Muster).
+- **Model:** `gemini-2.5-flash` (env `GEMINI_MODEL` überschreibbar), Aufruf über
+  `generateContent` mit `responseSchema` für garantiert strukturiertes JSON.
+- Beweis (2026-07-24, lokal): Prüfkette grün (tsc/lint/114 Tests/Build). DB: erweiterte
+  `can_see_document`/`can_edit_document` per RLS-Probe mit Max Deger bewiesen (ohne
+  Bereich `false`/`false` für `supplier`+`subrental`, mit Bereich `true`/`true`,
+  Test-Rechte danach entfernt). Function (nach `supabase stop && supabase start`) per
+  echtem Login+Token aufgerufen: ohne `GEMINI_API_KEY` liefert sie die erwartete
+  „ruhig by default"-Fehlermeldung, kein stiller Fehlschlag. Browser: Upload-Bereich im
+  Dialog rendert korrekt (Create + Edit), Konsole fehlerfrei, 375px + Desktop.
+  **Noch nicht bewiesen: die echte Extraktion mit einem echten Gemini-Key gegen ein
+  reales Verleiher-PDF** — das braucht Tills eigenen, kostenlosen API-Key
+  (aistudio.google.com) und den Deploy der Function; beides **nur nach ausdrücklicher
+  Freigabe**, da nach-außen-wirkend (externe API, Kosten wenn auch minimal).
 
 **E3 — Verfügbarkeits-Zugänge** (keine Migration)
 - `lib/availability.ts` + optionale Parameter + `SUBRENTAL_COUNTING_STATUSES`
@@ -431,8 +438,13 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   Angeboten/-Rechnungen für Anmiet-Vorgänge. Nach Skill `grosses-feature`: Optionen
   geklärt (beide Dokument-Typen, möglichst vollautomatische Befüllung mit kurzer
   Prüfung), recherchiert (Rentman/Current RMS lösen das nicht automatisch — kein
-  Vorbild; allgemeine Beleg-Erkennungstechnik via Vision-KI als Ansatz), neue Etappe
-  **E2b** dokumentiert (Anbieter-Empfehlung Google Gemini kostenlose Stufe statt
-  bezahlter Anthropic-API, auf Tills Wunsch nach einer kostenlosen Lösung). **Noch
-  nicht gebaut** — offene Entscheidungen (Anbieter, Ablauf-Details) werden vor dem Bau
-  final mit Till geklärt.
+  Vorbild; allgemeine Beleg-Erkennungstechnik via Vision-KI als Ansatz), Anbieter
+  entschieden (Google Gemini kostenlose Stufe statt bezahlter Anthropic-API, auf Tills
+  Wunsch nach einer kostenlosen Lösung — NVIDIA NIM geprüft und verworfen, Gemini hat
+  natives PDF-Verständnis + großzügigeres Free-Kontingent), Ablauf entschieden (Upload
+  sowohl beim Neu-Anlegen als auch nachträglich). **E2b gebaut & lokal bewiesen**:
+  Migration 0043 (`documents` um supplier/subrental erweitert), Edge Function
+  `extract-subrental-document` (ruhig by default ohne Secret), Upload+Prefill+
+  Archivierung in `CreateSubrentalDialog.tsx`. **Die Function ist bewusst NICHT
+  deployt** — der reale Extraktions-Test mit Tills Gemini-Key und das Scharfschalten
+  stehen noch aus (nach-außen-Wirkendes, braucht ausdrückliche Freigabe).

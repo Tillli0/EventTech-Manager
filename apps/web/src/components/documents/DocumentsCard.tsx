@@ -38,6 +38,9 @@ function useMayEditDocuments(entityType: DocumentEntityType): boolean {
       return canEdit("angebote");
     case "company":
       return isAdmin;
+    case "supplier":
+    case "subrental":
+      return canEdit("anmietung");
   }
 }
 

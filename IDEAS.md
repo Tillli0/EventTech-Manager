@@ -21,7 +21,9 @@
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
 > 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1 + E2
->    erledigt (2026-07-24), als Nächstes E3 (Verfügbarkeits-Zugänge).**
+>    erledigt (2026-07-24); E2b (KI-Dokumenten-Extraktion) gebaut & lokal bewiesen,
+>    aber noch nicht deployt (braucht Tills Gemini-Key + Freigabe). Als Nächstes
+>    E3 (Verfügbarkeits-Zugänge).**
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -124,6 +126,20 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E2b — KI-Dokumenten-Extraktion für Anmiet-Vorgänge** (2026-07-24,
+  `PLAN-NEUAUSRICHTUNG.md`, Migration 0043 `documents`-Erweiterung): Tills
+  Bauchgefühl ernst genommen (manuelles Abtippen von Verleiher-Angeboten/-Rechnungen
+  nervt) — recherchiert (Rentman/Current RMS lösen das nicht automatisch, kein
+  Vorbild), Anbieter entschieden (Google Gemini kostenlose Stufe statt bezahlter
+  Anthropic-API, natives PDF-Verständnis). Neue Edge Function
+  `extract-subrental-document`: PDF hochladen (Angebot oder Rechnung, sowohl beim
+  Neu-Anlegen als auch nachträglich an einem bestehenden Vorgang), Partner/Zeitraum/
+  Positionen werden vorgeschlagen, bleiben voll editierbar, PDF wird danach am Vorgang
+  archiviert. „Ruhig by default" — ohne `GEMINI_API_KEY`-Secret klare Fehlermeldung.
+  **Gebaut und lokal bewiesen (Prüfkette, RLS-Probe, Fehlerpfad ohne Key), aber
+  bewusst noch NICHT deployt** — der echte Extraktions-Test mit Tills eigenem
+  Gemini-Key und das Scharfschalten der Function stehen noch aus (Freigabe nötig).
 
 - **Neuausrichtung E2 — Anmiet-Vorgänge am Job** (2026-07-24, `PLAN-NEUAUSRICHTUNG.md`,
   Migration 0042 `subrentals`/`subrental_items`): Vorgangs-Kopf + Positionen (Katalog-

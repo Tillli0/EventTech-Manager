@@ -27,6 +27,8 @@ const ENTITY_FALLBACK_LABEL: Record<DocumentEntityType, string> = {
   offer: "Angebot",
   invoice: "Rechnung",
   company: "Firma",
+  supplier: "Verleih-Partner",
+  subrental: "Anmiet-Vorgang",
 };
 
 function customerName(c: { company_name: string | null; first_name: string | null; last_name: string | null }): string {
