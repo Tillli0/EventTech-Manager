@@ -116,6 +116,15 @@ Vier Ansichten in der App-Optik (dark, Indigo-Akzent) mit Till abgestimmt:
   Kalender · Anmietung · Aufgaben (Inventar via Sidebar).
 - **○ E5 Bestell-Mail mit/ohne PDF-Anhang:** V1 ohne Anhang (Positionsliste im Text),
   Anhang als V2 (IDEAS). Vor Scharfschalten Freigabe.
+- **○ E2b KI-Dokumenten-Extraktion — Anbieter:** Till will „kostenlos" statt bezahlter
+  Anthropic-API. Empfehlung nach Recherche (2026-07-24): **Google Gemini API, kostenlose
+  Stufe** (Gemini 3 Flash: 1.500 Anfragen/Tag, natives PDF-Verständnis inkl. Scans,
+  strukturierte JSON-Ausgabe — passt am besten zu Tills Volumen von vermutlich wenigen
+  Dokumenten/Woche). Alternative: NVIDIA NIM (auch kostenlos, `build.nvidia.com`,
+  ~40 Anfragen/Min), aber unklar, ob die Vision-Modelle dort so zuverlässig strukturiert
+  extrahieren wie Gemini — Till wollte das explizit prüfen lassen. Architektur bewusst
+  anbieter-abstrahiert (eine Edge Function als Fassade), damit ein Wechsel später billig
+  bleibt. **Vor dem Bau mit Till final klären** (siehe Etappe E2b unten).
 
 ## 5. Etappen
 
@@ -244,6 +253,44 @@ bereits belegt, real vergeben wurde 0042)
   der Anmietung-Seite live, Löschen entfernt den Vorgang; 375px + Desktop, Konsole
   fehlerfrei.
 
+**E2b — KI-Dokumenten-Extraktion für Anmiet-Vorgänge** (○ neu, 2026-07-24 mit Till
+besprochen; Migration TBD `documents`-Erweiterung; **vor dem Bau: Anbieter + Ablauf
+final mit Till klären**, siehe Entscheidung oben)
+
+Tills Bauchgefühl: manuelles Abtippen von Verleiher-Angeboten/-Rechnungen nervt. Wunsch:
+PDF hochladen → Positionen (Gerät/Menge/Preis) automatisch ins Formular, kurz prüfen,
+speichern. **Recherche-Ergebnis:** Rentman/Current RMS lösen das NICHT automatisch
+(nur manuell/CSV-Import) — kein Profi-Muster zum Abschauen, dafür die allgemeine
+Technik aus der Beleg-Erkennung (lexoffice/sevDesk-Scan-Prinzip, nur mit einem
+Vision-fähigen KI-Modell statt klassischem OCR: 95–99 % Trefferquote laut aktuellen
+Erfahrungsberichten, direktes PDF-Verständnis inkl. Scans).
+
+- **Neu für dieses Projekt:** erste Anbindung an eine externe KI-API. Schema-seitig nur
+  eine kleine Erweiterung: `documents.entity_type`-Check + `can_see_document`/
+  `can_edit_document` um `supplier`/`subrental` ergänzen (in 0038 bereits als „kommt mit
+  Block B" vorgesehen) — damit das hochgeladene PDF zusätzlich automatisch am Vorgang
+  archiviert werden kann (Kategorie `eingangsrechnung`/`angebot`).
+- **Edge Function** `extract-subrental-document` (Muster `send-dunning`: JWT-Pflicht +
+  `can_edit_area('anmietung')`): nimmt das PDF (base64), schickt es mit festem
+  JSON-Schema-Prompt an den gewählten KI-Anbieter, gibt `{ supplier_name_guess,
+  start_date_guess, end_date_guess, items: [{description, quantity, unit_cost}] }`
+  zurück. **„Ruhig by default"**: ohne gesetzten API-Key klare Fehlermeldung, keine
+  App-Funktion hängt daran — manuelle Eingabe geht immer.
+- **Frontend:** `CreateSubrentalDialog.tsx` bekommt oben ein Upload-Feld („PDF
+  hochladen"); nach Extraktion befüllt sich das bestehende Formular (Partner-Fuzzy-Match
+  gegen `suppliers`, Zeitraum, Positionsliste) — **bleibt voll editierbar**, kein
+  Blindvertrauen. Kein neuer Persistenz-Pfad nötig — Speichern läuft weiter über
+  `useCreateSubrental`/`useUpdateSubrental` wie bisher.
+- **Offene Entscheidungen (mit Till vor dem Bau klären):**
+  1. Anbieter: Gemini (empfohlen) vs. NVIDIA NIM vs. anders.
+  2. Ablauf: nur beim Neu-Anlegen, oder auch nachträglich an einem bestehenden Vorgang
+     (z. B. Rechnung reicht Endpreise nach, Positionen sollen aktualisiert werden)?
+  3. Was passiert bei Firmen/Geräten, die nicht im Partner-/Gerätestamm existieren
+     (neuer Partner vorschlagen? Freitext-Fallback?).
+- Beweis: echtes Verleiher-PDF hochladen → Formular korrekt befüllt (Stichprobe gegen
+  das Original); Fehlerpfad ohne API-Key; RLS-Probe für die erweiterten
+  `documents`-Helfer (supplier/subrental); Testdaten weg.
+
 **E3 — Verfügbarkeits-Zugänge** (keine Migration)
 - `lib/availability.ts` + optionale Parameter + `SUBRENTAL_COUNTING_STATUSES`
   (`bestaetigt`/`uebernommen`/`zurueckgegeben`); Alt-Tests bleiben grün, neue Fälle dazu.
@@ -263,7 +310,8 @@ bereits belegt, real vergeben wurde 0042)
 - Optional: erzeugtes PDF via D2 am Vorgang ablegen.
 - Beweis: PDF mit echten Firmendaten; Doppel-Klick-Nummern-Probe.
 
-**E5 — Bestell-Mail an Verleiher** (Migration 0042 `subrental_order_emails`;
+**E5 — Bestell-Mail an Verleiher** (Migration TBD `subrental_order_emails` — Nummer
+0042 ist inzwischen durch E2 `subrentals` belegt, Nummer erst bei Etappen-Start final;
 „ruhig by default")
 - Edge Function `supabase/functions/send-subrental-order` (Muster `send-dunning`):
   JWT-Pflicht + `can_edit_area('anmietung')`, **Preview-Pflicht** vor Versand, Resend nur
@@ -379,3 +427,12 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   auf der Anmietung-Seite, voll bewiesen (RLS, Browser: Anlegen/Status-Wechsel/
   Löschen). Nächster Schritt: **E3** (Verfügbarkeits-Zugänge — Anmietung erhöht die
   Verfügbarkeit im Zeitraum).
+- **2026-07-24 (später):** Till äußert Unbehagen am manuellen Abtippen von Verleiher-
+  Angeboten/-Rechnungen für Anmiet-Vorgänge. Nach Skill `grosses-feature`: Optionen
+  geklärt (beide Dokument-Typen, möglichst vollautomatische Befüllung mit kurzer
+  Prüfung), recherchiert (Rentman/Current RMS lösen das nicht automatisch — kein
+  Vorbild; allgemeine Beleg-Erkennungstechnik via Vision-KI als Ansatz), neue Etappe
+  **E2b** dokumentiert (Anbieter-Empfehlung Google Gemini kostenlose Stufe statt
+  bezahlter Anthropic-API, auf Tills Wunsch nach einer kostenlosen Lösung). **Noch
+  nicht gebaut** — offene Entscheidungen (Anbieter, Ablauf-Details) werden vor dem Bau
+  final mit Till geklärt.
