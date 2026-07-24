@@ -16,11 +16,12 @@ import {
   format,
 } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus, Download, AlertTriangle, CalendarPlus, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Download, AlertTriangle, CalendarPlus, User, Briefcase } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Tabs } from "@/components/ui/Tabs";
 import { LoadingState, ErrorState } from "@/components/ui/States";
+import { useAuth } from "@/auth/AuthProvider";
 import { useCalendarEntries, useJobMilestonesInRange, detectCollisions } from "@/hooks/useCalendar";
 import { usePersonalBlocks, usePersonalRecurringBlocks } from "@/hooks/usePersonalBlocks";
 import { resolvePersonalBlocks, isVisibleBlockCategory } from "@/lib/personalSchedule";
@@ -52,6 +53,8 @@ export function CalendarPage() {
   );
   const [subscribeOpen, setSubscribeOpen] = useState(false);
   const [showPersonal, setShowPersonal] = useState(true);
+  const [showMine, setShowMine] = useState(true);
+  const { user } = useAuth();
 
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (view === "month") {
@@ -85,6 +88,15 @@ export function CalendarPage() {
   const { data: personalRecurring } = usePersonalRecurringBlocks();
 
   const collidingIds = useMemo(() => (entries ? detectCollisions(entries) : new Set<string>()), [entries]);
+
+  // „Meine Einsätze" (U4-Rest): Termine, deren Job dem angemeldeten Nutzer zugewiesen
+  // ist, werden hervorgehoben — kein Filtern, damit der Firmenüberblick erhalten bleibt.
+  const myEntryIds = useMemo(() => {
+    if (!showMine || !user || !entries) return new Set<string>();
+    return new Set(
+      entries.filter((e) => e.job?.assignees?.some((a) => a.user_id === user.id)).map((e) => e.id),
+    );
+  }, [showMine, user, entries]);
 
   // Persönliche Ebene (PLAN-UI-NEUSCHNITT.md U4): Köln-Schichten sind sichtbarer Inhalt,
   // alles andere (Schule, Klausur, Ferien, Urlaub, Krank) wirkt nur gedämpft als Blocker —
@@ -171,6 +183,15 @@ export function CalendarPage() {
             <User size={14} />
             Meine Zeiten
           </Button>
+          <Button
+            variant={showMine ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setShowMine((v) => !v)}
+            title="Eigene Einsätze im Kalender hervorheben"
+          >
+            <Briefcase size={14} />
+            Meine Einsätze
+          </Button>
           <Tabs options={VIEW_OPTIONS} value={view} onChange={setView} size="sm" />
         </div>
       </div>
@@ -205,6 +226,7 @@ export function CalendarPage() {
                 entries={entries}
                 milestones={milestones ?? []}
                 collidingIds={collidingIds}
+                myEntryIds={myEntryIds}
                 personalVisible={personalVisible}
                 personalBlockers={personalBlockers}
                 onDayClick={(day) => setDialogState({ prefillDate: day })}
@@ -219,6 +241,7 @@ export function CalendarPage() {
                 entries={entries}
                 milestones={milestones ?? []}
                 collidingIds={collidingIds}
+                myEntryIds={myEntryIds}
                 personalVisible={personalVisible}
                 personalBlockers={personalBlockers}
                 onSlotClick={(slot) => setDialogState({ prefillDate: slot })}
@@ -233,6 +256,7 @@ export function CalendarPage() {
                 entries={entries}
                 milestones={milestones ?? []}
                 collidingIds={collidingIds}
+                myEntryIds={myEntryIds}
                 personalVisible={personalVisible}
                 personalBlockers={personalBlockers}
                 onSlotClick={(slot) => setDialogState({ prefillDate: slot })}

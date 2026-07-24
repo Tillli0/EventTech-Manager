@@ -97,6 +97,7 @@ export function MonthGrid({
   entries,
   milestones,
   collidingIds,
+  myEntryIds = new Set(),
   personalVisible = [],
   personalBlockers = [],
   onDayClick,
@@ -107,6 +108,8 @@ export function MonthGrid({
   entries: CalendarEntry[];
   milestones: MilestoneWithJob[];
   collidingIds: Set<string>;
+  /** Termine, deren Job dem angemeldeten Nutzer zugewiesen ist — Hervorhebung. */
+  myEntryIds?: Set<string>;
   /** Köln-Schichten — sichtbarer Inhalt (PLAN-UI-NEUSCHNITT.md U4). */
   personalVisible?: ResolvedPersonalBlock[];
   /** Schule/Klausur/Ferien/Urlaub/Krank — nur ein gedämpfter Blocker, nie eine Karte. */
@@ -268,6 +271,7 @@ export function MonthGrid({
                   {visibleSegments.map((seg) => {
                     const color = seg.entry.job?.color || "#3B82F6";
                     const isColliding = collidingIds.has(seg.entry.id);
+                    const isMine = myEntryIds.has(seg.entry.id);
                     return (
                       <button
                         key={seg.entry.id}
@@ -275,12 +279,13 @@ export function MonthGrid({
                           e.stopPropagation();
                           onEntryClick(seg.entry);
                         }}
-                        title={`${seg.entry.title} (${formatTime(seg.entry.start_at)})`}
+                        title={`${seg.entry.title} (${formatTime(seg.entry.start_at)})${isMine ? " · dir zugewiesen" : ""}`}
                         className={cn(
                           "flex h-[18px] items-center truncate px-1.5 text-[11px] font-medium text-white transition-opacity hover:opacity-90",
                           seg.continuesFromPrev ? "rounded-l-none" : "ml-0.5 rounded-l-[4px]",
                           seg.continuesToNext ? "rounded-r-none" : "mr-0.5 rounded-r-[4px]",
                           isColliding && "ring-2 ring-status-defekt ring-inset",
+                          !isColliding && isMine && "ring-2 ring-accent ring-inset",
                         )}
                         style={{
                           gridColumn: `${seg.startCol + 1} / ${seg.endCol + 2}`,

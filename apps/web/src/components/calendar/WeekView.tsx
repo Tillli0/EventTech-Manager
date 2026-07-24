@@ -107,6 +107,7 @@ function allDayEntriesForDay(day: Date, entries: CalendarEntry[]): CalendarEntry
 
 export function WeekView({
   currentDate, entries, milestones, collidingIds,
+  myEntryIds = new Set(),
   personalVisible = [], personalBlockers = [],
   onEntryClick, onMilestoneClick, onSlotClick,
 }: {
@@ -114,6 +115,7 @@ export function WeekView({
   entries: CalendarEntry[];
   milestones: MilestoneWithJob[];
   collidingIds: Set<string>;
+  myEntryIds?: Set<string>;
   personalVisible?: ResolvedPersonalBlock[];
   personalBlockers?: ResolvedPersonalBlock[];
   onEntryClick: (entry: CalendarEntry) => void;
@@ -287,6 +289,7 @@ export function WeekView({
                 {positioned.map((p) => {
                   const color = p.entry.job?.color || "#3B82F6";
                   const isColliding = collidingIds.has(p.entry.id);
+                  const isMine = myEntryIds.has(p.entry.id);
                   const widthPct = 100 / p.laneCount;
                   return (
                     <button
@@ -295,6 +298,7 @@ export function WeekView({
                       className={cn(
                         "absolute overflow-hidden rounded-md px-2 py-1 text-left text-xs text-white shadow-sm transition-opacity hover:opacity-90",
                         isColliding && "ring-2 ring-status-defekt ring-inset",
+                        !isColliding && isMine && "ring-2 ring-accent ring-inset",
                       )}
                       style={{
                         top: p.top, height: p.height,

@@ -64,6 +64,7 @@ function layoutDay(day: Date, entries: CalendarEntry[]) {
 
 export function DayView({
   currentDate, entries, milestones, collidingIds,
+  myEntryIds = new Set(),
   personalVisible = [], personalBlockers = [],
   onEntryClick, onMilestoneClick, onSlotClick,
 }: {
@@ -71,6 +72,7 @@ export function DayView({
   entries: CalendarEntry[];
   milestones: MilestoneWithJob[];
   collidingIds: Set<string>;
+  myEntryIds?: Set<string>;
   personalVisible?: ResolvedPersonalBlock[];
   personalBlockers?: ResolvedPersonalBlock[];
   onEntryClick: (entry: CalendarEntry) => void;
@@ -232,6 +234,7 @@ export function DayView({
             {positioned.map((p) => {
               const color = p.entry.job?.color || "#3B82F6";
               const isColliding = collidingIds.has(p.entry.id);
+              const isMine = myEntryIds.has(p.entry.id);
               const widthPct = 100 / p.laneCount;
               const customer = p.entry.job?.customer;
               const customerLabel = customer
@@ -245,6 +248,7 @@ export function DayView({
                   className={cn(
                     "absolute overflow-hidden rounded-md border-l-4 px-3 py-1.5 text-left text-white shadow-sm transition-opacity hover:opacity-90",
                     isColliding && "ring-2 ring-status-defekt ring-inset",
+                    !isColliding && isMine && "ring-2 ring-accent ring-inset",
                   )}
                   style={{
                     top: p.top, height: p.height,

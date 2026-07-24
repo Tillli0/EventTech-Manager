@@ -10,7 +10,7 @@ export function useCalendarEntries(rangeStart: string, rangeEnd: string) {
     queryFn: async (): Promise<CalendarEntry[]> => {
       const { data, error } = await supabase
         .from("calendar_entries")
-        .select("*, job:jobs(*, customer:customers(*))")
+        .select("*, job:jobs(*, customer:customers(*), assignees:job_assignees(user_id))")
         .lt("start_at", rangeEnd)
         .gt("end_at", rangeStart)
         .order("start_at", { ascending: true });
