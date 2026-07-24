@@ -249,7 +249,7 @@ korrekt gefilterte, aber für einen Testnutzer falsche Sicht). Fix: `job_view_mo
 in der Profil-Anlage ergänzt. **Beide Jobs (`ci`, `e2e`) liefen danach grün** — erstmals
 seit Wochen. `e2e/job-flow.spec.ts` bleibt unverändert; es war nie ein Testfehler.
 
-**U4 🟡 — Kalender als Ebenen-Modell** *(Kern erledigt 2026-07-19)*
+**U4 🟡 — Kalender als Ebenen-Modell** *(fast fertig, Stand 2026-07-19)*
 
 **M1-Fundament (aus `PLAN-MEIN-PLAN.md`, vorgezogen):** Migration `0039_personal_blocks.sql`
 — `personal_blocks` (konkrete Zeiträume) + `personal_recurring_blocks` (wöchentliche
@@ -269,22 +269,27 @@ Schule/Klausur/Ferien/Urlaub/Krank eintragen und wieder löschen, kommende Eintr
 Liste. Kein eigener Nav-Punkt.
 
 **Kalender:** Ansichts-Umschalter (Monat/Woche/Tag/Agenda) jetzt auf `ui/Tabs` statt
-Eigenbau. Neuer Umschalter „Meine Zeiten" (an/aus, Standard an) blendet die persönliche
-Ebene in der **Monatsansicht** ein: Köln-Schichten als schmaler Chip (sichtbarer Inhalt),
-alles andere nur als stiller grauer Punkt ohne Beschriftung — nie eine Karte.
+Eigenbau. Umschalter „Meine Zeiten" (an/aus, Standard an) blendet die persönliche Ebene
+ein: Köln-Schichten als schmaler Chip (sichtbarer Inhalt), alles andere nur als stiller
+grauer Punkt ohne Beschriftung — nie eine Karte.
 
 **Bewiesen:** tsc · lint · 108 Vitest (7 neu) · build · Browser als „Max Deger": Eintrag
 über „Meine Zeiten" angelegt (Köln-Schicht + Schule) → im Kalender sichtbar (Chip +
 Punkt), Umschalter blendet beides zuverlässig aus/ein, 375 px ohne horizontales Scrollen,
 keine Konsolenfehler. Testdaten restlos entfernt.
 
-**Noch offen (bewusst auf später vertagt, um schnell einen nutzbaren Kern zu liefern):**
-- Persönliche Ebene nur in der **Monatsansicht** — Woche/Tag/Agenda fehlt noch.
+**Danach ergänzt (2026-07-19):**
+- ~~Persönliche Ebene nur in der Monatsansicht~~ ✅ jetzt auch in Woche-/Tag-/Agenda-
+  Ansicht (`personalItemsForDay`-Helper in `lib/personalSchedule.ts`, geteilt zwischen
+  allen vier Ansichten).
+- ~~Wiederkehrende Regeln ohne UI~~ ✅ Regel-UI für den Stundenplan in
+  `PersonalScheduleSection.tsx` (`useCreatePersonalRecurringBlock`/
+  `useDeletePersonalRecurringBlock` in `usePersonalBlocks.ts`).
+
+**Noch offen:**
 - „Meine Einsätze" als eigene Ebene (Jobs, denen man zugewiesen ist, hervorgehoben) —
-  bräuchte `assignees` im `useCalendarEntries`-Query, noch nicht verdrahtet.
-- Wiederkehrende Regeln (`personal_recurring_blocks`) haben noch **keine UI** — die
-  DB-Tabelle und `resolveRecurringBlock()` sind fertig und getestet, aber „Meine Zeiten"
-  legt bisher nur konkrete Blöcke an. Stundenplan-Eintrag folgt als nächster Schritt.
+  bräuchte `assignees` im `useCalendarEntries`-Query, noch nicht verdrahtet. Letzter
+  Rest, bevor U4 komplett ist.
 - Kollisionswarnung bezieht sich weiterhin nur auf Firmen-Termine — persönliche Blöcke
   gegen Jobs prüfen ist M5 (Team-Verfügbarkeit), eigenes Vorhaben.
 
