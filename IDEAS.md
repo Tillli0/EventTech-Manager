@@ -15,12 +15,13 @@
 > `PLAN-NEUAUSRICHTUNG.md`, die Reihenfolge in `ROADMAP.md` (Phasen 1–2). Einige
 > Altpunkte unten sind dadurch herabgestuft — siehe eigene Rubrik.
 
-> **🔴 Aktuelle Reihenfolge (2026-07-18) — hier steht, woran gerade gearbeitet wird:**
-> 1. **`PLAN-V1-ABSICHERN.md`** (A1–A4) — v1 beweisbar sicher machen: Restore proben,
->    Storage ins Backup, E2E-Netz. **Läuft jetzt.**
-> 2. **`PLAN-UI-NEUSCHNITT.md`** (U1–U6) — helles Theme umschaltbar, Navigation,
->    Startseite „Nächster Einsatz", Dokumente als Job-Ordner. Zieht M1 mit.
-> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation.
+> **🔴 Aktuelle Reihenfolge (Stand 2026-07-24) — hier steht, woran gerade gearbeitet wird:**
+> 1. ~~`PLAN-V1-ABSICHERN.md`~~ ✅ komplett (A1–A4).
+> 2. ~~`PLAN-UI-NEUSCHNITT.md`~~ ✅ **komplett** (U1–U6) — helles Theme, neue Navigation,
+>    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
+>    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
+> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **Als
+>    Nächstes dran.**
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -123,6 +124,13 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **`PLAN-UI-NEUSCHNITT.md` komplett — U1–U6 fertig** (2026-07-19/24): letzter Rest von
+  U4 nachgezogen — „Meine Einsätze" als eigene Kalender-Ebene (Termine, deren Job dem
+  angemeldeten Nutzer zugewiesen ist, per `ring-accent` hervorgehoben statt gefiltert;
+  `useCalendarEntries` lädt dafür `assignees:job_assignees` mit). Verifiziert als Max
+  Deger. Damit ist das ganze UI-Neuschnitt-Vorhaben abgeschlossen — als Nächstes steht
+  `PLAN-NEUAUSRICHTUNG.md` Block B (Anmietung/Kalkulation) an.
 
 - **U5 + U6 — Dokumente als Ordner, Job-Detailseite in Abschnitte** (2026-07-19,
   `PLAN-UI-NEUSCHNITT.md`): Dokumente-Seite als aufklappbare Ordner (Nach Job / Kategorie /

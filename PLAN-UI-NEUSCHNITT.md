@@ -249,7 +249,7 @@ korrekt gefilterte, aber für einen Testnutzer falsche Sicht). Fix: `job_view_mo
 in der Profil-Anlage ergänzt. **Beide Jobs (`ci`, `e2e`) liefen danach grün** — erstmals
 seit Wochen. `e2e/job-flow.spec.ts` bleibt unverändert; es war nie ein Testfehler.
 
-**U4 🟡 — Kalender als Ebenen-Modell** *(fast fertig, Stand 2026-07-19)*
+**U4 ✅ — Kalender als Ebenen-Modell** *(komplett 2026-07-19)*
 
 **M1-Fundament (aus `PLAN-MEIN-PLAN.md`, vorgezogen):** Migration `0039_personal_blocks.sql`
 — `personal_blocks` (konkrete Zeiträume) + `personal_recurring_blocks` (wöchentliche
@@ -286,12 +286,16 @@ keine Konsolenfehler. Testdaten restlos entfernt.
   `PersonalScheduleSection.tsx` (`useCreatePersonalRecurringBlock`/
   `useDeletePersonalRecurringBlock` in `usePersonalBlocks.ts`).
 
-**Noch offen:**
-- „Meine Einsätze" als eigene Ebene (Jobs, denen man zugewiesen ist, hervorgehoben) —
-  bräuchte `assignees` im `useCalendarEntries`-Query, noch nicht verdrahtet. Letzter
-  Rest, bevor U4 komplett ist.
-- Kollisionswarnung bezieht sich weiterhin nur auf Firmen-Termine — persönliche Blöcke
-  gegen Jobs prüfen ist M5 (Team-Verfügbarkeit), eigenes Vorhaben.
+- ~~„Meine Einsätze" als eigene Ebene~~ ✅ Termine, deren Job dem Nutzer zugewiesen ist,
+  werden mit `ring-accent` hervorgehoben (nicht gefiltert) — Umschalter neben „Meine
+  Zeiten", `useCalendarEntries` lädt dafür `assignees:job_assignees` mit. Verifiziert
+  als Max Deger.
+
+**Bewusst nicht Teil von U4:** Kollisionswarnung bezieht sich weiterhin nur auf
+Firmen-Termine — persönliche Blöcke gegen Jobs prüfen ist **M5** (Team-Verfügbarkeit,
+`PLAN-MEIN-PLAN.md`), ein eigenes, späteres Vorhaben.
+
+**Damit ist U1–U6 vollständig abgeschlossen.**
 
 **U5 ✅ — Dokumente als Job-Ordner** *(erledigt 2026-07-19)*
 `DocumentsPage` zeigt jetzt Ordner je Vorgang: Umschalter **Nach Job · Nach Kategorie ·
