@@ -1,11 +1,9 @@
 # PLAN — Neuausrichtung: vom Verleih zum Event-Dienstleister
 
 > **Großes Vorhaben** nach Skill `grosses-feature`. Dieses Dokument überlebt Sessions
-> und trägt die Ausführung. **Stand: 2026-07-18** — E0 erledigt; **Block A Dokumente
-> komplett: D1 (Fundament), D2 (DocumentsCard an Job + Kunde), D3 (zentrale Seite
-> „Dokumente") und D4 (Auto-Archivierung erzeugter PDFs) live & bewiesen**; nächste
-> Etappe **E1** (Bereich `anmietung` + Verleih-Partner, Block B). Nach jeder Etappe:
-> Haken + Datum, Stand-Vermerk oben.
+> und trägt die Ausführung. **Stand: 2026-07-24** — E0 + Block A (Dokumente) komplett;
+> **E1 (Bereich `anmietung` + Verleih-Partner-Stamm) live & bewiesen**; nächste Etappe
+> **E2** (Anmiet-Vorgänge am Job). Nach jeder Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -191,17 +189,31 @@ geteilt mit der Karte. Browser-Beweis: Upload → zentral sichtbar, Filter/Suche
 
 ### Block B — Anmietung & Kalkulation (ROADMAP-Phase 2)
 
-**E1 — Bereich `anmietung` + Verleih-Partner** (Migration 0039 **nur**
-`alter type app_area add value 'anmietung'`; Migration 0040 `suppliers`)
-- **ENUM-Falle:** `add value` und erste Nutzung strikt in **getrennten** Dateien.
+**E1 ✅ — Bereich `anmietung` + Verleih-Partner** (erledigt 2026-07-24; Migration 0040
+**nur** `alter type app_area add value 'anmietung'`, Migration 0041 `suppliers` —
+Nummern 0039/0040 aus der Planungs-Annahme waren durch `personal_blocks` inzwischen
+belegt, real vergeben wurden 0040/0041)
+- **ENUM-Falle** eingehalten: `add value` steht allein in 0040, `suppliers` + jede
+  Nutzung des Werts erst in 0041 (Präzedenz `0034_job_status_workflow.sql`).
 - `suppliers` (name Pflicht, contact_person, email, phone, Adresse analog `customers`,
-  website, notes, Zeitstempel); RLS `anmietung`; GRANTs; `on delete restrict` schützt
-  Vorgänge.
-- `types/database.ts` (AppArea-Union + `APP_AREAS` + `Supplier`), `hooks/useSuppliers.ts`,
-  `pages/PurchasingPage.tsx` (`/anmietung`, Tab „Verleih-Partner"), `router.tsx`
-  (`RequireArea('anmietung')`), `nav.ts` (Eintrag „Anmietung", Reihenfolge).
-- Beweis: Partner anlegen/bearbeiten; Mitarbeiter ohne `anmietung` sieht weder Nav noch
-  Seite; psql leere Selects ohne Bereich; Cloud-Verifikation.
+  website, notes, Zeitstempel, `idx_suppliers_name_trgm`); RLS-Vierergespann auf
+  `has_area`/`can_edit_area('anmietung')`; GRANTs `authenticated` + `service_role`.
+  **Kein** `on delete restrict` in E1 — der FK von `subrentals` kommt erst mit E2.
+- `types/database.ts` (`AppArea`-Union + `APP_AREAS` + `Supplier`) — AdminPage-Rechte-UI
+  und Nutzer-anlegen-Dialog übernehmen den neuen Bereich automatisch (beide iterieren
+  generisch über `APP_AREAS`, keine eigene Änderung nötig).
+- `hooks/useSuppliers.ts` (Muster: Kategorie-Block in `useDevices.ts`),
+  `pages/PurchasingPage.tsx` (`/anmietung`, Tabs „Anmietungen"/„Verleih-Partner" —
+  Anmietungen-Tab noch Platzhalter für E2), `components/suppliers/SupplierListView.tsx`
+  + `CreateSupplierDialog.tsx` (Muster `CustomersPage`/`CreateCustomerDialog`),
+  `router.tsx` (`RequireArea('anmietung')`), `nav.ts` (Eintrag „Anmietung" in Gruppe
+  „Kaufmännisch" — Fußleiste bewusst unverändert, das Umgewichten ist E8).
+- Beweis: Prüfkette grün (tsc/lint/108 Tests/Build). DB: `enum_range` enthält
+  `anmietung`; RLS-Probe mit Max Deger (mitarbeiter) — ohne Bereich 0 sichtbare Zeilen
+  + Insert von RLS geblockt, mit testweise vergebenem Bereich Insert/Select erfolgreich,
+  Testdaten + Test-Rechte danach restlos entfernt. Browser (Preview-MCP): als Max weder
+  Nav-Eintrag noch Seite (`RequireArea` zeigt „Kein Zugriff auf diesen Bereich"); als
+  Admin Partner angelegt, bearbeitet, gelöscht — Konsole fehlerfrei, 375px + Desktop.
 
 **E2 — Anmiet-Vorgänge am Job** (Migration 0041 `subrentals` + `subrental_items`)
 - `subrentals` (job_id NOT NULL, supplier_id, status entwurf/angefragt/bestaetigt/
@@ -342,3 +354,8 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   Dokumente-Archiv (`RE-…_<Kunde>.pdf` / `AN-…_<Kunde>.pdf`). RLS-bedingt am eigenen Beleg-
   Vorgang statt am Job (in der Gesamtsicht zum Job verlinkt). Nächster Schritt: **E1**
   (Bereich `anmietung` + Verleih-Partner) — Beginn von Block B.
+- **2026-07-24:** **E1 abgeschlossen** — Bereich `anmietung` (Migration 0040) +
+  Verleih-Partner-Stamm `suppliers` (Migration 0041) live & bewiesen (RLS-Rechteprobe
+  mit echtem Nicht-Bereichs-Nutzer, Browser-Beweis Anlegen/Bearbeiten/Löschen +
+  Guard-Probe). Nächster Schritt: **E2** (Anmiet-Vorgänge am Job, `subrentals` +
+  `subrental_items`).

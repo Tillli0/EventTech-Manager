@@ -53,7 +53,14 @@ export const JOB_VIEW_MODE_OPTIONS: { value: JobViewMode; label: string; hint: s
 ];
 
 /** Bereiche, für die der Admin pro Nutzer Lese-/Schreibrechte vergibt. */
-export type AppArea = "inventar" | "jobs" | "kunden" | "angebote" | "kalender" | "aufgaben";
+export type AppArea =
+  | "inventar"
+  | "jobs"
+  | "kunden"
+  | "angebote"
+  | "kalender"
+  | "aufgaben"
+  | "anmietung";
 
 export const APP_AREAS: { value: AppArea; label: string }[] = [
   { value: "inventar", label: "Inventar" },
@@ -62,6 +69,7 @@ export const APP_AREAS: { value: AppArea; label: string }[] = [
   { value: "angebote", label: "Angebote" },
   { value: "kalender", label: "Kalender" },
   { value: "aufgaben", label: "Aufgaben" },
+  { value: "anmietung", label: "Anmietung" },
 ];
 
 export interface Profile {
@@ -307,6 +315,25 @@ export const DOCUMENT_UPLOAD_CATEGORIES: DocumentCategory[] = [
   "vertrag",
   "sonstiges",
 ];
+
+// ============================================================
+// ANMIETUNG (Block B / E1) — Verleih-Partner-Stamm
+// ============================================================
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contact_person: string | null;
+  email: string | null;
+  phone: string | null;
+  street: string | null;
+  zip: string | null;
+  city: string | null;
+  website: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Customer {
   id: string;

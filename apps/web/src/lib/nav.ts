@@ -11,6 +11,7 @@ import {
   BarChart3,
   Files,
   LayoutDashboard,
+  Truck,
 } from "lucide-react";
 import type { AppArea } from "@/types/database";
 
@@ -60,6 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/angebote", label: "Angebote", icon: FileText, area: "angebote" },
       { to: "/rechnungen", label: "Rechnungen", icon: Receipt, area: "angebote" },
       { to: "/auswertungen", label: "Auswertungen", icon: BarChart3, area: "angebote" },
+      { to: "/anmietung", label: "Anmietung", icon: Truck, area: "anmietung" },
     ],
   },
   {

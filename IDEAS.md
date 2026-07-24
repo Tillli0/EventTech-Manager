@@ -20,8 +20,8 @@
 > 2. ~~`PLAN-UI-NEUSCHNITT.md`~~ ✅ **komplett** (U1–U6) — helles Theme, neue Navigation,
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
-> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **Als
->    Nächstes dran.**
+> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1
+>    erledigt (2026-07-24), als Nächstes E2 (Anmiet-Vorgänge am Job).**
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -124,6 +124,18 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E1 — Bereich „Anmietung" + Verleih-Partner-Stamm** (2026-07-24,
+  `PLAN-NEUAUSRICHTUNG.md`, Migrationen 0040/0041): erster Baustein von Block B. Neuer
+  Rechte-Bereich `anmietung` (ENUM-Wert in eigener Migration wegen der ENUM-Falle) +
+  Tabelle `suppliers` (Name, Kontakt, Adresse, Website, Notizen) mit RLS/GRANTs nach
+  Standard-Schablone. Neue Seite „Anmietung" (`/anmietung`) mit Tabs „Anmietungen"
+  (Platzhalter für E2) und „Verleih-Partner" (Liste + Anlegen/Bearbeiten/Löschen,
+  Muster `CustomersPage`). Rechte-Verwaltung im Admin-Bereich funktioniert automatisch
+  (iteriert generisch über `APP_AREAS`). Voll bewiesen: RLS-Probe mit echtem
+  Nicht-Bereichs-Nutzer (0 sichtbare Zeilen ohne Recht, Insert von der DB geblockt),
+  Browser-Beweis (Guard „Kein Zugriff" ohne Bereich; Admin kann anlegen/bearbeiten/
+  löschen), 375px + Desktop, Konsole fehlerfrei, Testdaten restlos entfernt.
 
 - **`PLAN-UI-NEUSCHNITT.md` komplett — U1–U6 fertig** (2026-07-19/24): letzter Rest von
   U4 nachgezogen — „Meine Einsätze" als eigene Kalender-Ebene (Termine, deren Job dem
