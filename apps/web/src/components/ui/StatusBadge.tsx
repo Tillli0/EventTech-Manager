@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { DeviceStatus, JobStatus, InquiryPipelineStatus, OfferStatus, InvoiceDerivedStatus } from "@/types/database";
+import type { DeviceStatus, JobStatus, InquiryPipelineStatus, OfferStatus, InvoiceDerivedStatus, SubrentalStatus } from "@/types/database";
 import {
   DEVICE_STATUS_OPTIONS,
   JOB_STATUS_OPTIONS,
@@ -8,6 +8,7 @@ import {
   OFFER_STATUS_OPTIONS,
   INVOICE_STATUS_OPTIONS,
 } from "@/types/database";
+import { SUBRENTAL_STATUS_OPTIONS } from "@/lib/subrentals";
 
 const deviceDotClasses: Record<DeviceStatus, string> = {
   verfuegbar: "bg-status-verfuegbar",
@@ -144,6 +145,40 @@ export function InvoiceStatusBadge({ status }: { status: InvoiceDerivedStatus })
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", invoiceDotClasses[status])} />
+      {option?.label ?? status}
+    </span>
+  );
+}
+
+const subrentalTextClasses: Record<SubrentalStatus, string> = {
+  entwurf: "text-ink-muted",
+  angefragt: "text-status-wartung",
+  bestaetigt: "text-accent",
+  uebernommen: "text-status-ausgeliehen",
+  zurueckgegeben: "text-status-verfuegbar",
+  storniert: "text-ink-faint",
+};
+
+const subrentalDotClasses: Record<SubrentalStatus, string> = {
+  entwurf: "bg-ink-muted",
+  angefragt: "bg-status-wartung",
+  bestaetigt: "bg-accent",
+  uebernommen: "bg-status-ausgeliehen",
+  zurueckgegeben: "bg-status-verfuegbar",
+  storniert: "bg-ink-faint",
+};
+
+export function SubrentalStatusBadge({ status }: { status: SubrentalStatus }) {
+  const option = SUBRENTAL_STATUS_OPTIONS.find((o) => o.value === status);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+        "border-current/20",
+        subrentalTextClasses[status],
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", subrentalDotClasses[status])} />
       {option?.label ?? status}
     </span>
   );

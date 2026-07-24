@@ -2,8 +2,9 @@
 
 > **Großes Vorhaben** nach Skill `grosses-feature`. Dieses Dokument überlebt Sessions
 > und trägt die Ausführung. **Stand: 2026-07-24** — E0 + Block A (Dokumente) komplett;
-> **E1 (Bereich `anmietung` + Verleih-Partner-Stamm) live & bewiesen**; nächste Etappe
-> **E2** (Anmiet-Vorgänge am Job). Nach jeder Etappe: Haken + Datum, Stand-Vermerk oben.
+> **E1 (Bereich `anmietung` + Verleih-Partner-Stamm) und E2 (Anmiet-Vorgänge am Job)
+> live & bewiesen**; nächste Etappe **E3** (Verfügbarkeits-Zugänge). Nach jeder Etappe:
+> Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -215,17 +216,33 @@ belegt, real vergeben wurden 0040/0041)
   Nav-Eintrag noch Seite (`RequireArea` zeigt „Kein Zugriff auf diesen Bereich"); als
   Admin Partner angelegt, bearbeitet, gelöscht — Konsole fehlerfrei, 375px + Desktop.
 
-**E2 — Anmiet-Vorgänge am Job** (Migration 0041 `subrentals` + `subrental_items`)
+**E2 ✅ — Anmiet-Vorgänge am Job** (erledigt 2026-07-24; Migration 0042 `subrentals` +
+`subrental_items` — Plan-Annahme 0041 war durch Migration 0041 `suppliers` aus E1
+bereits belegt, real vergeben wurde 0042)
 - `subrentals` (job_id NOT NULL, supplier_id, status entwurf/angefragt/bestaetigt/
   uebernommen/zurueckgegeben/storniert, start/end_date + Range-Check, logistics
   abholung/lieferung_lager/lieferung_location, order_number nullable + partieller
   Unique-Index, notes); `subrental_items` (subrental_id, device_id nullable,
   description Pflicht, quantity > 0, unit_cost netto je Stück für den Gesamtzeitraum,
-  sort_order).
-- `lib/subrentals.ts` (Status-Kette, `subrentalTotals`) + Test; `hooks/useSubrentals.ts`;
-  `components/jobs/JobSubrentalsCard.tsx` (Muster `JobInvoicesCard`); Anmiet-Dialog;
-  PurchasingPage-Tab „Anmietungen" (Status-Tabs, SummaryStats).
-- Beweis: Vorgang mit Katalog- + Freitext-Position, Status-Kette, Summen; RLS-Probe.
+  sort_order). **Bewusst ohne** `updated_at` auf `subrental_items` — Positionen werden
+  bei Änderung komplett ersetzt (delete+insert), analog `offer_items`/`invoice_items`.
+  RLS direkt auf `has_area`/`can_edit_area('anmietung')` (kein Job-Sichtbezug — wer
+  Anmietung sehen/bearbeiten darf, sieht alle Vorgänge, wie bei `suppliers`).
+- `lib/subrentals.ts` (`SUBRENTAL_STATUS_OPTIONS`, `subrentalTotals`, 6 Tests);
+  `hooks/useSubrentals.ts`; `components/jobs/JobSubrentalsCard.tsx` (Muster
+  `LinkedFinanceCards`) im Tab „Material" neben der Packliste; `CreateSubrentalDialog.tsx`
+  (Muster `CreateOfferDialog`, Katalog-Gerät ODER Freitext); `PurchasingPage`-Tab
+  „Anmietungen" (`SubrentalListView.tsx`, SummaryStats + Status-Tabs, Vorgang-Verlinkung
+  zum Job) ersetzt den E1-Platzhalter. `order_number` bleibt vorerst ungenutzt (nullable) —
+  Vergabe erst mit der Bestell-PDF-Erzeugung in E4.
+- Beweis: Prüfkette grün (tsc/lint/114 Tests/Build). DB: RLS-Probe mit Max Deger (ohne
+  Bereich 0 sichtbare Zeilen + Insert geblockt; mit testweise vergebenem Bereich
+  Vorgang + Position anlegbar/lesbar über den Join), Testdaten + Test-Rechte restlos
+  entfernt (der echte Verleih-Partner „Beuchel" blieb unangetastet). Browser: Vorgang
+  mit Katalog- (DMX Kabel) + Freitext-Position angelegt, Summe korrekt (25,50 € +
+  4×3,20 € = 38,30 €), Status-Wechsel Entwurf→Bestätigt aktualisiert Zähler/Summen auf
+  der Anmietung-Seite live, Löschen entfernt den Vorgang; 375px + Desktop, Konsole
+  fehlerfrei.
 
 **E3 — Verfügbarkeits-Zugänge** (keine Migration)
 - `lib/availability.ts` + optionale Parameter + `SUBRENTAL_COUNTING_STATUSES`
@@ -357,5 +374,8 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
 - **2026-07-24:** **E1 abgeschlossen** — Bereich `anmietung` (Migration 0040) +
   Verleih-Partner-Stamm `suppliers` (Migration 0041) live & bewiesen (RLS-Rechteprobe
   mit echtem Nicht-Bereichs-Nutzer, Browser-Beweis Anlegen/Bearbeiten/Löschen +
-  Guard-Probe). Nächster Schritt: **E2** (Anmiet-Vorgänge am Job, `subrentals` +
-  `subrental_items`).
+  Guard-Probe). **E2 direkt im Anschluss abgeschlossen** — Anmiet-Vorgänge am Job
+  (Migration 0042 `subrentals`/`subrental_items`), Karte am Job + Tab „Anmietungen"
+  auf der Anmietung-Seite, voll bewiesen (RLS, Browser: Anlegen/Status-Wechsel/
+  Löschen). Nächster Schritt: **E3** (Verfügbarkeits-Zugänge — Anmietung erhöht die
+  Verfügbarkeit im Zeitraum).

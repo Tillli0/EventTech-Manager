@@ -20,8 +20,8 @@
 > 2. ~~`PLAN-UI-NEUSCHNITT.md`~~ ✅ **komplett** (U1–U6) — helles Theme, neue Navigation,
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
-> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1
->    erledigt (2026-07-24), als Nächstes E2 (Anmiet-Vorgänge am Job).**
+> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1 + E2
+>    erledigt (2026-07-24), als Nächstes E3 (Verfügbarkeits-Zugänge).**
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -124,6 +124,19 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E2 — Anmiet-Vorgänge am Job** (2026-07-24, `PLAN-NEUAUSRICHTUNG.md`,
+  Migration 0042 `subrentals`/`subrental_items`): Vorgangs-Kopf + Positionen (Katalog-
+  Gerät oder Freitext, Einkaufspreis je Stück für den Gesamtzeitraum) mit eigener
+  Status-Kette (Entwurf→Angefragt→Bestätigt→Übernommen→Zurückgegeben, Storniert
+  jederzeit). Neue Karte „Anmiet-Vorgänge" am Job (Tab „Material", neben der
+  Packliste) zum Anlegen/Bearbeiten/Löschen; Tab „Anmietungen" auf der Anmietung-Seite
+  zeigt Kennzahlen-Kopf + Status-Tabs + verlinkte Vorgangs-Karten (Muster
+  Angebote/Rechnungen-Listen-Rezept, ohne Jahr-Archiv — dafür ist das Volumen zu
+  gering). `order_number` (AM-Nummer) bleibt bis zur Bestell-PDF-Erzeugung (E4)
+  ungenutzt. Voll bewiesen: RLS-Probe mit echtem Nicht-Bereichs-Nutzer, Browser-Beweis
+  (Vorgang mit gemischten Positionen anlegen, Summen korrekt, Status-Wechsel
+  aktualisiert Zähler live, Löschen), 375px + Desktop, Testdaten restlos entfernt.
 
 - **Neuausrichtung E1 — Bereich „Anmietung" + Verleih-Partner-Stamm** (2026-07-24,
   `PLAN-NEUAUSRICHTUNG.md`, Migrationen 0040/0041): erster Baustein von Block B. Neuer

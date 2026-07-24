@@ -23,6 +23,7 @@ import { JobTasksSection } from "@/components/tasks/JobTasksSection";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { Textarea } from "@/components/ui/Input";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
+import { JobSubrentalsCard } from "@/components/jobs/JobSubrentalsCard";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
@@ -171,6 +172,8 @@ export function JobDetailPage() {
               </CardBody>
             </Card>
           )}
+
+          {section === "material" && <JobSubrentalsCard jobId={job.id} />}
 
           {section === "geld" && (
             <>

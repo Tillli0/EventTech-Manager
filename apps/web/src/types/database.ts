@@ -335,6 +335,45 @@ export interface Supplier {
   updated_at: string;
 }
 
+// ============================================================
+// ANMIETUNG (Block B / E2) — Anmiet-Vorgänge am Job
+// ============================================================
+
+export type SubrentalStatus = "entwurf" | "angefragt" | "bestaetigt" | "uebernommen" | "zurueckgegeben" | "storniert";
+
+export type SubrentalLogistics = "abholung" | "lieferung_lager" | "lieferung_location";
+
+export interface Subrental {
+  id: string;
+  job_id: string;
+  supplier_id: string;
+  status: SubrentalStatus;
+  start_date: string;
+  end_date: string;
+  logistics: SubrentalLogistics;
+  /** Erst ab der Bestell-PDF-Erzeugung (E4) belegt. */
+  order_number: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joins (optional, je nach Query)
+  supplier?: Supplier;
+  job?: Pick<Job, "id" | "title" | "start_date" | "end_date">;
+  items?: SubrentalItem[];
+}
+
+export interface SubrentalItem {
+  id: string;
+  subrental_id: string;
+  device_id: string | null;
+  description: string;
+  quantity: number;
+  /** Einkaufspreis je Stück für den GESAMTEN Zeitraum (nicht pro Tag). */
+  unit_cost: number;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface Customer {
   id: string;
   company_name: string | null;

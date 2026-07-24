@@ -3,9 +3,9 @@ import { Plus, Truck, Package } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Tabs } from "@/components/ui/Tabs";
-import { EmptyState } from "@/components/ui/States";
 import { SupplierListView } from "@/components/suppliers/SupplierListView";
 import { CreateSupplierDialog } from "@/components/suppliers/CreateSupplierDialog";
+import { SubrentalListView } from "@/components/purchasing/SubrentalListView";
 import { useAuth } from "@/auth/AuthProvider";
 
 type Tab = "anmietungen" | "partner";
@@ -40,13 +40,7 @@ export function PurchasingPage() {
         ]}
       />
 
-      {tab === "anmietungen" && (
-        <EmptyState
-          icon={Package}
-          title="Anmiet-Vorgänge kommen noch"
-          description="Vorgänge mit Status, Positionen und Bestell-PDF folgen in der nächsten Etappe."
-        />
-      )}
+      {tab === "anmietungen" && <SubrentalListView />}
       {tab === "partner" && <SupplierListView />}
 
       <CreateSupplierDialog open={createOpen} onClose={() => setCreateOpen(false)} />
