@@ -23,8 +23,8 @@
 > 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E8) — **im Kern komplett, inkl.
 >    ReportsPage-Teil von E7.** E5 (Bestell-Mail) bewusst deaktiviert (Knopf
 >    ausgeblendet, Till entscheidet später über die Freigabe); **E2b-Erweiterung
->    (Kategorie an Anmiet-Positionen + KI-Kategorie-Erkennung) gebaut**; als
->    Nächstes **E10** (Eigentümer-Feld am Gerät für Fremdeigentum).
+>    (Kategorie an Anmiet-Positionen) und E10 (Eigentümer-Feld am Gerät) gebaut** —
+>    beide ohne Browser-Beweis diese Session (kein Preview-Werkzeug verfügbar).
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -71,6 +71,12 @@
 - [ ] **InventoryPage-Badge „+X angemietet"** — angemietete Mengen am Gerät sichtbar. · S · ★ · Auto
 - [ ] **Stundensatz-Presets** in `company_settings` (bewusst NICHT an `profiles` — Datenschutz),
       als Vorbelegung bei Personalkosten. · S · ★ · Freigabe
+- [ ] **`devices`/`customers`: fehlender `service_role`-Grant nachziehen** — beide Tabellen
+      stammen aus der Zeit vor der 0012-GRANT-Konvention (`suppliers`/`invoice_dunnings` haben
+      korrekt `grant all ... to service_role`, `devices`/`customers` nicht). Aktuell folgenlos
+      (keine Edge Function greift service-role-seitig darauf zu), würde aber eine künftige
+      Function mit „permission denied" stoppen. Gefunden vom `migrations-pruefer`-Subagent bei
+      der E10-Prüfung. · S · ★ · Auto
 - [ ] **Bestell-PDF als Mail-Anhang** (V2 der Bestell-Mail an Verleiher). · S · ★ · Freigabe
 - [ ] **Dokumente: Volltext/OCR-Suche** über hochgeladene PDFs (später, größer). · L · ★★ · Freigabe
 
@@ -130,6 +136,24 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E10 — Eigentümer-Feld am Gerät** (2026-07-25,
+  `PLAN-NEUAUSRICHTUNG.md`, Migration 0047 `devices.owner_type`/`owner_name`/
+  `counts_toward_value`): Geräte im Inventar können jetzt einem Eigentümer
+  zugeordnet werden — Regelfall „Firma" (kein Hinweis nötig), oder „Schule"/
+  „Privatperson" für Fremdeigentum, das trotzdem im Bestand geführt wird (z.B.
+  komplettes Schul-Inventar oder eine privat geliehene Nebelmaschine). Neue
+  Eigentümer-Auswahl in beiden Geräte-Dialogen (Anlegen/Bearbeiten), Badge „Schule"
+  bzw. „Gehört <Name>" in Liste/Detail (kein Badge bei „Firma"), Filter im Inventar,
+  zwei neue CSV-Export-Spalten. Standardmäßig zählt Fremdeigentum NICHT in einen
+  künftigen Inventarwert (den es heute noch nicht gibt) — pro Gerät per Checkbox
+  aber trotzdem einrechenbar. Beweis: Prüfkette grün (138 Tests, 4 neu für
+  `describeOwner`), DB-Testaufbau per Transaktion (Constraint blockt ungültigen
+  Eigentümer-Typ, Defaults korrekt, explizite Fremdeigentum-Zeilen funktionieren wie
+  geplant), spurlos zurückgerollt. **Kein Browser-Beweis diese Session** (kein
+  Preview-Werkzeug verfügbar). Nebenbefund vom `migrations-pruefer`-Subagent:
+  `devices`/`customers` fehlt der `service_role`-Grant aus der 0012-Konvention —
+  aktuell folgenlos, als eigener Backlog-Punkt vorgemerkt.
 
 - **Neuausrichtung E2b-Erweiterung — Kategorie an Anmiet-Positionen + KI-Kategorie-
   Erkennung** (2026-07-25, `PLAN-NEUAUSRICHTUNG.md`, Migration 0046

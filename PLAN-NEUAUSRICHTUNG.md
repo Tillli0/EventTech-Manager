@@ -19,10 +19,12 @@
 > (Dashboard & Navigation) live & bewiesen — Block B ist damit im Kern komplett.**
 > **E2b-Erweiterung (Kategorie an Anmiet-Positionen + KI-Kategorie-Erkennung) gebaut
 > 2026-07-25** (Migration 0046) — Prüfkette + DB-Beweis grün, **kein Browser-Beweis
-> diese Session** (kein Preview-Werkzeug verfügbar). Als Nächstes: **E10**
-> (Eigentümer-Feld am Gerät für Fremdeigentum wie Schul-Inventar/privat geliehene
-> Technik), am 2026-07-25 mit Till besprochen und in Etappen zerlegt (s. u.). Nach
-> jeder Etappe: Haken + Datum, Stand-Vermerk oben.
+> diese Session** (kein Preview-Werkzeug verfügbar). **E10 (Eigentümer-Feld am Gerät)
+> ebenfalls gebaut 2026-07-25** (Migration 0047) — gleicher Stand: Prüfkette +
+> DB-Beweis grün, kein Browser-Beweis diese Session. Damit sind beide am 2026-07-25
+> angestoßenen Etappen umgesetzt; als Nächstes steht wieder **E2b** (Prompt-Qualität
+> der KI-Extraktion) oder ein neues Vorhaben an. Nach jeder Etappe: Haken + Datum,
+> Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -476,6 +478,46 @@ gebaut + lokal bewiesen, Function bewusst NICHT deployt — „ruhig by default"
   ist zudem weiterhin an Tills Deploy-Freigabe der Function gebunden (unverändert
   zu E2b).
 
+**E10 🔧 — Eigentümer-Feld am Gerät (Fremdeigentum wie Schule/Privatperson)**
+(gebaut 2026-07-25, Migration 0047 `devices.owner_type`/`owner_name`/
+`counts_toward_value`)
+- Tills zweite Idee zum selben Bauchgefühl: manche Geräte im System gehören nicht
+  der Firma, sondern werden trotzdem im Bestand geführt — komplettes Schul-Inventar
+  oder eine privat geliehene Nebelmaschine (Till: „Anton"). Recherchiert (Rentmans
+  „Belongs to"-Feld, Panatracks Trennung „wem gehört's" vs. „wo liegt's") und mit
+  Till geklärt: feste Auswahl + Name, standardmäßig nur Kennzeichnung, aber pro
+  Gerät optional in einen künftigen Inventarwert einrechenbar.
+- `devices.owner_type` (`text check` auf `firma`/`schule`/`privat`, Default
+  `firma`), `owner_name` (nullable, kein Constraint), `counts_toward_value`
+  (boolean, DB-Default `true` — dass Fremdeigentum standardmäßig NICHT mitzählt,
+  steuert das Frontend beim Anlegen, keine DB-Konditionallogik). **Kein**
+  aggregierter Inventarwert-Bericht existiert heute — das Feld ist rein
+  zukunftsgerichtet, bewusst kein neuer Bericht in dieser Etappe.
+- `types/database.ts`: `OwnerType`, `OWNER_TYPE_OPTIONS`, reine Funktion
+  `describeOwner()` (+ 4 Tests). `useDevices.ts`: `CreateDeviceInput` erweitert
+  (`useUpdateDevice` war bereits generisch, keine Änderung nötig).
+  `CreateDeviceDialog.tsx`/`DeviceEditCard.tsx`: Eigentümer-`PillSelect` nach
+  Kategorie/Lagerort, bedingtes Namensfeld + „Trotzdem in den Inventarwert
+  einrechnen"-Checkbox (nur bei Fremdeigentum sichtbar, Wechsel weg von „firma"
+  schlägt automatisch „nicht einrechnen" vor). Neue `OwnerBadge` in
+  `StatusBadge.tsx` (Muster `StammkundeBadge`, rendert nichts bei „firma").
+  `InventoryPage.tsx`: Eigentümer-Filter (Muster Status-/Kategorie-Filter), Badge
+  in der Listenzeile, zwei neue CSV-Spalten. `DeviceDetailPage.tsx`: Badge neben
+  dem Titel, zwei `DataField`-Einträge in den Stammdaten.
+- **Bewusst außerhalb dieser Etappe:** CSV-**Import** (`ImportDevicesDialog.tsx`)
+  bekommt keine Eigentümer-Spalten — neue Geräte landen beim Import mit Default
+  `firma`, kann später ergänzt werden. Kein neuer Inventarwert-Bericht (s.o.).
+- Beweis: Prüfkette grün (tsc/lint/**138 Tests**/build, 4 neue Tests für
+  `describeOwner`). DB: Migration vom `migrations-pruefer`-Subagent geprüft
+  (BEREIT — dabei eine vorbestehende, unabhängige Lücke gefunden: `devices`/
+  `customers` haben aus der Zeit vor der 0012-Konvention keinen `service_role`-
+  Grant, für 0047 selbst irrelevant, als eigene Nachbesserung in IDEAS.md
+  vorgemerkt). Testaufbau per Transaktion: ungültiger `owner_type` wird vom
+  Check-Constraint abgelehnt, Default `firma`/`true` ohne Angabe, explizite
+  Schule-/Privat-Zeilen mit `counts_toward_value=false` funktionieren wie
+  geplant — per `rollback` spurlos entfernt. **Kein Browser-Klick-Beweis in
+  dieser Session** (kein Preview-/Browser-Werkzeug verfügbar).
+
 **E9 (Folge-Backlog)** — Engpass-Sammelansicht über alle Jobs + InventoryPage-Badge
 „+X angemietet". In IDEAS/ROADMAP-Phase 4.
 
@@ -679,3 +721,17 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   Bedarf neu angelegt). Plan-Dokument mit zwei Etappen (E2b-Erweiterung, E10)
   erarbeitet und freigegeben. **E2b-Erweiterung direkt umgesetzt** (s. o.).
   Nächster Schritt: **E10** (Eigentümer-Feld am Gerät).
+- **2026-07-25 (im Anschluss):** **E10 abgeschlossen** — Eigentümer-Feld am Gerät
+  (Migration 0047 `devices.owner_type`/`owner_name`/`counts_toward_value`).
+  `describeOwner()` + `OWNER_TYPE_OPTIONS` in `types/database.ts`, Eigentümer-
+  Auswahl in beiden Geräte-Dialogen, neue `OwnerBadge` (Muster `StammkundeBadge`),
+  Filter + Badge + CSV-Spalten in `InventoryPage.tsx`, Stammdaten-Felder in
+  `DeviceDetailPage.tsx`. Beweis: Prüfkette grün (138 Tests, 4 neu), Migration vom
+  `migrations-pruefer`-Subagent geprüft (dabei eine vorbestehende, unabhängige
+  Lücke gefunden: `devices`/`customers` fehlt der `service_role`-Grant aus der
+  0012-Konvention — für 0047 irrelevant, in IDEAS.md als eigene Nachbesserung
+  vorgemerkt), DB-Testaufbau per Transaktion bestätigt Constraint + Defaults +
+  explizite Fremdeigentum-Zeilen (spurlos zurückgerollt). **Kein Browser-Beweis in
+  dieser Session** (kein Preview-Werkzeug verfügbar) — wie schon bei der
+  E2b-Erweiterung im selben Arbeitsblock. Damit sind beide am 2026-07-25
+  angestoßenen Ideen umgesetzt.

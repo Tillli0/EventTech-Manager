@@ -6,7 +6,13 @@ import { Input, Textarea, FormField } from "@/components/ui/Input";
 import { PillSelect } from "@/components/ui/PillSelect";
 import { useCategories, useUpdateDevice, useSetDeviceLocation } from "@/hooks/useDevices";
 import { useLocations } from "@/hooks/useLocations";
-import { DEVICE_STATUS_OPTIONS, type Device, type DeviceStatus } from "@/types/database";
+import {
+  DEVICE_STATUS_OPTIONS,
+  OWNER_TYPE_OPTIONS,
+  type Device,
+  type DeviceStatus,
+  type OwnerType,
+} from "@/types/database";
 
 /** Parst ein Eingabe-String zu Zahl oder null (leer = null). */
 function num(s: string): number | null {
@@ -44,6 +50,15 @@ export function DeviceEditCard({ device, onDone }: { device: Device; onDone: () 
   const [lastInspection, setLastInspection] = useState(device.last_inspection_date ?? "");
   const [nextInspection, setNextInspection] = useState(device.next_inspection_date ?? "");
   const [notes, setNotes] = useState(device.notes ?? "");
+  const [ownerType, setOwnerType] = useState<OwnerType>(device.owner_type);
+  const [ownerName, setOwnerName] = useState(device.owner_name ?? "");
+  const [countsTowardValue, setCountsTowardValue] = useState(device.counts_toward_value);
+
+  /** Wechsel weg von „firma" schlägt vor, das Gerät nicht mehr in den Inventarwert einzurechnen (weiter umschaltbar). */
+  function handleOwnerTypeChange(value: OwnerType) {
+    setOwnerType(value);
+    setCountsTowardValue(value === "firma");
+  }
 
   /** Beim Setzen der letzten Prüfung das nächste Datum (+1 Jahr) vorschlagen, solange leer. */
   function handleLastInspectionChange(value: string) {
@@ -83,6 +98,9 @@ export function DeviceEditCard({ device, onDone }: { device: Device; onDone: () 
       last_inspection_date: lastInspection || null,
       next_inspection_date: nextInspection || null,
       notes: notes.trim() || null,
+      owner_type: ownerType,
+      owner_name: ownerName.trim() || null,
+      counts_toward_value: countsTowardValue,
     });
 
     if (locationId !== device.location_id) {
@@ -137,6 +155,33 @@ export function DeviceEditCard({ device, onDone }: { device: Device; onDone: () 
             />
           ) : (
             <p className="text-xs text-ink-faint">Noch keine Kategorien angelegt.</p>
+          )}
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-ink-muted">Eigentümer</p>
+          <PillSelect
+            options={OWNER_TYPE_OPTIONS}
+            value={ownerType}
+            onChange={(v) => v && handleOwnerTypeChange(v as OwnerType)}
+            allowClear={false}
+          />
+          {ownerType !== "firma" && (
+            <div className="mt-2 space-y-2">
+              <Input
+                value={ownerName}
+                onChange={(e) => setOwnerName(e.target.value)}
+                placeholder={ownerType === "privat" ? "Name, z.B. Anton" : "optional, z.B. Name der Schule"}
+              />
+              <label className="flex items-center gap-2 text-xs text-ink-muted">
+                <input
+                  type="checkbox"
+                  checked={countsTowardValue}
+                  onChange={(e) => setCountsTowardValue(e.target.checked)}
+                />
+                Trotzdem in den Inventarwert einrechnen
+              </label>
+            </div>
           )}
         </div>
 

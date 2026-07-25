@@ -12,6 +12,7 @@ import {
   useUploadDevicePhoto,
 } from "@/hooks/useDevices";
 import { useLocations } from "@/hooks/useLocations";
+import { OWNER_TYPE_OPTIONS, type OwnerType } from "@/types/database";
 
 export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const createDevice = useCreateDevice();
@@ -35,6 +36,9 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
   const [stockQuantity, setStockQuantity] = useState("1");
   const [dailyRentalPrice, setDailyRentalPrice] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
+  const [ownerType, setOwnerType] = useState<OwnerType>("firma");
+  const [ownerName, setOwnerName] = useState("");
+  const [countsTowardValue, setCountsTowardValue] = useState(true);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -76,6 +80,12 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
     }
   }
 
+  /** Wechsel weg von „firma" schlägt vor, das Gerät nicht mehr in den Inventarwert einzurechnen (weiter umschaltbar). */
+  function handleOwnerTypeChange(value: OwnerType) {
+    setOwnerType(value);
+    setCountsTowardValue(value === "firma");
+  }
+
   function reset() {
     setName(""); setCategoryId(null); setManufacturer(""); setModel("");
     setLocationId(null); setBarcode(suggestedBarcode ?? ""); setNotes("");
@@ -83,6 +93,7 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
     setStockQuantity("1");
     setDailyRentalPrice("");
     setPurchasePrice("");
+    setOwnerType("firma"); setOwnerName(""); setCountsTowardValue(true);
     setPhotoFile(null); setPhotoPreview(null);
     setFormError(null);
   }
@@ -129,6 +140,9 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
         stock_quantity: Math.max(1, parseInt(stockQuantity, 10) || 1),
         daily_rental_price: dailyRentalPrice.trim() ? Math.max(0, parseFloat(dailyRentalPrice.replace(",", "."))) || null : null,
         purchase_price: purchasePrice.trim() ? Math.max(0, parseFloat(purchasePrice.replace(",", "."))) || null : null,
+        owner_type: ownerType,
+        owner_name: ownerName.trim() || null,
+        counts_toward_value: countsTowardValue,
       });
 
       // Foto hochladen falls vorhanden
@@ -190,6 +204,33 @@ export function CreateDeviceDialog({ open, onClose }: { open: boolean; onClose: 
             />
           ) : (
             <p className="text-xs text-ink-faint">Noch keine Lagerorte angelegt (im Inventar unter „Lagerorte").</p>
+          )}
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-ink-muted">Eigentümer</p>
+          <PillSelect
+            options={OWNER_TYPE_OPTIONS}
+            value={ownerType}
+            onChange={(v) => v && handleOwnerTypeChange(v as OwnerType)}
+            allowClear={false}
+          />
+          {ownerType !== "firma" && (
+            <div className="mt-2 space-y-2">
+              <Input
+                value={ownerName}
+                onChange={(e) => setOwnerName(e.target.value)}
+                placeholder={ownerType === "privat" ? "Name, z.B. Anton" : "optional, z.B. Name der Schule"}
+              />
+              <label className="flex items-center gap-2 text-xs text-ink-muted">
+                <input
+                  type="checkbox"
+                  checked={countsTowardValue}
+                  onChange={(e) => setCountsTowardValue(e.target.checked)}
+                />
+                Trotzdem in den Inventarwert einrechnen
+              </label>
+            </div>
           )}
         </div>
 

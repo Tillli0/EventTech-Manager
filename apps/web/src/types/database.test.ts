@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { dateToInput } from "@/lib/datetime";
 import {
   deviceBreakdown,
+  describeOwner,
   inspectionStatus,
   isStammkunde,
   isJobCompletelyPast,
@@ -38,6 +39,24 @@ describe("deviceBreakdown", () => {
       out: 0,
       available: 5,
     });
+  });
+});
+
+describe("describeOwner", () => {
+  it("liefert null bei Firmeneigentum (Regelfall, kein Badge nötig)", () => {
+    expect(describeOwner({ owner_type: "firma", owner_name: null })).toBeNull();
+  });
+
+  it("liefert Schule als Text bei owner_type schule", () => {
+    expect(describeOwner({ owner_type: "schule", owner_name: null })).toBe("Schule");
+  });
+
+  it("liefert Gehört-Text mit Name bei owner_type privat mit Namen", () => {
+    expect(describeOwner({ owner_type: "privat", owner_name: "Anton" })).toBe("Gehört Anton");
+  });
+
+  it("liefert einen Platzhalter bei owner_type privat ohne Namen", () => {
+    expect(describeOwner({ owner_type: "privat", owner_name: null })).toBe("Fremdeigentum (privat)");
   });
 });
 

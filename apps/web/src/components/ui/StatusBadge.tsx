@@ -1,12 +1,21 @@
-import { Star } from "lucide-react";
+import { Star, Building2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { DeviceStatus, JobStatus, InquiryPipelineStatus, OfferStatus, InvoiceDerivedStatus, SubrentalStatus } from "@/types/database";
+import type {
+  DeviceStatus,
+  JobStatus,
+  InquiryPipelineStatus,
+  OfferStatus,
+  InvoiceDerivedStatus,
+  SubrentalStatus,
+  Device,
+} from "@/types/database";
 import {
   DEVICE_STATUS_OPTIONS,
   JOB_STATUS_OPTIONS,
   INQUIRY_PIPELINE_OPTIONS,
   OFFER_STATUS_OPTIONS,
   INVOICE_STATUS_OPTIONS,
+  describeOwner,
 } from "@/types/database";
 import { SUBRENTAL_STATUS_OPTIONS } from "@/lib/subrentals";
 
@@ -196,6 +205,27 @@ export function StammkundeBadge({ className }: { className?: string }) {
     >
       <Star size={11} className="fill-current" />
       Stammkunde
+    </span>
+  );
+}
+
+/**
+ * Abzeichen für Fremdeigentum (Schule/Privatperson). Rendert nichts bei
+ * owner_type „firma" (Regelfall, kein Hinweis nötig).
+ */
+export function OwnerBadge({ device, className }: { device: Pick<Device, "owner_type" | "owner_name">; className?: string }) {
+  const label = describeOwner(device);
+  if (!label) return null;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent",
+        className,
+      )}
+      title={label}
+    >
+      <Building2 size={11} />
+      {label}
     </span>
   );
 }

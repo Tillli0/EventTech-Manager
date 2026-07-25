@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { Device, DeviceStatus } from "@/types/database";
+import type { Device, DeviceStatus, OwnerType } from "@/types/database";
 import { DEVICE_STATUS_OPTIONS } from "@/types/database";
 import { recordDeviceHistory } from "@/hooks/useDeviceHistory";
 
@@ -161,6 +161,10 @@ interface CreateDeviceInput {
   autoBarcode?: boolean;
   /** Gesamtbestand. Default 1 (Einzelstück). >1 = Mengen-Gerät, z.B. 20 Kabel. */
   stock_quantity?: number;
+  /** Eigentümer. Default „firma" (DB-Default) — nur bei Fremdeigentum setzen. */
+  owner_type?: OwnerType;
+  owner_name?: string | null;
+  counts_toward_value?: boolean;
 }
 
 function isUniqueViolation(err: unknown): boolean {

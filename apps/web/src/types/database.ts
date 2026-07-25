@@ -3,6 +3,9 @@
 
 export type DeviceStatus = "verfuegbar" | "ausgeliehen" | "defekt" | "wartung";
 
+/** Wem ein Gerät gehört — Regelfall „firma", sonst Fremdeigentum, das trotzdem im Bestand geführt wird. */
+export type OwnerType = "firma" | "schule" | "privat";
+
 export type JobStatus =
   | "anfrage"
   | "bestaetigt"
@@ -143,6 +146,12 @@ export interface Device {
   last_inspection_date: string | null;
   /** Nächste fällige DGUV-V3-Prüfung (Datum). Basis für die Erinnerung. */
   next_inspection_date: string | null;
+  /** Wem das Gerät gehört. Default „firma" — Fremdeigentum wird trotzdem im Bestand geführt. */
+  owner_type: OwnerType;
+  /** Name bei owner_type „privat" (z.B. „Anton"), optional auch bei „schule". */
+  owner_name: string | null;
+  /** Soll dieses Gerät (bei Fremdeigentum) trotzdem in einen künftigen Inventarwert einfließen? */
+  counts_toward_value: boolean;
   created_at: string;
   updated_at: string;
   // Joins (optional, je nach Query)
@@ -181,6 +190,16 @@ export function deviceBreakdown(
 /** Ist dieses Gerät ein Mengen-Gerät (Stückzahl > 1)? */
 export function isQuantityDevice(device: Pick<Device, "stock_quantity">): boolean {
   return device.stock_quantity > 1;
+}
+
+/**
+ * Kurztext für Fremdeigentum, z.B. für ein Badge. `null` bei „firma" (Regelfall,
+ * kein Hinweis nötig).
+ */
+export function describeOwner(device: Pick<Device, "owner_type" | "owner_name">): string | null {
+  if (device.owner_type === "firma") return null;
+  if (device.owner_type === "schule") return "Schule";
+  return device.owner_name?.trim() ? `Gehört ${device.owner_name.trim()}` : "Fremdeigentum (privat)";
 }
 
 /** Status der DGUV-V3-Prüffälligkeit anhand des nächsten Prüfdatums. */
@@ -820,6 +839,12 @@ export const DEVICE_STATUS_OPTIONS: StatusOption<DeviceStatus>[] = [
   { value: "ausgeliehen", label: "Ausgeliehen", colorVar: "status-ausgeliehen", bgVar: "status-ausgeliehen-bg" },
   { value: "defekt", label: "Defekt", colorVar: "status-defekt", bgVar: "status-defekt-bg" },
   { value: "wartung", label: "Wartung", colorVar: "status-wartung", bgVar: "status-wartung-bg" },
+];
+
+export const OWNER_TYPE_OPTIONS: { value: OwnerType; label: string }[] = [
+  { value: "firma", label: "Firma" },
+  { value: "schule", label: "Schule" },
+  { value: "privat", label: "Privatperson" },
 ];
 
 export const JOB_STATUS_OPTIONS: StatusOption<JobStatus>[] = [

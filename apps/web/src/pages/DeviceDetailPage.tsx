@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { DeviceEditCard } from "@/components/inventory/DeviceEditCard";
-import { JobStatusBadge } from "@/components/ui/StatusBadge";
+import { JobStatusBadge, OwnerBadge } from "@/components/ui/StatusBadge";
 import { DeviceAvailabilityBadge } from "@/components/ui/DeviceAvailabilityBadge";
 import { PillSelect } from "@/components/ui/PillSelect";
 import { LoadingState, ErrorState } from "@/components/ui/States";
@@ -25,6 +25,7 @@ import {
 } from "@/hooks/useDevices";
 import {
   DEVICE_STATUS_OPTIONS,
+  OWNER_TYPE_OPTIONS,
   inspectionStatus,
   INSPECTION_STATUS_LABELS,
   type DeviceStatus,
@@ -72,7 +73,12 @@ export function DeviceDetailPage() {
       </Link>
 
       <PageHeader
-        title={device.name}
+        title={
+          <span className="flex items-center gap-2">
+            {device.name}
+            <OwnerBadge device={device} />
+          </span>
+        }
         description={[device.manufacturer, device.model].filter(Boolean).join(" · ") || undefined}
         actions={
           <>
@@ -156,6 +162,13 @@ export function DeviceDetailPage() {
               <DataField label="Seriennummer" value={device.serial_number} mono />
               <DataField label="Lagerort" value={device.location_ref?.name ?? device.location} />
               <DataField label="Kategorie" value={device.category?.name} />
+              <DataField
+                label="Eigentümer"
+                value={OWNER_TYPE_OPTIONS.find((o) => o.value === device.owner_type)?.label}
+              />
+              {device.owner_type !== "firma" && device.owner_name && (
+                <DataField label="Eigentümer-Name" value={device.owner_name} />
+              )}
               <DataField label="Kaufdatum" value={formatDate(device.purchase_date)} />
               <DataField label="Kaufpreis" value={formatCurrency(device.purchase_price)} />
               <DataField label="Wiederbeschaffungswert" value={formatCurrency(device.replacement_value)} />

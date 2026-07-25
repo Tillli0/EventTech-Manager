@@ -8,6 +8,7 @@ import { PillSelect } from "@/components/ui/PillSelect";
 import { Card } from "@/components/ui/Card";
 import { SetCard } from "@/components/inventory/ManageSetsDialog";
 import { DeviceAvailabilityBadge } from "@/components/ui/DeviceAvailabilityBadge";
+import { OwnerBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, LoadingState, ErrorState } from "@/components/ui/States";
 import { useDevices, useCategories, devicePhotoUrl } from "@/hooks/useDevices";
 import {
@@ -20,7 +21,17 @@ import {
 } from "@/hooks/useJobs";
 import { useDeviceSets, useAddDeviceSetToJob } from "@/hooks/useDeviceSets";
 import { ManageLocationsDialog } from "@/components/inventory/ManageLocationsDialog";
-import { DEVICE_STATUS_OPTIONS, inspectionStatus, type DeviceStatus, type Device, type DeviceSet, type Job, type PacklistItem } from "@/types/database";
+import {
+  DEVICE_STATUS_OPTIONS,
+  OWNER_TYPE_OPTIONS,
+  inspectionStatus,
+  type DeviceStatus,
+  type Device,
+  type DeviceSet,
+  type Job,
+  type OwnerType,
+  type PacklistItem,
+} from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 import { CreateDeviceDialog } from "@/components/inventory/CreateDeviceDialog";
 import { ManageCategoriesDialog } from "@/components/inventory/ManageCategoriesDialog";
@@ -144,6 +155,7 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | "alle">("alle");
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
+  const [ownerFilter, setOwnerFilter] = useState<OwnerType | "alle">("alle");
   const [createOpen, setCreateOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [locationsOpen, setLocationsOpen] = useState(false);
@@ -200,8 +212,9 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
 
       const matchesStatus = statusFilter === "alle" || device.status === statusFilter;
       const matchesCategory = categoryFilter === "alle" || device.category_id === categoryFilter;
+      const matchesOwner = ownerFilter === "alle" || device.owner_type === ownerFilter;
 
-      return matchesSearch && matchesStatus && matchesCategory;
+      return matchesSearch && matchesStatus && matchesCategory && matchesOwner;
     });
 
     const statusOrder = (s: DeviceStatus) => DEVICE_STATUS_OPTIONS.findIndex((o) => o.value === s);
@@ -224,7 +237,7 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
       }
       return cmp * dir;
     });
-  }, [devices, debouncedSearch, statusFilter, categoryFilter, sort]);
+  }, [devices, debouncedSearch, statusFilter, categoryFilter, ownerFilter, sort]);
 
   // Farbe je Kategorie (Fallback grau, wenn keine gepflegt).
   const colorById = useMemo(() => {
@@ -269,6 +282,11 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
         { label: "Status", value: (d: Device) => statusLabel(d.status) },
         { label: "Tagesmietpreis", value: (d: Device) => d.daily_rental_price ?? "" },
         { label: "Wiederbeschaffungswert", value: (d: Device) => d.replacement_value ?? "" },
+        {
+          label: "Eigentümer",
+          value: (d: Device) => OWNER_TYPE_OPTIONS.find((o) => o.value === d.owner_type)?.label ?? d.owner_type,
+        },
+        { label: "Eigentümer-Name", value: (d: Device) => d.owner_name ?? "" },
       ],
       filteredDevices,
     );
@@ -478,6 +496,12 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
             onChange={(v) => setCategoryFilter(v ?? "alle")}
           />
         )}
+        <PillSelect
+          allLabel="Alle Eigentümer"
+          options={OWNER_TYPE_OPTIONS}
+          value={ownerFilter === "alle" ? null : ownerFilter}
+          onChange={(v) => setOwnerFilter((v as OwnerType) ?? "alle")}
+        />
       </div>
 
       {isLoading && <LoadingState label="Geräte werden geladen …" />}
@@ -626,6 +650,7 @@ function DeviceListRow({
               {device.barcodes[0].code}
             </span>
           )}
+          <OwnerBadge device={device} className="shrink-0" />
         </span>
         <span className="mt-0.5 block truncate text-xs text-ink-muted">
           {[
