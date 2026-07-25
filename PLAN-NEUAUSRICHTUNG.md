@@ -3,10 +3,14 @@
 > **Großes Vorhaben** nach Skill `grosses-feature`. Dieses Dokument überlebt Sessions
 > und trägt die Ausführung. **Stand: 2026-07-25** — E0 + Block A (Dokumente) komplett;
 > **E1 (Bereich `anmietung`), E2 (Anmiet-Vorgänge am Job) und E3 (Verfügbarkeits-
-> Zugänge) live & bewiesen**; **E2b (KI-Dokumenten-Extraktion) gebaut & lokal bewiesen,
-> aber die Edge Function ist noch NICHT deployt** — braucht Tills Gemini-API-Key +
-> explizite Freigabe zum Scharfschalten. Als Nächstes: **E4** (Bestell-PDF). Nach
-> jeder Etappe: Haken + Datum, Stand-Vermerk oben.
+> Zugänge) live & bewiesen**; **E2b (KI-Dokumenten-Extraktion) technisch lauffähig**
+> (Gemini-Key gesetzt, Modell-Fix `gemini-flash-latest` statt gesperrtem
+> `gemini-2.5-flash`, lokal mit echtem PDF fehlerfrei getestet), **aber inhaltliche
+> Qualität der Erkennung noch unzureichend** (Till: „inhaltlich eine Katastrophe") —
+> Prompt/Extraktion braucht Nacharbeit, bevor scharf geschaltet wird. Bewusst **nicht
+> deployt**, auf Eis gelegt zugunsten der nächsten Etappen. **E4 (Bestell-PDF) live &
+> bewiesen.** Als Nächstes: **E5** (Bestell-Mail an Verleiher, braucht Freigabe zum
+> Deploy). Nach jeder Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -469,3 +473,22 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   Browser durchgespielt (Bestand 12, Bedarf 15 → 3 fehlen → Anmietung bestätigt →
   Warnung weg → zurück auf angefragt → Warnung wieder da). Nächster Schritt: **E4**
   (Bestell-PDF).
+- **2026-07-25 (später):** **E2b technisch instand gesetzt, inhaltlich zurückgestellt.**
+  Till hat den Gemini-Key gesetzt; erster Echttest lieferte erst `400 API key not
+  valid` (Platzhalter noch in `.env`), nach Korrektur `404 model … no longer available
+  to new users` (`gemini-2.5-flash` für neue Keys gesperrt) — behoben durch Wechsel auf
+  den Alias `gemini-flash-latest`. Danach technisch fehlerfrei, aber Till bewertet die
+  inhaltliche Erkennungsqualität als unzureichend („eine Katastrophe") — Prompt/Logik
+  brauchen Nacharbeit, **bewusst zurückgestellt**, kein Deploy. **E4 abgeschlossen**
+  (keine Migration): `lib/subrentalOrderPdf.tsx` +
+  `components/documents/SubrentalOrderPdfDocument.tsx` (Muster `offerPdf.tsx`/
+  `OfferPdfDocument`), AM-Nummer client-seitig nach dem AN-Muster
+  (`useAssignSubrentalOrderNumber` in `useSubrentals.ts`, partieller Unique-Index als
+  Netz, idempotent — vorhandene Nummer wird nicht neu vergeben). Button „Bestell-PDF
+  erzeugen" an der Anmiet-Vorgangs-Karte im Job (Tab „Material"). Beweis: echter
+  Anmiet-Vorgang im Browser, erste Erzeugung vergibt AM-2026-0001, zweite Erzeugung
+  ändert nichts (per psql geprüft — weiterhin genau eine Zeile mit dieser Nummer).
+  Auto-Archivierung des PDFs am Vorgang (im Plan als „optional" markiert) **nicht**
+  gebaut — hätte eine neue `documents`-Kategorie + Migration gebraucht, aus Aufwands-
+  gründen zurückgestellt. Nächster Schritt: **E5** (Bestell-Mail an Verleiher, braucht
+  Freigabe zum Function-Deploy).

@@ -21,8 +21,9 @@
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
 > 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1, E2,
->    E3 erledigt; E2b (KI-Dokumenten-Extraktion) gebaut & lokal bewiesen, aber noch
->    nicht deployt (braucht Tills Gemini-Key + Freigabe). Als Nächstes E4 (Bestell-PDF).**
+>    E3, E4 erledigt; E2b technisch lauffähig (Gemini-Key + Modell-Fix), aber
+>    inhaltliche Qualität unzureichend — bewusst zurückgestellt, kein Deploy. Als
+>    Nächstes E5 (Bestell-Mail an Verleiher, braucht Freigabe zum Function-Deploy).**
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -125,6 +126,21 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E4 — Bestell-PDF** (2026-07-25, `PLAN-NEUAUSRICHTUNG.md`, keine
+  Migration): Knopf „Bestell-PDF erzeugen" an der Anmiet-Vorgangs-Karte im Job
+  (Tab „Material") erzeugt eine „Mietanfrage" an den Verleih-Partner
+  (`lib/subrentalOrderPdf.tsx` + `components/documents/SubrentalOrderPdfDocument.tsx`,
+  Muster `offerPdf.tsx`/`OfferPdfDocument`). Beim ersten Erzeugen wird eine AM-Nummer
+  vergeben (`AM-{Jahr}-0001`, client-seitig max+1 nach dem AN-Muster, partieller
+  Unique-Index als Netz, idempotent). Nebenbei E2b technisch instand gesetzt: Gemini
+  meldete erst `400 API key not valid` (Platzhalter noch in der lokalen `.env`), nach
+  Korrektur `404 model … no longer available to new users`
+  (`gemini-2.5-flash` für neue Keys gesperrt) — behoben durch Wechsel auf den Alias
+  `gemini-flash-latest`. Danach technisch fehlerfrei, aber die inhaltliche
+  Erkennungsqualität ist laut Till unzureichend — **bewusst zurückgestellt**, kein
+  Deploy. Browser- + DB-Beweis (echter Anmiet-Vorgang, zweite Erzeugung ändert die
+  Nummer nicht), Prüfkette grün (120 Tests).
 
 - **Neuausrichtung E3 — Verfügbarkeits-Zugänge** (2026-07-25, `PLAN-NEUAUSRICHTUNG.md`,
   keine Migration): bestätigte/übernommene/zurückgegebene Anmietungen erhöhen jetzt die

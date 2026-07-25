@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Truck, Plus, Pencil, Trash2 } from "lucide-react";
+import { Truck, Plus, Pencil, Trash2, FileDown } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { SubrentalStatusBadge } from "@/components/ui/StatusBadge";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
-import { useSubrentalsForJob, useDeleteSubrental } from "@/hooks/useSubrentals";
+import { useToast } from "@/components/ui/Toast";
+import { useSubrentalsForJob, useDeleteSubrental, useAssignSubrentalOrderNumber } from "@/hooks/useSubrentals";
 import { CreateSubrentalDialog } from "@/components/jobs/CreateSubrentalDialog";
 import { subrentalTotals, SUBRENTAL_LOGISTICS_OPTIONS } from "@/lib/subrentals";
+import { downloadSubrentalOrderPdf } from "@/lib/subrentalOrderPdf";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { useAuth } from "@/auth/AuthProvider";
 import type { Subrental } from "@/types/database";
@@ -17,9 +19,12 @@ export function JobSubrentalsCard({ jobId }: { jobId: string }) {
   const mayEdit = canEdit("anmietung");
   const { data: subrentals } = useSubrentalsForJob(jobId);
   const deleteSubrental = useDeleteSubrental();
+  const assignOrderNumber = useAssignSubrentalOrderNumber();
   const confirm = useConfirm();
+  const toast = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [editSubrental, setEditSubrental] = useState<Subrental | undefined>(undefined);
+  const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
 
   const isEmpty = !subrentals || subrentals.length === 0;
   // Ohne Bereich 'anmietung' ist die Karte unsichtbar (RLS liefert ohnehin leer,
@@ -35,6 +40,19 @@ export function JobSubrentalsCard({ jobId }: { jobId: string }) {
     });
     if (!ok) return;
     await deleteSubrental.mutateAsync({ id: subrental.id, jobId });
+  }
+
+  async function handleDownloadPdf(subrental: Subrental) {
+    setPdfLoadingId(subrental.id);
+    try {
+      const target = subrental.order_number ? subrental : await assignOrderNumber.mutateAsync(subrental);
+      await downloadSubrentalOrderPdf(target);
+    } catch (err) {
+      console.error("Bestell-PDF konnte nicht erzeugt werden:", err);
+      toast.error("Das Bestell-PDF konnte nicht erzeugt werden.");
+    } finally {
+      setPdfLoadingId(null);
+    }
   }
 
   return (
@@ -71,6 +89,9 @@ export function JobSubrentalsCard({ jobId }: { jobId: string }) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">
                       {subrental.supplier?.name ?? "Verleih-Partner"}
+                      {subrental.order_number && (
+                        <span className="ml-2 font-mono text-xs text-ink-faint">{subrental.order_number}</span>
+                      )}
                     </p>
                     <p className="text-xs text-ink-muted">
                       {formatDate(subrental.start_date)} – {formatDate(subrental.end_date)} · {logisticsLabel} ·{" "}
@@ -80,6 +101,17 @@ export function JobSubrentalsCard({ jobId }: { jobId: string }) {
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="font-mono text-xs text-ink-muted">{formatCurrency(total)}</span>
                     <SubrentalStatusBadge status={subrental.status} />
+                    {mayEdit && itemCount > 0 && (
+                      <button
+                        onClick={() => handleDownloadPdf(subrental)}
+                        disabled={pdfLoadingId === subrental.id}
+                        className="rounded p-1.5 text-ink-faint transition-colors hover:text-accent disabled:opacity-50"
+                        title="Bestell-PDF erzeugen"
+                        aria-label="Bestell-PDF erzeugen"
+                      >
+                        <FileDown size={14} />
+                      </button>
+                    )}
                     {mayEdit && (
                       <>
                         <button

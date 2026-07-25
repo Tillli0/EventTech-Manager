@@ -5,6 +5,12 @@ import type { Subrental, SubrentalItem, SubrentalLogistics, SubrentalStatus } fr
 
 const SUBRENTALS_KEY = ["subrentals"] as const;
 const SELECT = "*, supplier:suppliers(*), job:jobs(id, title, start_date, end_date), items:subrental_items(*)";
+const ORDER_PREFIX = "AM-";
+const ORDER_PAD = 4;
+
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
+}
 
 export function useSubrentals() {
   return useQuery({
@@ -138,6 +144,83 @@ export function useDeleteSubrental() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: SUBRENTALS_KEY });
       queryClient.invalidateQueries({ queryKey: [...SUBRENTALS_KEY, "by-job", variables.jobId] });
+    },
+  });
+}
+
+/**
+ * Liefert die nächste freie Bestellnummer im Format AM-{Jahr}-0001 (Muster
+ * `nextFreeOfferNumber`, keine GoBD-Pflicht → kein Advisory-Lock, die partielle
+ * Unique-Bedingung auf `order_number` sichert gegen parallele Vergabe ab).
+ */
+async function nextFreeSubrentalOrderNumber(): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `${ORDER_PREFIX}${year}-`;
+
+  const { data, error } = await supabase
+    .from("subrentals")
+    .select("order_number")
+    .like("order_number", `${prefix}%`)
+    .order("order_number", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+
+  const last = data?.[0]?.order_number as string | null | undefined;
+  let n = (last ? parseInt(last.slice(prefix.length), 10) || 0 : 0) + 1;
+
+  for (let i = 0; i < 1000; i++) {
+    const candidate = `${prefix}${String(n).padStart(ORDER_PAD, "0")}`;
+    const { data: existing, error: checkError } = await supabase
+      .from("subrentals")
+      .select("id")
+      .eq("order_number", candidate)
+      .maybeSingle();
+    if (checkError) throw checkError;
+    if (!existing) return candidate;
+    n++;
+  }
+  throw new Error("Keine freie Bestellnummer gefunden.");
+}
+
+/**
+ * Vergibt beim ersten Bestell-PDF eine AM-Nummer (idempotent — hat der Vorgang
+ * schon eine, wird nichts geändert). Bei Nummernkollision (parallele Erzeugung)
+ * wird erneut versucht, analog `useCreateOffer`.
+ */
+export function useAssignSubrentalOrderNumber() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (subrental: Subrental): Promise<Subrental> => {
+      if (subrental.order_number) return subrental;
+
+      let updated: Subrental | null = null;
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const order_number = await nextFreeSubrentalOrderNumber();
+        const { data, error } = await supabase
+          .from("subrentals")
+          .update({ order_number })
+          .eq("id", subrental.id)
+          .select(SELECT)
+          .single();
+        if (!error) {
+          updated = data as Subrental;
+          break;
+        }
+        lastError = error;
+        if (isUniqueViolation(error)) continue;
+        throw error;
+      }
+      if (!updated) {
+        throw lastError instanceof Error
+          ? lastError
+          : new Error("Bestellnummer konnte nicht vergeben werden.");
+      }
+      return updated;
+    },
+    onSuccess: (subrental) => {
+      queryClient.invalidateQueries({ queryKey: SUBRENTALS_KEY });
+      queryClient.invalidateQueries({ queryKey: [...SUBRENTALS_KEY, "by-job", subrental.job_id] });
     },
   });
 }
