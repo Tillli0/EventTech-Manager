@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Sparkles } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
@@ -11,6 +11,9 @@ import { useCreateOffer, useUpdateOffer, fetchOfferWithItems, type CreateOfferIt
 import { archiveOfferPdf } from "@/hooks/useDocuments";
 import { offerTotals, OFFER_STATUS_OPTIONS, type Offer, type OfferStatus } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
+import { useAuth } from "@/auth/AuthProvider";
+import { CatalogPickerDialog } from "@/components/offers/CatalogPickerDialog";
+import type { CatalogEntry } from "@/lib/procurementCatalog";
 
 interface DraftItem extends CreateOfferItemInput {
   /** lokale Zeilen-ID nur fürs Rendering */
@@ -47,6 +50,8 @@ export function CreateOfferDialog({
   const { data: customers } = useCustomers();
   const { data: inquiries } = useInquiries();
   const { data: devices } = useDevices();
+  const { hasArea } = useAuth();
+  const mayUseCatalog = hasArea("anmietung");
   const createOffer = useCreateOffer();
   const updateOffer = useUpdateOffer();
   const queryClient = useQueryClient();
@@ -63,6 +68,10 @@ export function CreateOfferDialog({
   const [deviceToAdd, setDeviceToAdd] = useState("");
   const [bulkDays, setBulkDays] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  // Einkaufspreis-Hinweis je übernommener Position — rein zur Orientierung
+  // beim Kalkulieren, wird NIE mitgespeichert (offer_items kennt keinen EK).
+  const [purchaseHints, setPurchaseHints] = useState<Record<string, number>>({});
 
   function applyDaysToAll() {
     const d = Math.max(1, parseInt(bulkDays, 10) || 1);
@@ -104,6 +113,7 @@ export function CreateOfferDialog({
     setDeviceToAdd("");
     setBulkDays("");
     setFormError(null);
+    setPurchaseHints({});
   }, [open, editOffer, presetCustomerId, presetInquiryId, presetTitle, presetItems]);
 
   const customerInquiries = useMemo(
@@ -137,6 +147,18 @@ export function CreateOfferDialog({
       ...prev,
       { key: nextKey(), device_id: null, description: "", quantity: 1, rental_days: 1, unit_price: 0 },
     ]);
+  }
+
+  function addFromCatalog(entry: CatalogEntry, quantity: number) {
+    const key = nextKey();
+    setItems((prev) => [
+      ...prev,
+      { key, device_id: entry.deviceId, description: entry.label, quantity, rental_days: 1, unit_price: 0 },
+    ]);
+    // Nur als Merkzettel für die Kalkulation — landet nie in offer_items.
+    if (entry.lastPriced) {
+      setPurchaseHints((prev) => ({ ...prev, [key]: entry.lastPriced!.unitCostPerDay }));
+    }
   }
 
   function updateItem(key: string, patch: Partial<DraftItem>) {
@@ -314,6 +336,12 @@ export function CreateOfferDialog({
             <Button type="button" variant="ghost" onClick={addFreeItem}>
               Freie Position
             </Button>
+            {mayUseCatalog && (
+              <Button type="button" variant="ghost" onClick={() => setCatalogOpen(true)}>
+                <Sparkles size={16} />
+                Aus Katalog
+              </Button>
+            )}
           </div>
 
           {items.length === 0 ? (
@@ -331,48 +359,55 @@ export function CreateOfferDialog({
                 <span className="w-8" />
               </div>
               {items.map((item) => (
-                <div key={item.key} className="flex items-center gap-2">
-                  <Input
-                    value={item.description}
-                    onChange={(e) => updateItem(item.key, { description: e.target.value })}
-                    placeholder="Bezeichnung"
-                    className="flex-1"
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) => updateItem(item.key, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-                    className="w-16 text-right"
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    value={item.rental_days}
-                    onChange={(e) =>
-                      updateItem(item.key, { rental_days: Math.max(1, parseInt(e.target.value, 10) || 1) })
-                    }
-                    className="w-16 text-right"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={item.unit_price}
-                    onChange={(e) => updateItem(item.key, { unit_price: Math.max(0, parseFloat(e.target.value) || 0) })}
-                    className="w-24 text-right"
-                  />
-                  <span className="w-24 text-right text-sm font-mono text-ink">
-                    {formatCurrency(item.unit_price * item.quantity * item.rental_days)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.key)}
-                    className="flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:text-status-defekt"
-                    aria-label="Position entfernen"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                <div key={item.key}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={item.description}
+                      onChange={(e) => updateItem(item.key, { description: e.target.value })}
+                      placeholder="Bezeichnung"
+                      className="flex-1"
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => updateItem(item.key, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                      className="w-16 text-right"
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.rental_days}
+                      onChange={(e) =>
+                        updateItem(item.key, { rental_days: Math.max(1, parseInt(e.target.value, 10) || 1) })
+                      }
+                      className="w-16 text-right"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={item.unit_price}
+                      onChange={(e) => updateItem(item.key, { unit_price: Math.max(0, parseFloat(e.target.value) || 0) })}
+                      className="w-24 text-right"
+                    />
+                    <span className="w-24 text-right text-sm font-mono text-ink">
+                      {formatCurrency(item.unit_price * item.quantity * item.rental_days)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.key)}
+                      className="flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:text-status-defekt"
+                      aria-label="Position entfernen"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  {purchaseHints[item.key] != null && (
+                    <p className="mt-0.5 pl-1 text-xs text-ink-faint">
+                      Einkauf zuletzt {formatCurrency(purchaseHints[item.key])}/Tag
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -414,6 +449,10 @@ export function CreateOfferDialog({
           </Button>
         </div>
       </form>
+
+      {mayUseCatalog && (
+        <CatalogPickerDialog open={catalogOpen} onClose={() => setCatalogOpen(false)} onPick={addFromCatalog} />
+      )}
     </Dialog>
   );
 }
