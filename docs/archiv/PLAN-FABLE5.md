@@ -1,10 +1,15 @@
 # Plan: Große Features für Fable 5 — EventTech-Manager
 
-> **Stand 2026-07-04:** Block 4 (Test-Fundament, ohne Playwright-E2E), Block 2
-> (Verfügbarkeits-Engine) und Block 1 (Rechnungswesen inkl. **Mahnwesen** seit
-> 2026-07-04; offen nur die Dashboard-Kachel) sind **umgesetzt** — Details in `IDEAS.md`
-> unter „Kürzlich umgesetzt". Offen aus dem Plan: Block 3 (Suche + Audit-Log), Block 5
-> (Design-System + Inventar-Redesign) sowie die genannten Rest-Stücke.
+> **Archiviert 2026-07-25 (überholt).** Block 1 (Rechnungswesen), Block 2
+> (Verfügbarkeits-Engine) und Block 4 (Test-Fundament, inkl. Playwright-E2E seit
+> `PLAN-V1-ABSICHERN.md` A3) sind **umgesetzt**. Block 5 (Design-System) ist über
+> `PLAN-UI-NEUSCHNITT.md` (Theme-Fundament, `statusTone.ts` als eine Farb-Registry,
+> `SummaryStats` statt vier Kachel-Bauarten) faktisch miterledigt — der
+> Inventar-Redesign-Teil war durch die Geschäftsmodell-Wende ohnehin herabgestuft.
+> **Einzig Block 3 (globale Suche + Audit-Log) ist noch offen** — steht als „Globale
+> Suche + Änderungsprotokoll" in `IDEAS.md` und als `ROADMAP.md` Phase 5 (P5.1/P5.2).
+> Dieses Dokument dient nur noch als Hintergrund/Referenz für Block 3, falls er
+> angegangen wird.
 
 > Zweck dieser Datei: Ein kuratierter Fahrplan der **wenigen wirklich großen** Bausteine,
 > die sich lohnen, mit dem stärksten Modell (Fable 5) umzusetzen. Bewusst **keine** Quick

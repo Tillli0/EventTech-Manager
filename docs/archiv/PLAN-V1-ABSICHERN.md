@@ -1,11 +1,13 @@
 # PLAN — V1 absichern (bevor die großen UI-Umbauten kommen)
 
-> **Aktives Vorhaben.** Stand: **2026-07-18** — Schritt 0 (Wissen ins Repo) erledigt;
-> nächste Etappe **A1** (Restore einmal real durchspielen).
+> **✅ UMGESETZT (2026-07-19).** Alle vier Etappen (A1–A4) erledigt und bewiesen —
+> Restore real geprobt, Storage-Backup läuft, E2E-Netz (Playwright) steht. Archiviert
+> nach `docs/archiv/`, weil das Vorhaben abgeschlossen ist; Inhalt bleibt hier als
+> Referenz stehen. Nachfolge-Vorhaben war `PLAN-UI-NEUSCHNITT.md` (ebenfalls
+> abgeschlossen und archiviert).
 >
-> Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN (dieses Vorhaben ist dort
-> Phase 0), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die **Details**. Danach
-> folgt `PLAN-UI-NEUSCHNITT.md`.
+> Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN (dieses Vorhaben war dort
+> Phase 0), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die **Details**.
 
 ---
 

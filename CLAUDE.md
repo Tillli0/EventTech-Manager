@@ -11,9 +11,10 @@ Nachkalkulation**. Jede Funktion muss sich an diesem Faden messen lassen.
 
 > **Geschäftsmodell-Wende (2026-07-17):** vom Technik-**Verleih** (eigener Bestand wird
 > vermietet) zum **Event-Dienstleister** (planen + umsetzen, Technik anmieten). Das
-> bestehende Fundament bleibt wertvoll; neu sind **Dokumenten-Ablage**, **Anmietung**
-> (Verleih-Partner + Anmiet-Vorgänge) und **Kalkulation** (Deckungsbeitrag je Job).
-> Steuerung: `PLAN-NEUAUSRICHTUNG.md` (Etappen) und `ROADMAP.md` (Phasen 1–2).
+> bestehende Fundament bleibt wertvoll; **Dokumenten-Ablage**, **Anmietung**
+> (Verleih-Partner + Anmiet-Vorgänge) und **Kalkulation** (Deckungsbeitrag je Job) sind
+> seit 2026-07-25 live. Steuerung/Rest-Punkte: `PLAN-NEUAUSRICHTUNG.md` und `ROADMAP.md`
+> (Phasen 1–2).
 
 Der Qualitätsanspruch ist „**wie professionelle Branchen-Software**": Rentman/Current RMS
 (Verleih-Workflow inkl. **Subrental/Purchase-Order**), lexoffice/sevDesk (Rechnungswesen/
@@ -41,29 +42,26 @@ Drei Leitprinzipien prägen jede Entscheidung:
 | `ARBEITSWEISE.md` | Wie Till & Claude zusammenarbeiten: Aufgabengrößen, Skill-Wahl, Modellwahl | geänderter Zusammenarbeits-Regel |
 | `ROADMAP.md` | Nordstern: Langzeit-Ziel, Phasen, „woran erkennen wir Fertig" | erreichtem Meilenstein/Phasenwechsel |
 | `IDEAS.md` | Ideen-Backlog + Verlauf „Kürzlich umgesetzt" | **jeder** abgeschlossenen Aufgabe (Pflicht) |
-| `PLAN-V1-ABSICHERN.md` | **🔴 AKTIV (seit 2026-07-18)**: v1 beweisbar sicher machen (Restore-Probe, Storage-Backup, E2E-Netz) — inkl. **geprüftem Ist-Zustand mit Belegen** | jeder Etappe A1–A4 |
-| `PLAN-UI-NEUSCHNITT.md` | **Wartet auf A3**: helles Theme (umschaltbar), Navigation, Startseite „Nächster Einsatz", Dokumente als Job-Ordner | jeder Etappe U1–U6 |
-| `PLAN-NEUAUSRICHTUNG.md` | Verleih → Event-Dienstleister; Block A (Dokumente) **fertig**, Block B (Anmietung/Kalkulation) offen — **läuft nach den U-Etappen** | jeder Etappe des Vorhabens |
-| `PLAN-MEIN-PLAN.md` | Die persönliche Säule (Schule/Minijob/Verfügbarkeit); **M1 wird in U4 vorgezogen**, M2 geht in U4 auf | jeder Etappe M1–M6 |
-| `docs/UI-REVIEW-2026-07-18.md` | Bestandsaufnahme der UI-Wiederholungsmuster (Grundlage des Neuschnitts) | nie (Momentaufnahme) |
+| `PLAN-NEUAUSRICHTUNG.md` | **🔴 AKTIV**: Verleih → Event-Dienstleister; Block A (Dokumente) + Block B (Anmietung/Kalkulation) **im Kern komplett**, Rest offen: E2b-Prompt-Qualität, E5-Freigabe, E9 | jeder Etappe des Vorhabens |
+| `PLAN-MEIN-PLAN.md` | **🔴 AKTIV**: die persönliche Säule (Schule/Minijob/Verfügbarkeit); M1+M2 bereits über `docs/archiv/PLAN-UI-NEUSCHNITT.md` U4 erledigt, offen: **M3–M6** | jeder Etappe M3–M6 |
 | `docs/mockups/` | Visuelle Vorlagen: drei Farbwelten + Dashboard-Neuschnitt | neuem Mockup |
 | `DEPLOY.md` | Produktions-Setup (Cloudflare Pages + Supabase Cloud), Runbook, **Backup & Restore** | Deploy-/Infra-Änderung |
 | `WORKFLOW.md` | Technischer Alltag lokal → live | Änderung am Entwicklungs-Ablauf |
 | `.claude/skills/` | Runbooks/Rezepte: Dev-Umgebung, Feature-Abschluss, Migrationen, große Features | neuem/geändertem Rezept |
-| `docs/archiv/` | Erledigte/überholte Pläne — nur noch Referenz, wird **nicht** mehr gepflegt | nie (Ablage-Ordner) |
+| `docs/archiv/` | Erledigte/überholte Pläne (u. a. `PLAN-V1-ABSICHERN.md`, `PLAN-UI-NEUSCHNITT.md`, `PLAN-FABLE5.md`, `UI-REVIEW-2026-07-18.md`) — nur noch Referenz, wird **nicht** mehr gepflegt | nie (Ablage-Ordner) |
 
 **Bei jeder neuen Session zuerst lesen** (Reihenfolge nach Bedarf, nicht alles auf Vorrat):
-`IDEAS.md` (was steht an) → **`PLAN-V1-ABSICHERN.md` (das aktive Vorhaben)** → weiteres
-`PLAN-*.md` nur, wenn dort weitergearbeitet wird → `ROADMAP.md` nur, wenn die große
-Richtung unklar ist. `ARBEITSWEISE.md` und `apps/web/CLAUDE.md` situativ (Skill-Wahl bzw.
-Frontend-Arbeit).
+`IDEAS.md` (was steht an, inkl. „Aktuelle Reihenfolge") → **`PLAN-NEUAUSRICHTUNG.md`
+(das aktive Vorhaben)** → weiteres `PLAN-*.md` nur, wenn dort weitergearbeitet wird →
+`ROADMAP.md` nur, wenn die große Richtung unklar ist. `ARBEITSWEISE.md` und
+`apps/web/CLAUDE.md` situativ (Skill-Wahl bzw. Frontend-Arbeit).
 
-**Die aktuelle Reihenfolge der Großvorhaben** (Stand 2026-07-18) — nicht eigenmächtig
-umstellen:
-`PLAN-V1-ABSICHERN.md` (A1–A4) → `PLAN-UI-NEUSCHNITT.md` (U1–U6, zieht M1 mit)
-→ `PLAN-NEUAUSRICHTUNG.md` Block B (E1–E7) → `PLAN-MEIN-PLAN.md` (M3–M6).
-Begründung: Erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
-Struktur einziehen.
+**Die aktuelle Reihenfolge der Großvorhaben** (Stand 2026-07-25) — nicht eigenmächtig
+umstellen: `docs/archiv/PLAN-V1-ABSICHERN.md` (A1–A4) und
+`docs/archiv/PLAN-UI-NEUSCHNITT.md` (U1–U6, zog M1+M2 mit) sind **komplett und
+archiviert**. Aktiv: `PLAN-NEUAUSRICHTUNG.md` Block B (im Kern fertig, drei Rest-Punkte
+offen) → danach `PLAN-MEIN-PLAN.md` (M3–M6). Begründung: Erst das Sicherheitsnetz, dann
+die Struktur, dann die Features, die in diese Struktur eingezogen sind.
 
 **Faustregel fürs Pflegen:** jede erledigte Aufgabe braucht **mindestens** einen Eintrag in
 `IDEAS.md`. Nur bei aktiven Großvorhaben zusätzlich das passende `PLAN-*.md`. Ist ein

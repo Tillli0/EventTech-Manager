@@ -1,9 +1,12 @@
 # PLAN — UI/UX-Neuschnitt: helles Design + rundes Gesamtkonzept
 
-> **Großes Vorhaben, wartet auf `PLAN-V1-ABSICHERN.md`.** Stand: **2026-07-18** —
-> abgestimmt und freigegeben, Baubeginn **erst nach Etappe A3** (E2E-Netz).
+> **✅ UMGESETZT (2026-07-19).** Alle sechs Etappen (U1–U6) erledigt und bewiesen —
+> helles Theme (umschaltbar), neue Navigation in drei Gruppen, Startseite „Nächster
+> Einsatz", Kalender als Ebenen-Modell, Dokumente als Job-Ordner, Job-Detailseite in
+> Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen. Archiviert nach `docs/archiv/`,
+> Inhalt bleibt hier als Referenz stehen.
 >
-> Grundlage: `docs/UI-REVIEW-2026-07-18.md` (Bestandsaufnahme) und
+> Grundlage: `docs/archiv/UI-REVIEW-2026-07-18.md` (Bestandsaufnahme) und
 > `docs/mockups/` (drei Farbwelten + Vision). `ROADMAP.md` sagt WOHIN, `CLAUDE.md` WIE,
 > hier stehen die **Details**.
 

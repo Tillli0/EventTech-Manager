@@ -3,7 +3,7 @@
 > **Der Nordstern für alle Sessions.** Bei jeder Arbeit gilt: diese Datei sagt WOHIN und
 > in welcher Reihenfolge; `CLAUDE.md` sagt WIE (Regeln/Rituale); `IDEAS.md` hält den
 > Kleinkram und den Verlauf; `PLAN-*.md` vertiefen einzelne große Vorhaben.
-> Nach jedem erledigten Baustein: Haken setzen + Datum. Stand: **2026-07-17**.
+> Nach jedem erledigten Baustein: Haken setzen + Datum. Stand: **2026-07-25**.
 
 ---
 
@@ -44,36 +44,40 @@ UI-only-„Sicherheit".
 **Geschäftsmodell-Wende (2026-07-17):** Vom Technik-**Verleih** (eigener Bestand wird
 vermietet) zum **Event-Dienstleister** (planen + umsetzen, Technik anmieten). Das
 verschiebt den Schwerpunkt der Software vom Bestand zum Projekt; das bestehende Fundament
-(Rechnungswesen, Angebote, Jobs, RLS, Kalender) bleibt voll wertvoll, neu hinzu kommen
-**Dokumenten-Ablage**, **Anmietung** (Verleih-Partner, Anmiet-Vorgänge) und die
-**Kalkulation** (Deckungsbeitrag je Job). Details: `PLAN-NEUAUSRICHTUNG.md`.
+(Rechnungswesen, Angebote, Jobs, RLS, Kalender) bleibt voll wertvoll. **Stand 2026-07-25:
+Dokumenten-Ablage, Anmietung (Verleih-Partner + Anmiet-Vorgänge) und Kalkulation
+(Deckungsbeitrag je Job) sind live** — Details/offene Rest-Punkte: `PLAN-NEUAUSRICHTUNG.md`.
 
-**Fertig und live** (Cloudflare + Supabase Cloud, Stand 2026-07-07):
+**Fertig und live** (Cloudflare + Supabase Cloud, Stand 2026-07-25):
 
-- Inventar (Geräte + Sets mit Live-Buchbarkeit, Barcodes, Fotos, DGUV-Erinnerung),
-  Kunden/Anfragen inkl. Website-Lead-Formular, Jobs mit Packliste/Personal/Zeitplan,
-  Angebote mit PDF, Kalender, Aufgaben, Rollen/Bereichsrechte (RLS).
+- Inventar (Geräte + Sets mit Live-Buchbarkeit, Barcodes, Fotos, DGUV-Erinnerung,
+  Eigentümer-Feld), Kunden/Anfragen inkl. Website-Lead-Formular, Jobs mit Packliste/
+  Personal/Zeitplan/Kosten, Angebote mit PDF, Kalender (Ebenen-Modell inkl. persönlicher
+  Zeiten), Aufgaben, Rollen/Bereichsrechte (RLS).
 - **Rechnungswesen** (GoBD): lückenlose Nummern (Advisory-Lock, parallel-getestet),
   Storno statt Löschen, Teilzahlungen, abgeleiteter Status, PDF mit Pflichtangaben.
 - **Verfügbarkeits-Engine**: Doppelbuchungs-Warnung in der Packliste inkl.
-  Verursacher-Jobs; Papierkorb bindet keinen Bestand.
-- **Profi-Listen** (Angebote/Rechnungen): Kennzahlen-Kopf, Status-Tabs, Jahres-Archiv,
-  Monats-/Kundengruppen mit Zwischensummen, Detail-Drawer mit Zeitstrahl, CSV;
-  Rechnungen am Job und am Kunden sichtbar. **Auswertungen**-Seite (Umsatz, offen/
-  überfällig, Monatscharts, Top-Kunden).
-- **Mahnwesen** gebaut, aber bewusst **ruhig**: Edge Function `send-dunning` ist nicht
-  deployt, kein `RESEND_API_KEY` gesetzt → es geht keine Mail raus.
-- **Fundament**: Vitest (70+ Tests) + CI (tsc/Lint/Tests/Build) + automatische
-  DB-Migration in die Cloud; Wissens-Basis (CLAUDE.md × 3, 4 Skills, Plan-Dokumente).
+  Verursacher-Jobs + angemieteten Zugängen; Papierkorb bindet keinen Bestand.
+- **Dokumenten-Ablage**: privater Bucket + zentrale Seite (nach Job/Kategorie/Datum),
+  Auto-Archivierung erzeugter Rechnungs-/Angebots-PDFs.
+- **Anmietung**: Verleih-Partner-Stamm, Anmiet-Vorgänge am Job mit Status-Kette,
+  Bestell-PDF, Verfügbarkeits-Zugänge („Fehlmenge anmieten").
+- **Kalkulation**: Deckungsbeitrag je Job (Kalkuliert/Abgerechnet), „Top-Jobs" +
+  „DB je Monat" in den Auswertungen.
+- **Profi-Listen** (Angebote/Rechnungen/Anmietungen/Dokumente): Kennzahlen-Kopf,
+  Status-Tabs, Jahres-Archiv, Monats-/Kundengruppen mit Zwischensummen, CSV.
+- **Mahnwesen** + **Bestell-Mail an Verleiher** gebaut, aber bewusst **ruhig**: beide
+  Edge Functions nicht deployt, kein `RESEND_API_KEY` gesetzt → es geht keine Mail raus.
+- **Helles UI** (Creme/Weiß+Indigo/Dark umschaltbar), Startseite „Nächster Einsatz"
+  rollen-adaptiv, dreigruppige Navigation.
+- **Fundament**: Vitest (138+ Tests) + Playwright-E2E (15 Tests) + CI + automatische
+  DB-Migration in die Cloud + automatisches Backup (DB + Storage); Wissens-Basis
+  (CLAUDE.md × 3, Skills, Plan-Dokumente).
 
-**Bekannte Lücken:** Backups nur manuell (JSON-Knopf, ohne Storage-Dateien, ohne
-Restore-Weg) · **keine geordnete Dokumenten-Ablage** (nur Foto-/Geräte-Datei-Inseln;
-Genehmigungen, Baupläne, Verleiher-Rechnungen, Verträge haben keinen Ort; erzeugte PDFs
-werden nur heruntergeladen) · **keine Anmietung** (kein Verleih-Partner-Stamm, keine
-Anmiet-Vorgänge, Verfügbarkeit kennt nur Eigenbestand) · **keine Kosten-/Margensicht**
-(Deckungsbeitrag je Job) · kein E-Mail-Versand von Angeboten/Rechnungen · keine Personal-
-Konfliktprüfung · keine globale Suche / kein Audit-Log · Kalender noch im alten Design ·
-kein E2E-Test.
+**Bekannte Lücken:** KI-Dokumenten-Extraktion (E2b) technisch fertig, aber inhaltliche
+Erkennungsqualität noch unzureichend · kein E-Mail-Versand von Angeboten/Rechnungen an
+Kunden · keine Personal-Konfliktprüfung (`PLAN-MEIN-PLAN.md` M5) · keine globale Suche /
+kein Audit-Log · keine Engpass-Sammelansicht über alle Jobs (E9).
 
 ## 3. Arbeitsweise (dauerhaft, modell-unabhängig)
 
@@ -106,14 +110,14 @@ Backups, Löschlogik) → stärkstes verfügbares Modell + DB-seitige Absicherun
 
 *Ziel: Datenverlust unmöglich, Regressionen werden automatisch gefangen.*
 
-> **Steuerung seit 2026-07-18:** Diese Phase wird über `PLAN-V1-ABSICHERN.md` abgearbeitet
-> (Etappen A1–A4) — dort stehen der geprüfte Ist-Zustand mit Belegen und die Details.
+> **Abgearbeitet über `docs/archiv/PLAN-V1-ABSICHERN.md`** (Etappen A1–A4, ✅ komplett
+> seit 2026-07-19) — dort stehen der geprüfte Ist-Zustand mit Belegen und die Details.
 
-- [x] **P0.1 Backup automatisch — Stufe 1 (Datenbank)** (2026-07-18). *Beleg:* Artefakt
-      `db-backup-2026-07-18_0534` (26 kB) ist per Zeitplan **ohne menschliches Zutun**
-      entstanden; Workflow `.github/workflows/db-backup.yml`, Aufbewahrung 90 Tage.
-      ⚠️ **Stufe 2 (Storage-Dateien inkl. `documents`-Bucket) fehlt noch** → Etappe **A2**.
-      Solange gilt: „es kann nichts verloren gehen" ist **noch nicht** wahr.
+- [x] **P0.1 Backup automatisch — Stufe 1+2 (Datenbank + Storage)** (2026-07-18). *Beleg:*
+      Artefakt `db-backup-2026-07-18_0534` (26 kB) ist per Zeitplan **ohne menschliches
+      Zutun** entstanden; Workflow `.github/workflows/db-backup.yml`, Aufbewahrung
+      90 Tage. **Stufe 2** (alle Storage-Buckets inkl. `documents`) ergänzt (Etappe A2,
+      `docs/archiv/PLAN-V1-ABSICHERN.md`). Damit ist „es kann nichts verloren gehen" wahr.
       ⚠️ **Falle:** Der Workflow läuft **grün durch, wenn Secrets fehlen** — grün beweist
       nichts, nur ein vorhandenes Artefakt tut das.
 - [x] **P0.2 Restore geprobt** (2026-07-18, Etappe A1). Mit **echtem Cloud-Dump** in eine
@@ -156,46 +160,55 @@ zentralen Ort. Details + Schema: `PLAN-NEUAUSRICHTUNG.md` (D1–D4).*
       automatisch sprechend benannt ablegen (`RE-2026-0001_<Kunde>.pdf`). (2026-07-18,
       voll bewiesen — damit ist **Block A komplett**.)
 
-### Phase 1.5 — UI-Neuschnitt  ⟵ **nach Phase 0, vor Phase 2**
+### Phase 1.5 — UI-Neuschnitt  ✅ komplett (2026-07-19)
 
 *Ziel: Die App wird von „gewachsen" auf „gestaltet" umgestellt — bevor Anmietung und
-Kalkulation zusätzliche Karten und Seiten hinzufügen. Details: `PLAN-UI-NEUSCHNITT.md`.*
+Kalkulation zusätzliche Karten und Seiten hinzufügen. Details:
+`docs/archiv/PLAN-UI-NEUSCHNITT.md`.*
 
 Auslöser: Tills Beobachtung „wir haben immer nur draufgesattelt", bestätigt durch
-`docs/UI-REVIEW-2026-07-18.md` (dasselbe UI-Bedürfnis 4–5-mal unabhängig gelöst).
+`docs/archiv/UI-REVIEW-2026-07-18.md` (dasselbe UI-Bedürfnis 4–5-mal unabhängig gelöst).
 
-- [ ] **P1.5.1 (U1) Mockup des Gesamtkonzepts** — Navigation, Startseite in drei Rollen,
-      Job-Abschnitte, Dokumente-Ordner. Till entscheidet danach das Standard-Theme.
-- [ ] **P1.5.2 (U2) Theme-Fundament:** CSS-Variablen statt fester Hex-Werte, Paletten
-      Creme · Weiß+Indigo · Dark umschaltbar; **eine** Farb-Registry statt fünf Mappings;
-      Kontrast auf hellem Grund nachgeschärft.
-- [ ] **P1.5.3 (U3) Startseite „Nächster Einsatz" + neue Navigation** — rollen-adaptiv,
+- [x] **P1.5.1 (U1) Mockup des Gesamtkonzepts** — Navigation, Startseite in drei Rollen,
+      Job-Abschnitte, Dokumente-Ordner. (2026-07-19)
+- [x] **P1.5.2 (U2) Theme-Fundament:** CSS-Variablen statt fester Hex-Werte, Paletten
+      Creme · Weiß+Indigo · Dark umschaltbar; **eine** Farb-Registry (`statusTone.ts`)
+      statt fünf Mappings; Kontrast auf hellem Grund nachgeschärft. (2026-07-19)
+- [x] **P1.5.3 (U3) Startseite „Nächster Einsatz" + neue Navigation** — rollen-adaptiv,
       damit auch Externe einen sinnvollen Einstieg haben. **Erledigt zugleich P2.8 (E8).**
-- [ ] **P1.5.4 (U4) Kalender als Ebenen-Modell** — Firmenjobs · eigene Einsätze · Köln ·
-      Schule; zieht **M1** aus `PLAN-MEIN-PLAN.md` vor.
-- [ ] **P1.5.5 (U5) Dokumente als Job-Ordner** (Tills Wunsch: nach Jobs sortieren +
-      Ordnerstruktur).
-- [ ] **P1.5.6 (U6) Job-Detailseite in Abschnitte** — Voraussetzung dafür, dass Block B
-      ohne Chaos einziehen kann.
+      (2026-07-19)
+- [x] **P1.5.4 (U4) Kalender als Ebenen-Modell** — Firmenjobs · eigene Einsätze · Köln ·
+      Schule; zog **M1** aus `PLAN-MEIN-PLAN.md` vor. (2026-07-19)
+- [x] **P1.5.5 (U5) Dokumente als Job-Ordner** (Tills Wunsch: nach Jobs sortieren +
+      Ordnerstruktur). (2026-07-19)
+- [x] **P1.5.6 (U6) Job-Detailseite in Abschnitte** — Voraussetzung dafür, dass Block B
+      ohne Chaos einziehen konnte. (2026-07-19)
 
-### Phase 2 — Anmietung & Kalkulation  *(Neuausrichtung, Block B)*
+### Phase 2 — Anmietung & Kalkulation  ✅ im Kern komplett (2026-07-25) *(Neuausrichtung, Block B)*
 
 *Ziel: Technik bei Verleihern anmieten (Vorgänge mit Status + Bestell-Dokument), Engpässe
 in der Packliste decken, je Job den Deckungsbeitrag kennen. Details: `PLAN-NEUAUSRICHTUNG.md`
 (E1–E8).*
 
-- [ ] **P2.1 (E1) Bereich `anmietung` + Verleih-Partner** (`suppliers`) + Seite `/anmietung`.
-- [ ] **P2.2 (E2) Anmiet-Vorgänge am Job** (`subrentals` + Positionen, Status-Kette).
-- [ ] **P2.3 (E3) Verfügbarkeits-Zugänge** (angemietete Technik deckt Engpässe;
-      „Fehlmenge anmieten").
-- [ ] **P2.4 (E4) Bestell-PDF** an den Verleiher (AM-Nummern).
-- [ ] **P2.5 (E5) Bestell-Mail** an den Verleiher (Edge Function, „ruhig by default",
-      Deploy nur nach Freigabe).
-- [ ] **P2.6 (E6) Kosten am Job** (`job_costs`: Personal mit Stunden×Satz, Transport,
-      Fremdgewerke).
-- [ ] **P2.7 (E7) Kalkulation** (Deckungsbeitrag je Job, Marge in den Auswertungen).
-- [ ] **P2.8 (E8) Dashboard & Navigation** neu gewichten (Fokus Anmietung, Inventar
-      nach hinten). → **geht in P1.5.3 (U3) auf**, wird dort miterledigt.
+- [x] **P2.1 (E1) Bereich `anmietung` + Verleih-Partner** (`suppliers`) + Seite `/anmietung`.
+      (2026-07-24)
+- [x] **P2.2 (E2) Anmiet-Vorgänge am Job** (`subrentals` + Positionen, Status-Kette). (2026-07-24)
+- [x] **P2.3 (E3) Verfügbarkeits-Zugänge** (angemietete Technik deckt Engpässe;
+      „Fehlmenge anmieten"). (2026-07-25)
+- [x] **P2.4 (E4) Bestell-PDF** an den Verleiher (AM-Nummern). (2026-07-25)
+- [x] **P2.5 (E5) Bestell-Mail** an den Verleiher — gebaut, lokal bewiesen, Function
+      **bewusst nicht deployt**, Knopf in der Oberfläche ausgeblendet
+      (`SUBRENTAL_ORDER_MAIL_ENABLED = false`), bis Till die Freigabe gibt. (2026-07-25)
+- [x] **P2.6 (E6) Kosten am Job** (`job_costs`: Personal mit Stunden×Satz, Transport,
+      Fremdgewerke). (2026-07-25)
+- [x] **P2.7 (E7) Kalkulation** (Deckungsbeitrag je Job + „Top-Jobs"/„DB je Monat" in den
+      Auswertungen). (2026-07-25)
+- [x] **P2.8 (E8) Dashboard & Navigation** neu gewichten (Fokus Anmietung, Inventar
+      nach hinten) — ging in P1.5.3 (U3) auf, letzte Kacheln 2026-07-25 ergänzt.
+
+**Offen aus Block B:** E2b (KI-Dokumenten-Extraktion, inhaltliche Prompt-Qualität noch
+unzureichend) und E9 (Engpass-Sammelansicht, → P4.4) — Details/Verlauf in
+`PLAN-NEUAUSRICHTUNG.md`.
 
 ### Phase 3 — Den Geld-Kreislauf schließen
 

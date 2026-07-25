@@ -1,8 +1,10 @@
 # EventTech Manager
 
-Business-Software für einen kleinen Veranstaltungstechnik-Verleih. Deckt den kompletten
-Arbeitsablauf ab: **Kunde → Anfrage → Angebot → Job → Packliste (per Barcode) → Kalender →
-Ausgabe/Rückgabe**. Deutschsprachig, Dark-Theme, mit Login & Rollen.
+Business-Software für Tills Event-Dienstleistung: **Veranstaltungen planen und umsetzen**,
+Technik überwiegend bei Partner-Verleihern **anmieten** (kleines eigenes Rest-Inventar).
+Deckt den kompletten Arbeitsablauf ab: **Anfrage → Angebot → Job (Material eigen +
+angemietet · Personal · Dokumente) → Bestellungen an Verleiher → Rechnung → Zahlung →
+Nachkalkulation**. Deutschsprachig, helles Theme (umschaltbar), mit Login & Rollen.
 
 > **Live:** das Frontend läuft öffentlich auf **Cloudflare Pages**
 > (`eventtech-web.pages.dev`, eigene Domain `manage.eventtechnik-fk.de`), das Backend auf
@@ -12,23 +14,36 @@ Ausgabe/Rückgabe**. Deutschsprachig, Dark-Theme, mit Login & Rollen.
 
 ## Funktionsumfang
 
-- **Inventar** — Geräte mit Kategorien, Lagerorten (als Pillen), Fotos, Stückzahlen,
-  abgeleiteter Verfügbarkeit (`Bestand − defekt − in aktiven Jobs`), Kauf-/Tagesmietpreis,
-  Geräte-/Lagerort-Historie, CSV-Import/-Export, Geräte-Sets/Pakete.
+- **Inventar** — Rest-Bestand mit Kategorien, Lagerorten (als Pillen), Fotos, Stückzahlen,
+  abgeleiteter Verfügbarkeit (`Bestand − defekt − in aktiven Jobs − angemietet`),
+  Eigentümer-Feld (Firma/Schule/Privat), Geräte-/Lagerort-Historie, CSV-Import/-Export,
+  Geräte-Sets/Pakete.
 - **DGUV-V3-Elektroprüfung** — letzte/nächste Prüfung pro Gerät, Fälligkeits-Erinnerung.
 - **Barcode** — Kamera- & USB-Scanner, interne ETM-Codes, Etiketten-Druck; Scan springt
   direkt zum Gerät.
 - **Jobs** — Packlisten mit Packen/Rückgabe-Tracking (Pflicht-Lagerort, Schadensvermerk),
-  Zeitplan/Programmpunkte (mit Foto), Personal-/Geräte-Zuweisung, Job-Farben,
-  „Vergangen"-Ordner und **Papierkorb** (Soft-Delete mit Wiederherstellen).
+  Zeitplan/Programmpunkte (mit Foto), Personal-/Geräte-Zuweisung, Kosten (Personal/
+  Transport/Fremdleistung), Job-Farben, „Vergangen"-Ordner und **Papierkorb**
+  (Soft-Delete mit Wiederherstellen).
+- **Anmietung** — Verleih-Partner-Stamm, Anmiet-Vorgänge am Job mit Status-Kette
+  (Katalog-Gerät oder Freitext-Position), erhöhen die Verfügbarkeit im Job-Zeitraum
+  („Fehlmenge anmieten"), Bestell-PDF, Bestell-Mail an den Verleiher (ruhig by default).
+- **Kalkulation** — Deckungsbeitrag je Job (Kalkuliert aus Angebot / Abgerechnet aus
+  Rechnung, abzüglich Anmiet-/Personal-/sonstiger Kosten), „Top-Jobs"/„DB je Monat" in
+  den Auswertungen.
+- **Dokumente** — privater Datei-Ort je Vorgang (Job/Kunde/Verleiher/Anmietung/Beleg) +
+  zentrale Seite (nach Job/Kategorie/Datum), erzeugte Rechnungs-/Angebots-PDFs werden
+  automatisch archiviert.
 - **Kunden/CRM** — Stammdaten (bearbeitbar), Notizen, Anfragen-Pipeline (Kanban),
-  automatische Stammkunden-Erkennung.
+  automatische Stammkunden-Erkennung, Website-Lead-Formular.
 - **Angebote** — Positionen, MwSt, Status, **PDF-Export** mit Firmenkopf & **Logo**;
   direkt aus einer Packliste erzeugbar; am Job/Kunden gespeichert; bearbeitbar.
-- **Kalender** — Monats-/Wochen-/Tagesansicht, automatischer Eintrag bei Job-Anlage,
-  ganztägige/mehrtägige Balken, Zeitplan-Termine, Doppelbuchungs-Warnung, Abo-Link
-  (iCal/Google/Apple, read-only).
+- **Rechnungen** — GoBD-konform: lückenlose Nummern (Advisory-Lock), Storno statt
+  Löschen, Teilzahlungen, abgeleiteter Status, Mahnwesen (ruhig by default).
+- **Kalender** — Ebenen-Modell (Firmenjobs · eigene Einsätze · persönliche Zeiten),
+  Monats-/Wochen-/Tagesansicht, Doppelbuchungs-Warnung, Abo-Link (iCal/Google/Apple).
 - **Aufgaben** — Notiz- oder Checklisten-Aufgaben, abhakbar, Job-bezogen.
+- **Startseite** — „Nächster Einsatz" rollen-adaptiv (Firma/Verwaltung/Freelancer).
 - **Verwaltung (Admin)** — Benutzer/Rollen/Bereichszugriffe, Firmendaten & Logo,
   Passwort-Reset.
 
@@ -43,7 +58,7 @@ Ausgabe/Rückgabe**. Deutschsprachig, Dark-Theme, mit Login & Rollen.
 - **Zwei Umgebungen:** lokal Docker-Supabase (`localhost:54321`), Produktion Supabase Cloud.
   Das Frontend wählt das Backend automatisch über `VITE_SUPABASE_URL` /
   `VITE_SUPABASE_ANON_KEY` — lokal aus `apps/web/.env`, in der Cloud aus den Pages-Env-Variablen.
-- **Service-Role-Key nur serverseitig** (Edge Functions: `admin-users`, `calendar-feed`) — nie im Frontend.
+- **Service-Role-Key nur serverseitig** (Edge Functions, s. u.) — nie im Frontend.
 - Wrapper für **Desktop (Tauri)** / **Android (Capacitor)** sind konfiguriert, aber ungetestet.
 
 ## Lokale Entwicklung
@@ -71,7 +86,7 @@ cd apps/web && npx tsc --noEmit && npx eslint src && npx vite build
 
 ## Datenbank / Migrationen
 
-- SQL-Schema in `supabase/migrations/NNNN_*.sql` (aktuell bis **0030**), fortlaufend, non-destruktiv.
+- SQL-Schema in `supabase/migrations/NNNN_*.sql` (aktuell bis **0047**), fortlaufend, non-destruktiv.
 - **Lokal anwenden** (die Tracking-Tabelle hängt zurück — nicht `supabase migration up`):
   ```bash
   docker exec -i supabase_db_eventtech-manager psql -U postgres -d postgres \
@@ -107,8 +122,9 @@ eventtech-manager/
 │   ├── src-tauri/            Desktop-Wrapper (ungetestet)
 │   └── capacitor.config.ts   Android-Wrapper (ungetestet)
 ├── supabase/
-│   ├── migrations/           SQL-Schema (bis 0030)
-│   └── functions/            Edge Functions (admin-users, calendar-feed)
+│   ├── migrations/           SQL-Schema (bis 0047)
+│   └── functions/            Edge Functions (admin-users, calendar-feed, public-lead,
+│                              send-dunning, send-subrental-order, extract-subrental-document)
 ├── .github/workflows/        db-migrate.yml (Cloud-Migrationen bei Push)
 ├── CLAUDE.md  WORKFLOW.md  DEPLOY.md  ARBEITSWEISE.md
 ```

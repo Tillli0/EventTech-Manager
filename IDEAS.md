@@ -28,7 +28,7 @@
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
-> Struktur einziehen. Grundlage des Neuschnitts: `docs/UI-REVIEW-2026-07-18.md`.
+> Struktur einziehen. Grundlage des Neuschnitts: `docs/archiv/UI-REVIEW-2026-07-18.md`.
 
 ## 🔧 Quick Wins (Auto — kann Claude eigenständig erledigen)
 
