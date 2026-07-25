@@ -9,8 +9,11 @@
 > Qualität der Erkennung noch unzureichend** (Till: „inhaltlich eine Katastrophe") —
 > Prompt/Extraktion braucht Nacharbeit, bevor scharf geschaltet wird. Bewusst **nicht
 > deployt**, auf Eis gelegt zugunsten der nächsten Etappen. **E4 (Bestell-PDF) live &
-> bewiesen.** Als Nächstes: **E5** (Bestell-Mail an Verleiher, braucht Freigabe zum
-> Deploy). Nach jeder Etappe: Haken + Datum, Stand-Vermerk oben.
+> bewiesen. E5 (Bestell-Mail an Verleiher) gebaut & lokal bewiesen, Edge Function
+> `send-subrental-order` aber bewusst NOCH NICHT deployt** — braucht Tills Freigabe
+> zum Deploy (nach-außen-wirkend) + einen RESEND_API_KEY (bereits für Mahnwesen/Leads
+> vorhanden, kein neuer Key nötig). Als Nächstes: **E6** (Kosten am Job). Nach jeder
+> Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -335,16 +338,23 @@ Erfahrungsberichten, direktes PDF-Verständnis inkl. Scans).
 - Optional: erzeugtes PDF via D2 am Vorgang ablegen.
 - Beweis: PDF mit echten Firmendaten; Doppel-Klick-Nummern-Probe.
 
-**E5 — Bestell-Mail an Verleiher** (Migration TBD `subrental_order_emails` — Nummer
-0042 ist inzwischen durch E2 `subrentals` belegt, Nummer erst bei Etappen-Start final;
-„ruhig by default")
+**E5 🔧 — Bestell-Mail an Verleiher** (Migration 0044 `subrental_order_emails`,
+gebaut + lokal bewiesen, Function bewusst NICHT deployt — „ruhig by default")
 - Edge Function `supabase/functions/send-subrental-order` (Muster `send-dunning`):
   JWT-Pflicht + `can_edit_area('anmietung')`, **Preview-Pflicht** vor Versand, Resend nur
   mit `RESEND_API_KEY` (sonst klare Fehlermeldung), Protokoll-Insert per service_role.
-  Erfolg setzt Status auf `angefragt`. V1 ohne PDF-Anhang.
-- `supabase/config.toml`-Eintrag; Versand-Dialog mit Pflicht-Vorschau.
-- Beweis: Preview lokal, Fehlerpfad ohne Key, psql-Probe Protokoll nur service_role.
-  **Function-Deploy nur nach ausdrücklicher Freigabe.**
+  Voraussetzung: Bestellnummer muss bereits vergeben sein (E4 zuerst) — sonst klare
+  Fehlermeldung statt automatischer Vergabe (die Nummernlogik lebt bewusst nur im
+  Frontend, s. E4). Erfolg setzt Status nur beim ERSTEN Anschreiben von `entwurf` auf
+  `angefragt` (späteres Nachfassen darf einen weiter fortgeschrittenen Status nicht
+  zurückdrehen). V1 ohne PDF-Anhang.
+- `supabase/config.toml`-Eintrag; Versand-Dialog (`SendSubrentalOrderDialog.tsx`) mit
+  Pflicht-Vorschau, Knopf „Bestell-Mail senden" an der Anmiet-Vorgangs-Karte (nur
+  sichtbar, wenn bereits eine Bestellnummer vergeben wurde).
+- Beweis: Preview lokal (mit echter Partner-Mail testweise, danach entfernt),
+  Fehlerpfad ohne Partner-E-Mail UND ohne RESEND_API_KEY (beide klare Fehlermeldungen,
+  kein Versand, kein Protokoll-Eintrag — per psql geprüft). **Function-Deploy nur nach
+  ausdrücklicher Freigabe.**
 
 **E6 — Kosten am Job** (Migration 0043 `job_costs`)
 - `job_costs` (job_id, cost_type, profile_id nullable, description Pflicht, hours/
@@ -490,5 +500,20 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   ändert nichts (per psql geprüft — weiterhin genau eine Zeile mit dieser Nummer).
   Auto-Archivierung des PDFs am Vorgang (im Plan als „optional" markiert) **nicht**
   gebaut — hätte eine neue `documents`-Kategorie + Migration gebraucht, aus Aufwands-
-  gründen zurückgestellt. Nächster Schritt: **E5** (Bestell-Mail an Verleiher, braucht
-  Freigabe zum Function-Deploy).
+  gründen zurückgestellt.
+- **2026-07-25 (noch später):** **E5 gebaut & lokal bewiesen** — Bestell-Mail an
+  Verleiher: Migration 0044 (`subrental_order_emails`, reines Server-Protokoll wie
+  `invoice_dunnings`), Edge Function `send-subrental-order` (Muster `send-dunning`,
+  Preview-Pflicht, Resend nur mit `RESEND_API_KEY`, Statuswechsel `entwurf` →
+  `angefragt` nur beim ersten Anschreiben). Voraussetzung: Bestellnummer muss bereits
+  vergeben sein (E4 zuerst) — die Function verweist sonst auf „erst PDF erzeugen"
+  statt selbst eine Nummer zu vergeben. Neuer Dialog `SendSubrentalOrderDialog.tsx`,
+  Knopf „Bestell-Mail senden" an der Anmiet-Vorgangs-Karte (nur sichtbar mit
+  Bestellnummer). Beweis im Browser: Fehlerpfad ohne Partner-E-Mail (klare Meldung),
+  testweise Partner-E-Mail ergänzt → Vorschau korrekt (Positionen, Zeitraum,
+  Bestellnummer) → Versand ohne `RESEND_API_KEY` scheitert klar (500, „ruhig by
+  default"), psql bestätigt: kein Protokoll-Eintrag, Status unverändert. Testdaten
+  (Partner-E-Mail) danach entfernt. **Die Function ist bewusst NICHT deployt** —
+  braucht Tills Freigabe (nach-außen-wirkend); der vorhandene `RESEND_API_KEY`
+  (Mahnwesen/Leads) reicht, kein neuer Key nötig. Nächster Schritt: **E6** (Kosten am
+  Job, Migration `job_costs`).

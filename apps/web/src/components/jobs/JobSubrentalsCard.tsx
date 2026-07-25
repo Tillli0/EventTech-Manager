@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Truck, Plus, Pencil, Trash2, FileDown } from "lucide-react";
+import { Truck, Plus, Pencil, Trash2, FileDown, Mail } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { SubrentalStatusBadge } from "@/components/ui/StatusBadge";
@@ -7,6 +7,7 @@ import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { useSubrentalsForJob, useDeleteSubrental, useAssignSubrentalOrderNumber } from "@/hooks/useSubrentals";
 import { CreateSubrentalDialog } from "@/components/jobs/CreateSubrentalDialog";
+import { SendSubrentalOrderDialog } from "@/components/jobs/SendSubrentalOrderDialog";
 import { subrentalTotals, SUBRENTAL_LOGISTICS_OPTIONS } from "@/lib/subrentals";
 import { downloadSubrentalOrderPdf } from "@/lib/subrentalOrderPdf";
 import { formatDate, formatCurrency } from "@/lib/format";
@@ -25,6 +26,7 @@ export function JobSubrentalsCard({ jobId }: { jobId: string }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editSubrental, setEditSubrental] = useState<Subrental | undefined>(undefined);
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
+  const [orderMailSubrental, setOrderMailSubrental] = useState<Subrental | undefined>(undefined);
 
   const isEmpty = !subrentals || subrentals.length === 0;
   // Ohne Bereich 'anmietung' ist die Karte unsichtbar (RLS liefert ohnehin leer,
@@ -112,6 +114,16 @@ export function JobSubrentalsCard({ jobId }: { jobId: string }) {
                         <FileDown size={14} />
                       </button>
                     )}
+                    {mayEdit && subrental.order_number && subrental.status !== "storniert" && (
+                      <button
+                        onClick={() => setOrderMailSubrental(subrental)}
+                        className="rounded p-1.5 text-ink-faint transition-colors hover:text-accent"
+                        title="Bestell-Mail senden"
+                        aria-label="Bestell-Mail senden"
+                      >
+                        <Mail size={14} />
+                      </button>
+                    )}
                     {mayEdit && (
                       <>
                         <button
@@ -147,6 +159,13 @@ export function JobSubrentalsCard({ jobId }: { jobId: string }) {
           onClose={() => setEditSubrental(undefined)}
           jobId={jobId}
           editSubrental={editSubrental}
+        />
+      )}
+      {orderMailSubrental && (
+        <SendSubrentalOrderDialog
+          subrental={orderMailSubrental}
+          open={!!orderMailSubrental}
+          onClose={() => setOrderMailSubrental(undefined)}
         />
       )}
     </Card>

@@ -391,6 +391,11 @@ verify_jwt = true
 [functions.extract-subrental-document]
 verify_jwt = true
 
+# Bestell-Mail an Verleiher: nur für eingeloggte Nutzer — JWT-Prüfung bleibt bewusst AN,
+# zusätzlich prüft die Funktion can_edit_area('anmietung') des Aufrufers.
+[functions.send-subrental-order]
+verify_jwt = true
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

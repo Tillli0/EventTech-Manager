@@ -4,7 +4,8 @@ import { SUBRENTAL_COUNTING_STATUSES } from "@/lib/availability";
 import type { Subrental, SubrentalItem, SubrentalLogistics, SubrentalStatus } from "@/types/database";
 
 const SUBRENTALS_KEY = ["subrentals"] as const;
-const SELECT = "*, supplier:suppliers(*), job:jobs(id, title, start_date, end_date), items:subrental_items(*)";
+const SELECT =
+  "*, supplier:suppliers(*), job:jobs(id, title, start_date, end_date), items:subrental_items(*), order_emails:subrental_order_emails(*)";
 const ORDER_PREFIX = "AM-";
 const ORDER_PAD = 4;
 
@@ -259,6 +260,57 @@ export function useSubrentalAdditionsMap(startDate: string | undefined, endDate:
       }
       return map;
     },
+  });
+}
+
+// ============================================================
+// Bestell-Mail an Verleiher (E5, Edge Function send-subrental-order)
+// ============================================================
+
+export interface SubrentalOrderPreview {
+  preview: true;
+  to: string;
+  subject: string;
+  html: string;
+}
+
+/**
+ * Edge Function aufrufen und Fehlertexte der Funktion (JSON { error }) durchreichen —
+ * supabase-js liefert bei non-2xx sonst nur eine generische Meldung (Muster useInvoices.ts).
+ */
+async function invokeSendSubrentalOrder(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase.functions.invoke("send-subrental-order", { body });
+  if (error) {
+    let message = error.message;
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === "function") {
+      try {
+        const detail = (await ctx.json()) as { error?: string };
+        if (detail?.error) message = detail.error;
+      } catch {
+        // Antwort war kein JSON — generische Meldung behalten.
+      }
+    }
+    throw new Error(message);
+  }
+  if (data && (data as { error?: string }).error) {
+    throw new Error((data as { error: string }).error);
+  }
+  return (data ?? {}) as Record<string, unknown>;
+}
+
+/** Vorschau der Bestell-Mail laden (nichts wird versendet). */
+export async function fetchSubrentalOrderPreview(subrentalId: string): Promise<SubrentalOrderPreview> {
+  const data = await invokeSendSubrentalOrder({ subrental_id: subrentalId, preview: true });
+  return data as unknown as SubrentalOrderPreview;
+}
+
+/** Bestell-Mail wirklich versenden (Server prüft Rechte + Voraussetzungen erneut). */
+export function useSendSubrentalOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (subrentalId: string) => invokeSendSubrentalOrder({ subrental_id: subrentalId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: SUBRENTALS_KEY }),
   });
 }
 

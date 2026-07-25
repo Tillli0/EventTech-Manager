@@ -360,6 +360,18 @@ export interface Subrental {
   supplier?: Supplier;
   job?: Pick<Job, "id" | "title" | "start_date" | "end_date">;
   items?: SubrentalItem[];
+  order_emails?: SubrentalOrderEmail[];
+}
+
+/** Versandprotokoll der Bestell-Mail (entsteht nur serverseitig, Edge Function send-subrental-order). */
+export interface SubrentalOrderEmail {
+  id: string;
+  subrental_id: string;
+  sent_to: string;
+  subject: string;
+  body: string;
+  sent_by: string | null;
+  sent_at: string;
 }
 
 export interface SubrentalItem {

@@ -21,9 +21,10 @@
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
 > 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1, E2,
->    E3, E4 erledigt; E2b technisch lauffähig (Gemini-Key + Modell-Fix), aber
->    inhaltliche Qualität unzureichend — bewusst zurückgestellt, kein Deploy. Als
->    Nächstes E5 (Bestell-Mail an Verleiher, braucht Freigabe zum Function-Deploy).**
+>    E3, E4, E5 erledigt (E5-Function noch nicht deployt, braucht Tills Freigabe);
+>    E2b technisch lauffähig (Gemini-Key + Modell-Fix), aber inhaltliche Qualität
+>    unzureichend — bewusst zurückgestellt, kein Deploy. Als Nächstes E6 (Kosten am
+>    Job).**
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -126,6 +127,19 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E5 — Bestell-Mail an Verleiher** (2026-07-25,
+  `PLAN-NEUAUSRICHTUNG.md`, Migration 0044 `subrental_order_emails`): Knopf
+  „Bestell-Mail senden" an der Anmiet-Vorgangs-Karte (nur sichtbar, wenn per E4 schon
+  eine Bestellnummer vergeben wurde) öffnet einen Vorschau-Pflicht-Dialog und schickt
+  die Mietanfrage per Resend an den Verleih-Partner (Edge Function
+  `send-subrental-order`, Muster `send-dunning`). Erfolgreicher erster Versand setzt
+  den Status von `entwurf` auf `angefragt`. Beweis im Browser: Fehlerpfad ohne
+  Partner-E-Mail, Vorschau mit testweise ergänzter Partner-Mail korrekt, Versand ohne
+  `RESEND_API_KEY` scheitert erwartungsgemäß klar (kein Protokoll-Eintrag, Status
+  unverändert — per psql geprüft), Testdaten entfernt. **Die Function ist bewusst
+  NICHT deployt** — braucht Tills Freigabe (nach-außen-wirkend); vorhandener
+  `RESEND_API_KEY` genügt.
 
 - **Neuausrichtung E4 — Bestell-PDF** (2026-07-25, `PLAN-NEUAUSRICHTUNG.md`, keine
   Migration): Knopf „Bestell-PDF erzeugen" an der Anmiet-Vorgangs-Karte im Job
