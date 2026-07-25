@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateField";
 import { useSuppliers } from "@/hooks/useSuppliers";
-import { useDevices } from "@/hooks/useDevices";
+import { useDevices, useCategories, useCreateCategory } from "@/hooks/useDevices";
 import {
   useCreateSubrental,
   useUpdateSubrental,
@@ -13,7 +13,12 @@ import {
 } from "@/hooks/useSubrentals";
 import { useExtractSubrentalDocument } from "@/hooks/useExtractSubrentalDocument";
 import { useUploadDocument } from "@/hooks/useDocuments";
-import { subrentalTotals, SUBRENTAL_LOGISTICS_OPTIONS, SUBRENTAL_STATUS_OPTIONS } from "@/lib/subrentals";
+import {
+  subrentalTotals,
+  groupSubrentalItemsByCategory,
+  SUBRENTAL_LOGISTICS_OPTIONS,
+  SUBRENTAL_STATUS_OPTIONS,
+} from "@/lib/subrentals";
 import { formatCurrency } from "@/lib/format";
 import type { Subrental, SubrentalLogistics, SubrentalStatus } from "@/types/database";
 
@@ -47,8 +52,10 @@ export function CreateSubrentalDialog({
 }) {
   const { data: suppliers } = useSuppliers();
   const { data: devices } = useDevices();
+  const { data: categories } = useCategories();
   const createSubrental = useCreateSubrental();
   const updateSubrental = useUpdateSubrental();
+  const createCategory = useCreateCategory();
   const extractDocument = useExtractSubrentalDocument();
   const uploadDocument = useUploadDocument();
   const isEdit = !!editSubrental;
@@ -69,6 +76,7 @@ export function CreateSubrentalDialog({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [extractedSupplierMissing, setExtractedSupplierMissing] = useState<string | null>(null);
+  const [categoryCreateWarning, setCategoryCreateWarning] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -85,6 +93,7 @@ export function CreateSubrentalDialog({
           .map((it) => ({
             key: nextKey(),
             device_id: it.device_id,
+            category_id: it.category_id,
             description: it.description,
             quantity: it.quantity,
             unit_cost: it.unit_cost,
@@ -104,14 +113,60 @@ export function CreateSubrentalDialog({
     setPendingFile(null);
     setExtractError(null);
     setExtractedSupplierMissing(null);
+    setCategoryCreateWarning(null);
   }, [open, editSubrental, presetItem]);
 
   const totals = subrentalTotals(items);
+  const rootCategories = (categories ?? []).filter((c) => !c.parent_id);
+  const groupedItems = groupSubrentalItemsByCategory(
+    items.map((it) => ({ ...it, category: categories?.find((c) => c.id === it.category_id) ?? null })),
+  );
+
+  /**
+   * Löst einen von der KI erratenen Kategorienamen auf: Treffer gegen Tills
+   * vorhandene Kategorien (Teilstring-Vergleich, Muster Lieferanten-Abgleich)
+   * → deren id. Kein Treffer → neue Kategorie anlegen (dieselbe `categories`-
+   * Tabelle wie im Inventar; die Position selbst bleibt trotzdem eine reine
+   * Freitext-Zeile, kein neues Gerät). `cache` dedupliziert pro Name innerhalb
+   * eines Extraktionsdurchlaufs, damit mehrere Positionen mit demselben neuen
+   * Namen dieselbe neu angelegte Kategorie bekommen statt Dubletten anzulegen.
+   */
+  async function resolveCategoryId(
+    guess: string | null | undefined,
+    cache: Map<string, string | null>,
+  ): Promise<string | null> {
+    if (!guess?.trim()) return null;
+    const key = guess.trim().toLowerCase();
+    if (cache.has(key)) return cache.get(key)!;
+
+    const existing = categories?.find(
+      (c) => c.name.toLowerCase() === key || c.name.toLowerCase().includes(key) || key.includes(c.name.toLowerCase()),
+    );
+    if (existing) {
+      cache.set(key, existing.id);
+      return existing.id;
+    }
+
+    try {
+      const created = await createCategory.mutateAsync({ name: guess.trim() });
+      cache.set(key, created.id);
+      return created.id;
+    } catch {
+      cache.set(key, null);
+      setCategoryCreateWarning((prev) => {
+        const names = new Set((prev ?? "").split(", ").filter(Boolean));
+        names.add(guess.trim());
+        return Array.from(names).join(", ");
+      });
+      return null;
+    }
+  }
 
   async function handleFileSelected(file: File) {
     setPendingFile(file);
     setExtractError(null);
     setExtractedSupplierMissing(null);
+    setCategoryCreateWarning(null);
     try {
       const extracted = await extractDocument.mutateAsync(file);
 
@@ -130,15 +185,23 @@ export function CreateSubrentalDialog({
         setEndDate(extracted.end_date_guess);
       }
       if (extracted.items.length > 0) {
-        setItems(
-          extracted.items.map((it) => ({
+        // Sequenziell statt Promise.all: mehrere Positionen mit demselben NEUEN
+        // Kategorienamen dürfen sich nicht gegenseitig überholen, sonst legt
+        // jede parallel eine eigene Dublette an, bevor die andere den
+        // Cache-Treffer sehen kann.
+        const categoryCache = new Map<string, string | null>();
+        const resolvedItems: DraftItem[] = [];
+        for (const it of extracted.items) {
+          resolvedItems.push({
             key: nextKey(),
             device_id: null,
+            category_id: await resolveCategoryId(it.category_name_guess, categoryCache),
             description: it.description,
             quantity: Math.max(1, Math.round(it.quantity) || 1),
             unit_cost: Math.max(0, it.unit_cost || 0),
-          })),
-        );
+          });
+        }
+        setItems(resolvedItems);
       }
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : "Erkennung fehlgeschlagen.");
@@ -149,12 +212,25 @@ export function CreateSubrentalDialog({
     if (!deviceToAdd) return;
     const device = devices?.find((d) => d.id === deviceToAdd);
     if (!device) return;
-    setItems((prev) => [...prev, { key: nextKey(), device_id: device.id, description: device.name, quantity: 1, unit_cost: 0 }]);
+    setItems((prev) => [
+      ...prev,
+      {
+        key: nextKey(),
+        device_id: device.id,
+        category_id: device.category_id,
+        description: device.name,
+        quantity: 1,
+        unit_cost: 0,
+      },
+    ]);
     setDeviceToAdd("");
   }
 
   function addFreeItem() {
-    setItems((prev) => [...prev, { key: nextKey(), device_id: null, description: "", quantity: 1, unit_cost: 0 }]);
+    setItems((prev) => [
+      ...prev,
+      { key: nextKey(), device_id: null, category_id: null, description: "", quantity: 1, unit_cost: 0 },
+    ]);
   }
 
   function updateItem(key: string, patch: Partial<DraftItem>) {
@@ -289,6 +365,12 @@ export function CreateSubrentalDialog({
               Verleih-Partner — bitte manuell wählen oder zuerst unter „Verleih-Partner" anlegen.
             </p>
           )}
+          {categoryCreateWarning && (
+            <p className="mt-1.5 text-xs text-status-wartung">
+              Kategorie „{categoryCreateWarning}" konnte nicht automatisch angelegt werden (fehlende
+              Berechtigung für den Bereich Inventar) — bitte die betroffene Position manuell zuordnen.
+            </p>
+          )}
           {extractError && (
             <p className="mt-1.5 text-xs text-status-defekt">{extractError}</p>
           )}
@@ -363,48 +445,70 @@ export function CreateSubrentalDialog({
               Noch keine Positionen. Gerät aus dem Inventar wählen oder eine freie Position anlegen.
             </p>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 px-1 text-xs text-ink-faint">
+            <div className="space-y-3">
+              <div className="hidden items-center gap-2 px-1 text-xs text-ink-faint sm:flex">
                 <span className="flex-1">Bezeichnung</span>
+                <span className="w-32">Kategorie</span>
                 <span className="w-16 text-right">Menge</span>
                 <span className="w-28 text-right">EK je Stück</span>
                 <span className="w-24 text-right">Summe</span>
                 <span className="w-8" />
               </div>
-              {items.map((item) => (
-                <div key={item.key} className="flex items-center gap-2">
-                  <Input
-                    value={item.description}
-                    onChange={(e) => updateItem(item.key, { description: e.target.value })}
-                    placeholder="Bezeichnung"
-                    className="flex-1"
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) => updateItem(item.key, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-                    className="w-16 text-right"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={item.unit_cost}
-                    onChange={(e) => updateItem(item.key, { unit_cost: Math.max(0, parseFloat(e.target.value) || 0) })}
-                    className="w-28 text-right"
-                  />
-                  <span className="w-24 text-right text-sm font-mono text-ink">
-                    {formatCurrency(item.unit_cost * item.quantity)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.key)}
-                    className="flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:text-status-defekt"
-                    aria-label="Position entfernen"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+              {groupedItems.map((group) => (
+                <div key={group.label} className="space-y-2">
+                  <p className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">{group.label}</p>
+                  {group.items.map((item) => (
+                    <div key={item.key} className="flex items-center gap-2">
+                      <Input
+                        value={item.description}
+                        onChange={(e) => updateItem(item.key, { description: e.target.value })}
+                        placeholder="Bezeichnung"
+                        className="flex-1"
+                      />
+                      <Select
+                        value={item.category_id ?? ""}
+                        onChange={(e) => updateItem(item.key, { category_id: e.target.value || null })}
+                        className="w-32"
+                      >
+                        <option value="">Keine</option>
+                        {rootCategories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </Select>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateItem(item.key, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })
+                        }
+                        className="w-16 text-right"
+                      />
+                      <Input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={item.unit_cost}
+                        onChange={(e) =>
+                          updateItem(item.key, { unit_cost: Math.max(0, parseFloat(e.target.value) || 0) })
+                        }
+                        className="w-28 text-right"
+                      />
+                      <span className="w-24 text-right text-sm font-mono text-ink">
+                        {formatCurrency(item.unit_cost * item.quantity)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.key)}
+                        className="flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:text-status-defekt"
+                        aria-label="Position entfernen"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

@@ -15,15 +15,16 @@
 > `PLAN-NEUAUSRICHTUNG.md`, die Reihenfolge in `ROADMAP.md` (Phasen 1–2). Einige
 > Altpunkte unten sind dadurch herabgestuft — siehe eigene Rubrik.
 
-> **🔴 Aktuelle Reihenfolge (Stand 2026-07-24) — hier steht, woran gerade gearbeitet wird:**
+> **🔴 Aktuelle Reihenfolge (Stand 2026-07-25) — hier steht, woran gerade gearbeitet wird:**
 > 1. ~~`PLAN-V1-ABSICHERN.md`~~ ✅ komplett (A1–A4).
 > 2. ~~`PLAN-UI-NEUSCHNITT.md`~~ ✅ **komplett** (U1–U6) — helles Theme, neue Navigation,
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
 > 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E8) — **im Kern komplett, inkl.
 >    ReportsPage-Teil von E7.** E5 (Bestell-Mail) bewusst deaktiviert (Knopf
->    ausgeblendet, Till entscheidet später über die Freigabe); E2b technisch
->    lauffähig, aber inhaltliche Qualität unzureichend — als Nächstes ansetzen.
+>    ausgeblendet, Till entscheidet später über die Freigabe); **E2b-Erweiterung
+>    (Kategorie an Anmiet-Positionen + KI-Kategorie-Erkennung) gebaut**; als
+>    Nächstes **E10** (Eigentümer-Feld am Gerät für Fremdeigentum).
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -129,6 +130,25 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E2b-Erweiterung — Kategorie an Anmiet-Positionen + KI-Kategorie-
+  Erkennung** (2026-07-25, `PLAN-NEUAUSRICHTUNG.md`, Migration 0046
+  `subrental_items.category_id`): Anmiet-Positionen können jetzt einer Kategorie
+  zugeordnet werden — derselben `categories`-Tabelle wie das Inventar, die Position
+  selbst bleibt aber (wie Rentmans „Temporary Equipment Item") eine reine
+  Freitext-Zeile am Vorgang, nie ein neues Gerät. Beim Wählen eines Katalog-Geräts
+  wird die Kategorie automatisch übernommen; die Positionsliste im Anmiet-Dialog
+  sortiert sich jetzt nach Kategorie (`groupSubrentalItemsByCategory` in
+  `lib/subrentals.ts`, Muster `groupByLocation` aus der Packliste). Die KI-Erkennung
+  (`extract-subrental-document`) schlägt jetzt zusätzlich eine Kategorie je Position
+  vor — abgeglichen gegen Tills vorhandene Kategorien; kein Treffer legt automatisch
+  eine neue Kategorie an (wiederverwendeter Hook `useCreateCategory`), fehlt dafür
+  das Recht (`inventar`), bleibt die Position kategorielos mit Hinweis statt Fehler.
+  Beweis: Prüfkette grün (134 Tests, 3 neu), Migration vom `migrations-pruefer`-
+  Subagent geprüft, DB-Testaufbau mit echten Kategorien/Lieferant bestätigt die
+  Zuordnung (per Transaktions-Rollback spurlos entfernt). **Kein Browser-Beweis in
+  dieser Session** (kein Preview-Werkzeug verfügbar) — die eigentliche KI-Extraktion
+  bleibt weiterhin an Tills Deploy-Freigabe der Function gebunden.
 
 - **Neuausrichtung E7-Rest — Auswertungsseite + E5-Deaktivierung** (2026-07-25,
   `PLAN-NEUAUSRICHTUNG.md`, keine Migration): Zwei neue Karten direkt auf der

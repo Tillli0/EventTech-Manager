@@ -47,6 +47,11 @@ const RESPONSE_SCHEMA = {
           description: { type: "string" },
           quantity: { type: "number" },
           unit_cost: { type: "number", description: "Einkaufspreis je Stück NETTO für den gesamten Zeitraum, nicht pro Tag" },
+          category_name_guess: {
+            type: "string",
+            nullable: true,
+            description: "Name einer der mitgelieferten vorhandenen Kategorien, falls die Position eindeutig zuordenbar ist",
+          },
         },
         required: ["description", "quantity", "unit_cost"],
       },
@@ -55,15 +60,25 @@ const RESPONSE_SCHEMA = {
   required: ["items"],
 };
 
-const PROMPT = `Das ist ein Angebot oder eine Rechnung eines Eventtechnik-Verleihers an uns \
+function buildPrompt(categoryNames: string[]): string {
+  const categoryHint =
+    categoryNames.length > 0
+      ? `\nVorhandene Kategorien (bitte NUR aus dieser Liste wählen, keine neuen erfinden): \
+${categoryNames.join(", ")}. Ordne jede Position, wenn im Dokument erkennbar (z. B. durch \
+Abschnittsüberschriften wie "Beschallung" oder "Licht"), einer dieser Kategorien zu \
+(category_name_guess). Ist keine Zuordnung sicher möglich, lass das Feld weg.`
+      : "";
+
+  return `Das ist ein Angebot oder eine Rechnung eines Eventtechnik-Verleihers an uns \
 (wir mieten Technik für eine Veranstaltung an). Lies das Dokument aus und liefere:
 - supplier_name_guess: den Firmennamen des Verleihers (Absender), falls erkennbar.
 - start_date_guess / end_date_guess: den Miet-/Leistungszeitraum als YYYY-MM-DD, falls im Dokument genannt.
 - items: jede Mietposition mit Bezeichnung, Menge und Einkaufspreis je Stück NETTO für den \
 GESAMTEN Zeitraum (nicht pro Tag hochrechnen — steht der Preis pro Tag da, multipliziere \
-selbst mit der Miettage-Anzahl, damit unit_cost den Gesamtpreis je Stück ergibt).
+selbst mit der Miettage-Anzahl, damit unit_cost den Gesamtpreis je Stück ergibt).${categoryHint}
 Keine MwSt. einrechnen, immer Netto-Beträge. Wenn ein Wert nicht sicher erkennbar ist, lasse \
 das Feld weg statt zu raten.`;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -101,6 +116,12 @@ Deno.serve(async (req) => {
     }
     const model = Deno.env.get("GEMINI_MODEL") || "gemini-flash-latest";
 
+    // Vorhandene Kategorien mitgeben, damit die KI nur aus Tills eigenen, frei
+    // benannten Kategorien wählt statt Namen zu erfinden.
+    const { data: categoryRows } = await caller.from("categories").select("name").order("name");
+    const categoryNames = (categoryRows ?? []).map((c: { name: string }) => c.name);
+    const prompt = buildPrompt(categoryNames);
+
     const geminiRes = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
@@ -111,7 +132,7 @@ Deno.serve(async (req) => {
             {
               parts: [
                 { inline_data: { mime_type: mimeType, data: fileBase64 } },
-                { text: PROMPT },
+                { text: prompt },
               ],
             },
           ],

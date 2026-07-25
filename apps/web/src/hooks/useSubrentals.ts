@@ -5,7 +5,7 @@ import type { Subrental, SubrentalItem, SubrentalLogistics, SubrentalStatus } fr
 
 const SUBRENTALS_KEY = ["subrentals"] as const;
 const SELECT =
-  "*, supplier:suppliers(*), job:jobs(id, title, start_date, end_date), items:subrental_items(*), order_emails:subrental_order_emails(*)";
+  "*, supplier:suppliers(*), job:jobs(id, title, start_date, end_date), items:subrental_items(*, category:categories(*)), order_emails:subrental_order_emails(*)";
 const ORDER_PREFIX = "AM-";
 const ORDER_PAD = 4;
 
@@ -44,6 +44,7 @@ export function useSubrentalsForJob(jobId: string | undefined) {
 
 export interface SubrentalItemInput {
   device_id: string | null;
+  category_id: string | null;
   description: string;
   quantity: number;
   unit_cost: number;
@@ -73,6 +74,7 @@ export function useCreateSubrental() {
           items.map((item, index) => ({
             subrental_id: subrental.id,
             device_id: item.device_id,
+            category_id: item.category_id,
             description: item.description,
             quantity: item.quantity,
             unit_cost: item.unit_cost,
@@ -117,6 +119,7 @@ export function useUpdateSubrental() {
           items.map((item, index) => ({
             subrental_id: id,
             device_id: item.device_id,
+            category_id: item.category_id,
             description: item.description,
             quantity: item.quantity,
             unit_cost: item.unit_cost,

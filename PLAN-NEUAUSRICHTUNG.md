@@ -17,8 +17,12 @@
 > späteren Schalter. **E6 (Kosten am Job) live & bewiesen. E7 (Job-Kalkulation +
 > ReportsPage-Auswertung „Deckungsbeitrag"/„Top-Jobs") komplett live & bewiesen. E8
 > (Dashboard & Navigation) live & bewiesen — Block B ist damit im Kern komplett.**
-> Als Nächstes: **E2b** (Prompt-Qualität der KI-Extraktion verbessern). Nach jeder
-> Etappe: Haken + Datum, Stand-Vermerk oben.
+> **E2b-Erweiterung (Kategorie an Anmiet-Positionen + KI-Kategorie-Erkennung) gebaut
+> 2026-07-25** (Migration 0046) — Prüfkette + DB-Beweis grün, **kein Browser-Beweis
+> diese Session** (kein Preview-Werkzeug verfügbar). Als Nächstes: **E10**
+> (Eigentümer-Feld am Gerät für Fremdeigentum wie Schul-Inventar/privat geliehene
+> Technik), am 2026-07-25 mit Till besprochen und in Etappen zerlegt (s. u.). Nach
+> jeder Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -436,6 +440,42 @@ gebaut + lokal bewiesen, Function bewusst NICHT deployt — „ruhig by default"
   Kein echter Bug, sondern ein Artefakt der Testumgebung — bei einem sichtbaren Tab
   läuft die Animation normal (bestehende, unveränderte CountUp-Komponente).
 
+**E2b-Erweiterung 🔧 — Kategorie an Anmiet-Positionen + KI-Kategorie-Erkennung**
+(gebaut 2026-07-25, Migration 0046 `subrental_items.category_id`)
+- Tills Bauchgefühl: ein Verleiher-Technikangebot soll sich in der Software genauso
+  nach Kategorien sortieren wie die eigene Packliste (Boxen/Licht/Kabel/…). Nach
+  Rückfrage geklärt: die **Position** bleibt eine reine Freitext-Zeile am Vorgang
+  (kein neues Gerät im Inventar, exakt Rentmans „Temporary Equipment Item"-Muster),
+  aber die **Kategorie** verweist auf dieselbe `categories`-Tabelle wie das Inventar —
+  gibt's sie noch nicht, wird sie neu angelegt statt die Position kategorielos zu
+  lassen.
+- `subrental_items.category_id` (nullable FK, `on delete set null`) + Index. Edge
+  Function `extract-subrental-document` liefert jetzt zusätzlich
+  `items[].category_name_guess`, nachdem sie Tills vorhandene Kategorienamen aus der
+  DB geladen und in den Prompt eingebettet hat (KI wählt nur daraus, erfindet keine
+  neuen Namen selbst).
+- `CreateSubrentalDialog.tsx`: Kategorie-Auswahl je Position, Vorbefüllung aus dem
+  Katalog-Gerät (`device.category_id`), Positionsliste jetzt nach Kategorie gruppiert
+  dargestellt (`groupSubrentalItemsByCategory` in `lib/subrentals.ts`, Muster
+  `groupByLocation` aus `PacklistSection.tsx`). KI-Vorschlag wird gegen vorhandene
+  Kategorien abgeglichen (Muster Lieferanten-Fuzzy-Match); kein Treffer → automatisch
+  neu angelegt (`useCreateCategory`, bereits vorhandener Hook aus der
+  Kategorien-Verwaltung) — sequenziell verarbeitet, damit mehrere Positionen mit
+  demselben neuen Namen sich nicht gegenseitig als Dublette anlegen. Schlägt das
+  Anlegen mangels Bereich `inventar` fehl (reine `anmietung`-Rechte reichen dafür
+  nicht), bleibt die Position kategorielos mit Hinweistext statt Fehlerabbruch.
+- Automatische Ablage des hochgeladenen Verleiher-PDFs im Dokumente-Tab war **bereits
+  vorhanden** (seit E2b/D-Block, `entity_type: "subrental"`) — keine neue Arbeit.
+- Beweis: Prüfkette grün (tsc/lint/**134 Tests**/build, 3 neue Tests für
+  `groupSubrentalItemsByCategory`). DB: Migration per `migrations-pruefer`-Subagent
+  geprüft (BEREIT), Spalte/FK/Index verifiziert, Transaktions-Testaufbau mit echten
+  Kategorien/Lieferant nach dem exakten `useSubrentals.ts`-Join-Muster bestätigt
+  Kategorie-Zuordnung + `null` bei kategorielosen Positionen — per `rollback`
+  spurlos entfernt. **Kein Browser-Klick-Beweis in dieser Session** (kein
+  Preview-/Browser-Werkzeug verfügbar) — die eigentliche KI-Extraktion mit Kategorie
+  ist zudem weiterhin an Tills Deploy-Freigabe der Function gebunden (unverändert
+  zu E2b).
+
 **E9 (Folge-Backlog)** — Engpass-Sammelansicht über alle Jobs + InventoryPage-Badge
 „+X angemietet". In IDEAS/ROADMAP-Phase 4.
 
@@ -624,3 +664,18 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   zählen als „hat Grundlage"). **Damit ist Block B (E1–E8) im Kern komplett** — offen
   bleiben nur E2b-Prompt-Qualität und die bewusste E5-Deaktivierung (bis Freigabe).
   Nächster Schritt: **E2b** (Prompt-Qualität der KI-Extraktion verbessern).
+- **2026-07-25 (Neuvorhaben angestoßen):** Till bringt zwei neue Ideen ein: Anmiet-
+  Positionen sollen sich wie im Inventar nach Kategorien sortieren lassen (Vorbild
+  Rentmans „Temporary Equipment Item"), und Geräte im eigenen Bestand sollen einen
+  Eigentümer bekommen können (Schule, Privatperson wie „Anton"), falls sie nicht der
+  Firma gehören. Nach Skill `grosses-feature`: recherchiert (Rentman/Current
+  RMS/Panatrack — kein Tool importiert Lieferanten-Angebote automatisch in die
+  eigene Kategorie-Struktur, aber alle führen jede Position mit Kategorie; Rentmans
+  „Belongs to"-Feld als Vorbild für Fremdeigentum), mit Till drei Weichenstellungen
+  geklärt (KI soll Kategorie raten statt nur manuell; Eigentümer standardmäßig nur
+  Kennzeichnung, optional in den Inventarwert einrechenbar; feste Auswahl + Name),
+  danach zwei Rückfragen zur Kategorie-Kopplung geklärt (Position bleibt temporär/
+  kein neues Gerät, Kategorie aber schon in der echten `categories`-Tabelle, bei
+  Bedarf neu angelegt). Plan-Dokument mit zwei Etappen (E2b-Erweiterung, E10)
+  erarbeitet und freigegeben. **E2b-Erweiterung direkt umgesetzt** (s. o.).
+  Nächster Schritt: **E10** (Eigentümer-Feld am Gerät).

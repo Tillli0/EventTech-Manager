@@ -378,12 +378,15 @@ export interface SubrentalItem {
   id: string;
   subrental_id: string;
   device_id: string | null;
+  category_id: string | null;
   description: string;
   quantity: number;
   /** Einkaufspreis je Stück für den GESAMTEN Zeitraum (nicht pro Tag). */
   unit_cost: number;
   sort_order: number;
   created_at: string;
+  // Join (optional, je nach Query)
+  category?: Category;
 }
 
 // ============================================================

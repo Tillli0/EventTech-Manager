@@ -245,6 +245,7 @@ function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]
               onRequestSubrental={(shortfall) =>
                 setSubrentalPreset({
                   device_id: item.device_id,
+                  category_id: item.device?.category_id ?? null,
                   description: item.device?.name ?? "Gerät",
                   quantity: shortfall,
                   unit_cost: 0,

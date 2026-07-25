@@ -5,6 +5,7 @@ export interface ExtractedSubrentalItem {
   description: string;
   quantity: number;
   unit_cost: number;
+  category_name_guess?: string | null;
 }
 
 export interface ExtractedSubrentalDocument {
