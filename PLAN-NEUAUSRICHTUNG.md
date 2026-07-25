@@ -12,9 +12,11 @@
 > bewiesen. E5 (Bestell-Mail an Verleiher) gebaut & lokal bewiesen, Edge Function
 > `send-subrental-order` aber bewusst NOCH NICHT deployt** — braucht Tills Freigabe
 > zum Deploy (nach-außen-wirkend) + einen RESEND_API_KEY (bereits für Mahnwesen/Leads
-> vorhanden, kein neuer Key nötig). **E6 (Kosten am Job) live & bewiesen.** Als
-> Nächstes: **E7** (Kalkulation — Deckungsbeitrag je Job). Nach jeder Etappe: Haken +
-> Datum, Stand-Vermerk oben.
+> vorhanden, kein neuer Key nötig). **E6 (Kosten am Job) live & bewiesen. E7
+> (Job-Kalkulation) live & bewiesen — ReportsPage-Teil (Deckungsbeitrag-Auswertung,
+> Top-Jobs) noch offen, eigener Nachfolge-Schritt.** Als Nächstes: **E8** (Dashboard &
+> Navigation neu gewichten) oder der offene ReportsPage-Teil von E7. Nach jeder
+> Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -376,16 +378,30 @@ gebaut + lokal bewiesen, Function bewusst NICHT deployt — „ruhig by default"
   liefert `false`, Karte bliebe unsichtbar. Testdaten restlos entfernt (`job_costs`
   wieder leer).
 
-**E7 — Kalkulation** (keine Migration)
-- `lib/jobCosting.ts` + Test: `computeJobCosting({ offers, invoices, subrentals, costs })`
+**E7 ◐ — Kalkulation** (keine Migration; Job-Kalkulation erledigt 2026-07-25,
+ReportsPage-Teil noch offen)
+- ✔ `lib/jobCosting.ts` + Test: `computeJobCosting({ offers, invoices, subrentals, costs })`
   → revenueQuoted/revenueInvoiced|null, costSubrental/Personal/Other/Total,
-  marginQuoted/marginInvoiced|null, marginPct. Erlös netto, Rechnungen `isIssued` &&
-  nicht storniert.
-- `components/jobs/JobCostingCard.tsx` (Seitenspalte JobDetailPage); `lib/reports.ts` +
-  Test erweitern (DB je Monat, Jahres-Kosten); ReportsPage-Karten „Deckungsbeitrag",
-  „Top-Jobs nach DB" — **nur** bei `hasArea('anmietung')`.
-- Beweis: Testjob Angebot 1.000 netto − Anmietung 300 − Personal 200 → DB 500, 50 %;
-  Rechnung stellen → Ist-Spalte füllt sich.
+  marginQuoted/marginInvoiced|null, marginPctQuoted/marginPctInvoiced|null. Erlös
+  netto (`offerTotals`, wiederverwendet für Angebote UND Rechnungen — gleiche
+  Positions-Form), Rechnungen über `isIssued` (jetzt aus `lib/reports.ts` exportiert)
+  && Status `gestellt` (schließt storniert automatisch aus).
+- ✔ `components/jobs/JobCostingCard.tsx` (Seitenspalte JobDetailPage, immer sichtbar
+  wie die Status-Karte — nicht ans „Geld"-Tab gebunden). Zwei Spalten Kalkuliert/
+  Abgerechnet, Marge-Ampel über bereits vorhandenes `marginLevel`/`levelTone` aus
+  `statusTone.ts` (grün ≥30 %, amber 10–30 %, rot <10 %, neutral wenn nicht
+  berechenbar). Guard `hasArea('anmietung')`.
+- ○ **Noch offen:** `lib/reports.ts` + Test erweitern (DB je Monat, Jahres-Kosten);
+  ReportsPage-Karten „Deckungsbeitrag", „Top-Jobs nach DB" — nur bei
+  `hasArea('anmietung')`. Größerer Zusatzschritt (Aggregation über alle Jobs), bewusst
+  als eigener Nachfolge-Schritt zurückgestellt statt in denselben Commit gequetscht.
+- Beweis: exaktes Plan-Szenario (Angebot 1.000 netto − Anmietung 300 − Personal 200 →
+  DB 500, 50 %) als Vitest-Test nachgebildet (3 Tests: Kern-Rechnung, „Rechnung stellen
+  füllt Ist-Spalte", Storno/nicht-angenommen werden ignoriert) — alle grün. Browser-
+  Beweis mit echten Live-Daten am Job „KEssi" (Anmietung 2.000 €, kein angenommenes
+  Angebot, keine gestellte Rechnung): Karte zeigt Erlös 0 €, Anmietung −2.000 €, DB
+  −2.000 €, Badge „—" (kein Prozentwert bei Erlös 0, korrekt statt Division durch 0),
+  „Abgerechnet: Noch keine Rechnung gestellt." — Konsole fehlerfrei.
 
 **E8 — Dashboard & Navigation neu gewichten** (keine Migration)
 - `nav.ts` (Reihenfolge + BottomNav Jobs·Kalender·Anmietung·Aufgaben);
@@ -543,4 +559,18 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   danach wieder auf), alles per psql gegengeprüft, Testdaten restlos entfernt.
   Rechte-Probe als Logik-Check (kein Live-Login als anderer Nutzer): realer Nutzer
   ohne Bereich `anmietung`/ohne Admin-Rolle → `has_area('anmietung')` liefert `false`.
-  Nächster Schritt: **E7** (Kalkulation — Deckungsbeitrag je Job, keine Migration).
+- **2026-07-25 (letzter Schritt, Teil 2):** **E7 Job-Kalkulation abgeschlossen**
+  (keine Migration) — `lib/jobCosting.ts`: `computeJobCosting()` liefert Kalkuliert
+  (angenommene Angebote) vs. Abgerechnet (gestellte, nicht stornierte Rechnungen),
+  Kosten aus Anmiet-Vorgängen + `job_costs` (E6), Deckungsbeitrag + Marge-%. Neue
+  Karte `JobCostingCard.tsx` in der Seitenspalte der Job-Detailseite (immer sichtbar,
+  nicht ans „Geld"-Tab gebunden), Marge-Ampel über das bereits vorhandene, bis dahin
+  ungenutzte `marginLevel`/`levelTone` aus `statusTone.ts`. `isIssued` aus
+  `lib/reports.ts` exportiert statt dupliziert. Beweis: exaktes Plan-Szenario
+  (1.000 − 300 − 200 → 500, 50 %) als 3 Vitest-Tests nachgebildet (inkl. Storno-Fall),
+  Browser-Beweis mit echten Live-Daten am Job „KEssi" (Erlös 0 €, Anmietung −2.000 €,
+  Badge „—" statt Division durch 0, „Noch keine Rechnung gestellt."), Konsole
+  fehlerfrei. **Der ReportsPage-Teil (Deckungsbeitrag-Auswertung, „Top-Jobs nach DB")
+  ist noch offen** — bewusst als eigener Nachfolge-Schritt zurückgestellt (größere
+  Aggregation über alle Jobs, nicht in denselben Commit gequetscht). Nächster Schritt:
+  **E8** (Dashboard & Navigation) oder der offene ReportsPage-Teil von E7.

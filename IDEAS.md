@@ -21,9 +21,11 @@
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
 > 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1–E6
->    erledigt (E5-Function noch nicht deployt, braucht Tills Freigabe); E2b technisch
->    lauffähig (Gemini-Key + Modell-Fix), aber inhaltliche Qualität unzureichend —
->    bewusst zurückgestellt, kein Deploy. Als Nächstes E7 (Kalkulation).**
+>    erledigt (E5-Function noch nicht deployt, braucht Tills Freigabe); E7
+>    Job-Kalkulation erledigt, ReportsPage-Teil (Deckungsbeitrag/Top-Jobs) noch offen;
+>    E2b technisch lauffähig (Gemini-Key + Modell-Fix), aber inhaltliche Qualität
+>    unzureichend — bewusst zurückgestellt, kein Deploy. Als Nächstes E8 (Dashboard)
+>    oder der offene ReportsPage-Teil von E7.**
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -60,6 +62,9 @@
 
 ### Aus der Neuausrichtung entstanden (nach den Kern-Etappen)
 
+- [ ] **E7-Rest: ReportsPage „Deckungsbeitrag"/„Top-Jobs nach DB"** — Aggregation von
+      `computeJobCosting()` über alle Jobs, `lib/reports.ts` erweitern (DB je Monat,
+      Jahres-Kosten), nur bei `hasArea('anmietung')`. · M · ★★ · Freigabe
 - [ ] **Lieferanten-Preishistorie** — „was hat Verleiher X zuletzt für eine LED-Bar genommen?"
       (EK-Preise je Gerätetyp über Anmiet-Vorgänge). · M · ★★ · Freigabe
 - [ ] **Engpass-Sammelansicht** (E9) — Anmiet-Bedarf über alle anstehenden Jobs, „Anmieten"-
@@ -126,6 +131,15 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E7 — Job-Kalkulation** (2026-07-25, `PLAN-NEUAUSRICHTUNG.md`,
+  keine Migration): neue Karte in der Job-Seitenspalte zeigt Deckungsbeitrag —
+  zwei getrennte Spalten Kalkuliert (angenommene Angebote) vs. Abgerechnet (gestellte
+  Rechnungen), Kosten aus Anmiet-Vorgängen + Kostenpositionen (E6), Marge-Ampel
+  (grün/amber/rot). `lib/jobCosting.ts` mit 3 Vitest-Tests, exaktes Plan-Szenario
+  (Angebot 1.000 − Anmietung 300 − Personal 200 → DB 500, 50 %) nachgebildet.
+  **Offen:** ReportsPage-Karten „Deckungsbeitrag"/„Top-Jobs nach DB" (Aggregation über
+  alle Jobs) — bewusst als eigener Nachfolge-Schritt zurückgestellt.
 
 - **Neuausrichtung E6 — Kosten am Job** (2026-07-25, `PLAN-NEUAUSRICHTUNG.md`,
   Migration 0045 `job_costs`): neue Karte im Job-Tab „Geld" — Kostenpositionen

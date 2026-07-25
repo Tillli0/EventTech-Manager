@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/Input";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
 import { JobSubrentalsCard } from "@/components/jobs/JobSubrentalsCard";
 import { JobCostsCard } from "@/components/jobs/JobCostsCard";
+import { JobCostingCard } from "@/components/jobs/JobCostingCard";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
@@ -200,6 +201,8 @@ export function JobDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <JobCostingCard jobId={job.id} />
+
           <Card>
             <CardHeader>
               <h2 className="text-sm font-semibold text-ink">Status</h2>

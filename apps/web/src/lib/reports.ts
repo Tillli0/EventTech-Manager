@@ -74,7 +74,7 @@ function bucketIndex(buckets: MonthBucket[], iso: string | null | undefined): nu
 // Finanzen
 // ------------------------------------------------------------
 
-function isIssued(inv: Pick<Invoice, "status" | "invoice_date">): boolean {
+export function isIssued(inv: Pick<Invoice, "status" | "invoice_date">): boolean {
   return inv.status === "gestellt" && !!inv.invoice_date;
 }
 
