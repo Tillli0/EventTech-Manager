@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { SUBRENTAL_COUNTING_STATUSES } from "@/lib/availability";
 import type { Subrental, SubrentalItem, SubrentalLogistics, SubrentalStatus } from "@/types/database";
 
 const SUBRENTALS_KEY = ["subrentals"] as const;
@@ -137,6 +138,43 @@ export function useDeleteSubrental() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: SUBRENTALS_KEY });
       queryClient.invalidateQueries({ queryKey: [...SUBRENTALS_KEY, "by-job", variables.jobId] });
+    },
+  });
+}
+
+/**
+ * Anmiet-Zugänge je Gerät im Zeitraum (E3) — global, OHNE `excludeJobId`: anders als
+ * bei Eigenbestand (der den eigenen Job ausschließt) soll eine für genau diesen Job
+ * angelegte Anmietung auch für diesen Job als Zugang zählen. Nur Positionen MIT
+ * `device_id` wirken (Freitext-Positionen decken keinen Katalog-Engpass), nur
+ * `SUBRENTAL_COUNTING_STATUSES` (bestaetigt/uebernommen/zurueckgegeben) zählen.
+ */
+export function useSubrentalAdditionsMap(startDate: string | undefined, endDate: string | undefined) {
+  return useQuery({
+    queryKey: ["subrental-additions-map", startDate, endDate],
+    enabled: !!startDate && !!endDate,
+    queryFn: async (): Promise<Map<string, number>> => {
+      // Reine Datums-Vergleiche (subrentals.start_date/end_date sind `date`, kein
+      // Zeitanteil) — Tagesanteil abschneiden, sonst zählt ein gemeinsamer Randtag
+      // je nach Uhrzeit-Koerzierung inkonsistent.
+      const start = startDate!.slice(0, 10);
+      const end = endDate!.slice(0, 10);
+
+      const { data, error } = await supabase
+        .from("subrental_items")
+        .select("device_id, quantity, subrentals!inner(status, start_date, end_date)")
+        .not("device_id", "is", null)
+        .in("subrentals.status", [...SUBRENTAL_COUNTING_STATUSES])
+        .lte("subrentals.start_date", end)
+        .gte("subrentals.end_date", start);
+      if (error) throw error;
+
+      const map = new Map<string, number>();
+      for (const row of data as unknown as { device_id: string | null; quantity: number }[]) {
+        if (!row.device_id) continue;
+        map.set(row.device_id, (map.get(row.device_id) ?? 0) + row.quantity);
+      }
+      return map;
     },
   });
 }

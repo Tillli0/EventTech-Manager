@@ -5,6 +5,7 @@ import {
   sumBookedQuantity,
   availableInRange,
   checkAvailability,
+  countsAsSubrentalAddition,
   type DeviceBooking,
 } from "@/lib/availability";
 
@@ -93,5 +94,54 @@ describe("checkAvailability", () => {
     expect(r.free).toBe(9);
     expect(r.shortfall).toBe(3);
     expect(r.conflicts).toEqual([]);
+  });
+});
+
+describe("countsAsSubrentalAddition (E3)", () => {
+  it("bestaetigt/uebernommen/zurueckgegeben zählen als Zugang", () => {
+    expect(countsAsSubrentalAddition("bestaetigt")).toBe(true);
+    expect(countsAsSubrentalAddition("uebernommen")).toBe(true);
+    expect(countsAsSubrentalAddition("zurueckgegeben")).toBe(true);
+  });
+
+  it("entwurf/angefragt/storniert zählen NICHT (Konservativität)", () => {
+    expect(countsAsSubrentalAddition("entwurf")).toBe(false);
+    expect(countsAsSubrentalAddition("angefragt")).toBe(false);
+    expect(countsAsSubrentalAddition("storniert")).toBe(false);
+  });
+});
+
+describe("Anmiet-Zugänge in availableInRange/checkAvailability (E3)", () => {
+  // Genau das Beweis-Szenario aus PLAN-NEUAUSRICHTUNG.md E3:
+  // Bestand 2, Bedarf 5 → 3 fehlen; Anmietung 3 (bestaetigt) → Warnung weg;
+  // zurück auf angefragt (zählt nicht) → Warnung wieder da.
+  const device = { stock_quantity: 2, defective_quantity: 0 };
+
+  it("ohne Anmiet-Zugang: 2 frei, 3 fehlen bei Bedarf 5", () => {
+    const r = checkAvailability(device, 5, undefined);
+    expect(r.free).toBe(2);
+    expect(r.over).toBe(true);
+    expect(r.shortfall).toBe(3);
+    expect(r.subrentalAdditions).toBe(0);
+  });
+
+  it("mit Anmiet-Zugang 3 (bestätigt): 5 frei, kein Fehlbetrag mehr", () => {
+    const r = checkAvailability(device, 5, undefined, 3);
+    expect(r.free).toBe(5);
+    expect(r.over).toBe(false);
+    expect(r.shortfall).toBe(0);
+    expect(r.subrentalAdditions).toBe(3);
+  });
+
+  it("Anmiet-Zugang gilt symmetrisch für availableInRange", () => {
+    expect(availableInRange(device, undefined, 3)).toBe(5);
+    expect(availableInRange(device, undefined, 0)).toBe(2);
+  });
+
+  it("Anmiet-Zugang stellt echte Kapazität gegen Fremdbuchungen (nicht nur additiv auf gedeckeltes frei)", () => {
+    // Bestand 1, defekt 1 → eigener Anteil wäre 0 (gedeckelt); mit Zugang 4 und
+    // Fremdbuchung 2 muss dennoch 2 frei bleiben (0 + 4 − 2), nicht 0 + 4.
+    const tight = { stock_quantity: 1, defective_quantity: 1 };
+    expect(availableInRange(tight, [{ quantity: 2 }], 4)).toBe(2);
   });
 });

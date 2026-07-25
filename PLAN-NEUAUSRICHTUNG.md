@@ -1,12 +1,12 @@
 # PLAN — Neuausrichtung: vom Verleih zum Event-Dienstleister
 
 > **Großes Vorhaben** nach Skill `grosses-feature`. Dieses Dokument überlebt Sessions
-> und trägt die Ausführung. **Stand: 2026-07-24** — E0 + Block A (Dokumente) komplett;
-> **E1 (Bereich `anmietung` + Verleih-Partner-Stamm) und E2 (Anmiet-Vorgänge am Job)
-> live & bewiesen**; **E2b (KI-Dokumenten-Extraktion) gebaut & lokal bewiesen, aber
-> die Edge Function ist noch NICHT deployt** — braucht Tills Gemini-API-Key + explizite
-> Freigabe zum Scharfschalten. Danach: **E3** (Verfügbarkeits-Zugänge). Nach jeder
-> Etappe: Haken + Datum, Stand-Vermerk oben.
+> und trägt die Ausführung. **Stand: 2026-07-25** — E0 + Block A (Dokumente) komplett;
+> **E1 (Bereich `anmietung`), E2 (Anmiet-Vorgänge am Job) und E3 (Verfügbarkeits-
+> Zugänge) live & bewiesen**; **E2b (KI-Dokumenten-Extraktion) gebaut & lokal bewiesen,
+> aber die Edge Function ist noch NICHT deployt** — braucht Tills Gemini-API-Key +
+> explizite Freigabe zum Scharfschalten. Als Nächstes: **E4** (Bestell-PDF). Nach
+> jeder Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -298,15 +298,29 @@ Erfahrungsberichten, direktes PDF-Verständnis inkl. Scans).
   (aistudio.google.com) und den Deploy der Function; beides **nur nach ausdrücklicher
   Freigabe**, da nach-außen-wirkend (externe API, Kosten wenn auch minimal).
 
-**E3 — Verfügbarkeits-Zugänge** (keine Migration)
-- `lib/availability.ts` + optionale Parameter + `SUBRENTAL_COUNTING_STATUSES`
-  (`bestaetigt`/`uebernommen`/`zurueckgegeben`); Alt-Tests bleiben grün, neue Fälle dazu.
-- `useSubrentalAdditionsMap(start, end)` (Muster `useDevicesAvailabilityMap`), global im
-  Zeitraum. `PacklistSection.tsx`: Warntext „Nur N von M frei — davon +X angemietet",
-  Knopf „Fehlmenge anmieten" (öffnet Anmiet-Dialog vorbefüllt; nur mit
-  `can_edit_area('anmietung')`).
-- Beweis (Vitest + Browser): Bestand 2, Bedarf 5 → „3 fehlen"; Anmietung 3 auf
-  `bestaetigt` → Warnung weg; zurück auf `angefragt` → Warnung wieder da.
+**E3 ✅ — Verfügbarkeits-Zugänge** (erledigt 2026-07-25; keine Migration)
+- `lib/availability.ts`: `SUBRENTAL_COUNTING_STATUSES` (`bestaetigt`/`uebernommen`/
+  `zurueckgegeben`) + `countsAsSubrentalAddition()`; `availableInRange`/
+  `checkAvailability` um optionalen `subrentalAdditions`-Parameter erweitert — fließt
+  VOR dem Nullpunkt-Deckel ein (echte Zusatzkapazität gegen Fremdbuchungen, nicht nur
+  additiv auf ein schon gedeckeltes „frei"). `AvailabilityCheck.subrentalAdditions`
+  neu, für die Anzeige. 8 neue Tests, alle 9 Alt-Tests unverändert grün.
+- `useSubrentalAdditionsMap(start, end)` in `hooks/useSubrentals.ts` (Muster
+  `useDevicesAvailabilityMap`) — bewusst **ohne** `excludeJobId` (Symmetrie-Bruch
+  gewollt: eine für genau diesen Job angelegte Anmietung soll für ihn selbst zählen).
+  Nur Positionen **mit** `device_id`, nur zählende Status, Zeitraum-Überlappung über
+  die reinen `date`-Spalten von `subrentals` (Tagesanteil abgeschnitten, sonst
+  Zeitanteil-Koerzierung bei Randtagen inkonsistent).
+- `PacklistSection.tsx` (`PlanungStage`/`PlanungRow`): Warntext „Nur N von M frei (X
+  fehlen) — davon +X angemietet"; gedeckte Posten zeigen ruhig „davon +X angemietet";
+  Knopf „Fehlmenge anmieten" (nur mit `can_edit_area('anmietung')`) öffnet
+  `CreateSubrentalDialog` vorbefüllt (neue `presetItem`-Prop, Muster `presetItems` bei
+  `CreateOfferDialog`) mit Gerät + exakter Fehlmenge.
+- Beweis: Prüfkette grün (tsc/lint/120 Tests/Build). Browser mit Testdaten (TEST-Job,
+  Bestand 12, Bedarf 15): „Nur 12 von 15 im Zeitraum frei (3 fehlen)" + Knopf; Dialog
+  vorbefüllt mit „DMX Kabel" × 3; Anmietung auf `bestaetigt` → Warnung weg, „davon +3
+  angemietet" erscheint; zurück auf `angefragt` → Warnung wieder da (exakt das
+  geforderte Szenario). 375px + Desktop, Konsole fehlerfrei, Testdaten restlos entfernt.
 
 **E4 — Bestell-PDF** (keine Migration)
 - `lib/subrentalOrderPdf.tsx` (Muster `offerPdf.tsx`) + `components/documents/
@@ -448,3 +462,10 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   Archivierung in `CreateSubrentalDialog.tsx`. **Die Function ist bewusst NICHT
   deployt** — der reale Extraktions-Test mit Tills Gemini-Key und das Scharfschalten
   stehen noch aus (nach-außen-Wirkendes, braucht ausdrückliche Freigabe).
+- **2026-07-25:** **E3 abgeschlossen** — Verfügbarkeits-Zugänge: bestätigte/übernommene/
+  zurückgegebene Anmietungen erhöhen jetzt die freie Kapazität im Job-Zeitraum. Neuer
+  Knopf „Fehlmenge anmieten" an überbuchten Packlisten-Posten öffnet den Anmiet-Dialog
+  vorbefüllt mit Gerät + exakter Fehlmenge. Exakt das im Plan geforderte Szenario im
+  Browser durchgespielt (Bestand 12, Bedarf 15 → 3 fehlen → Anmietung bestätigt →
+  Warnung weg → zurück auf angefragt → Warnung wieder da). Nächster Schritt: **E4**
+  (Bestell-PDF).

@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ScanLine, PackageCheck, PackageX, AlertTriangle, Undo2, MapPin, Check, Camera, ListPlus, PackageOpen, FileText,
-  Trash2,
+  Trash2, Truck,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +19,8 @@ import {
   useRemovePacklistItem,
   useDevicesAvailabilityMap,
 } from "@/hooks/useJobs";
+import { useSubrentalAdditionsMap, type SubrentalItemInput } from "@/hooks/useSubrentals";
+import { CreateSubrentalDialog } from "@/components/jobs/CreateSubrentalDialog";
 import { checkAvailability, type AvailabilityCheck } from "@/lib/availability";
 import { useLocations } from "@/hooks/useLocations";
 import { useAuth } from "@/auth/AuthProvider";
@@ -195,12 +197,22 @@ export function PacklistSection({ job, canEdit = true }: { job: Job; canEdit?: b
 function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]; canEdit: boolean }) {
   const updateQuantity = useUpdatePacklistItemQuantity();
   const removeItem = useRemovePacklistItem();
+  const { canEdit: canEditArea } = useAuth();
+  const maySubrent = canEditArea("anmietung");
   // Fremde Buchungen im Job-Zeitraum (eigener Job ausgenommen) für den Konflikt-Check.
   const { data: bookingsMap } = useDevicesAvailabilityMap(job.start_date, job.end_date, job.id);
+  // Anmiet-Zugänge im Zeitraum (E3) — bewusst OHNE excludeJobId, s. useSubrentalAdditionsMap.
+  const { data: subrentalMap } = useSubrentalAdditionsMap(job.start_date, job.end_date);
+  const [subrentalPreset, setSubrentalPreset] = useState<SubrentalItemInput | null>(null);
 
   function checkFor(item: PacklistItem): AvailabilityCheck | null {
     if (!item.device) return null;
-    return checkAvailability(item.device, item.quantity, bookingsMap?.get(item.device_id));
+    return checkAvailability(
+      item.device,
+      item.quantity,
+      bookingsMap?.get(item.device_id),
+      subrentalMap?.get(item.device_id) ?? 0,
+    );
   }
 
   const overbooked = items.filter((it) => checkFor(it)?.over);
@@ -226,13 +238,31 @@ function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]
               key={item.id}
               item={item}
               canEdit={canEdit}
+              maySubrent={maySubrent}
               availability={checkFor(item)}
               onQuantityChange={(quantity) => updateQuantity.mutate({ id: item.id, jobId: job.id, quantity })}
               onRemove={() => removeItem.mutate({ id: item.id, jobId: job.id })}
+              onRequestSubrental={(shortfall) =>
+                setSubrentalPreset({
+                  device_id: item.device_id,
+                  description: item.device?.name ?? "Gerät",
+                  quantity: shortfall,
+                  unit_cost: 0,
+                })
+              }
             />
           ))}
         </div>
       ))}
+
+      {subrentalPreset && (
+        <CreateSubrentalDialog
+          open={!!subrentalPreset}
+          onClose={() => setSubrentalPreset(null)}
+          jobId={job.id}
+          presetItem={subrentalPreset}
+        />
+      )}
     </div>
   );
 }
@@ -240,15 +270,20 @@ function PlanungStage({ job, items, canEdit }: { job: Job; items: PacklistItem[]
 function PlanungRow({
   item,
   canEdit,
+  maySubrent,
   availability,
   onQuantityChange,
   onRemove,
+  onRequestSubrental,
 }: {
   item: PacklistItem;
   canEdit: boolean;
+  /** Darf einen Anmiet-Vorgang für die Fehlmenge anlegen (Bereich 'anmietung'). */
+  maySubrent: boolean;
   availability: AvailabilityCheck | null;
   onQuantityChange: (quantity: number) => void;
   onRemove: () => void;
+  onRequestSubrental: (shortfall: number) => void;
 }) {
   const [quantity, setQuantity] = useState(String(item.quantity));
 
@@ -259,6 +294,7 @@ function PlanungRow({
   }
 
   const over = availability?.over ?? false;
+  const subrentalAdditions = availability?.subrentalAdditions ?? 0;
 
   return (
     <div
@@ -268,7 +304,15 @@ function PlanungRow({
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="min-w-0 flex-1 truncate font-medium text-ink">{item.device?.name}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium text-ink">{item.device?.name}</p>
+          {!over && subrentalAdditions > 0 && (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-status-ausgeliehen">
+              <Truck size={11} />
+              davon +{subrentalAdditions} angemietet
+            </p>
+          )}
+        </div>
         {canEdit ? (
           <div className="flex shrink-0 items-center gap-2">
             <Input
@@ -292,6 +336,7 @@ function PlanungRow({
           <p className="flex items-center gap-1.5 font-medium text-status-defekt">
             <AlertTriangle size={13} />
             Nur {availability.free} von {item.quantity} im Zeitraum frei ({availability.shortfall} fehlen)
+            {subrentalAdditions > 0 && ` — davon +${subrentalAdditions} angemietet`}
           </p>
           {availability.conflicts.length > 0 && (
             <p className="text-ink-muted">
@@ -306,6 +351,16 @@ function PlanungRow({
                 </span>
               ))}
             </p>
+          )}
+          {maySubrent && (
+            <button
+              type="button"
+              onClick={() => onRequestSubrental(availability.shortfall)}
+              className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-status-defekt/40 px-2 py-1 font-medium text-status-defekt transition-colors hover:bg-status-defekt/10"
+            >
+              <Truck size={12} />
+              Fehlmenge anmieten
+            </button>
           )}
         </div>
       )}

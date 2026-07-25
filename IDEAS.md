@@ -20,10 +20,9 @@
 > 2. ~~`PLAN-UI-NEUSCHNITT.md`~~ ✅ **komplett** (U1–U6) — helles Theme, neue Navigation,
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
-> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1 + E2
->    erledigt (2026-07-24); E2b (KI-Dokumenten-Extraktion) gebaut & lokal bewiesen,
->    aber noch nicht deployt (braucht Tills Gemini-Key + Freigabe). Als Nächstes
->    E3 (Verfügbarkeits-Zugänge).**
+> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1, E2,
+>    E3 erledigt; E2b (KI-Dokumenten-Extraktion) gebaut & lokal bewiesen, aber noch
+>    nicht deployt (braucht Tills Gemini-Key + Freigabe). Als Nächstes E4 (Bestell-PDF).**
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -126,6 +125,17 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E3 — Verfügbarkeits-Zugänge** (2026-07-25, `PLAN-NEUAUSRICHTUNG.md`,
+  keine Migration): bestätigte/übernommene/zurückgegebene Anmietungen erhöhen jetzt die
+  freie Kapazität eines Geräts im Job-Zeitraum (Konservativitäts-Symmetrie zum
+  Eigenbestand: Entwurf/Angefragt zählen noch nicht, Storniert nie).
+  `lib/availability.ts` um optionalen `subrentalAdditions`-Parameter erweitert, neuer
+  Hook `useSubrentalAdditionsMap`. An überbuchten Packlisten-Posten jetzt ein Knopf
+  „Fehlmenge anmieten", der den Anmiet-Dialog direkt mit Gerät + Fehlmenge vorbefüllt.
+  Voll bewiesen im Browser mit dem exakten Plan-Szenario (Bestand 12, Bedarf 15 →
+  3 fehlen → Anmietung bestätigt → Warnung weg, „davon +3 angemietet" → zurück auf
+  angefragt → Warnung wieder da), Prüfkette grün (120 Tests), Testdaten entfernt.
 
 - **Neuausrichtung E2b — KI-Dokumenten-Extraktion für Anmiet-Vorgänge** (2026-07-24,
   `PLAN-NEUAUSRICHTUNG.md`, Migration 0043 `documents`-Erweiterung): Tills

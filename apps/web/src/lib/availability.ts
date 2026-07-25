@@ -1,4 +1,4 @@
-import type { Device, JobStatus } from "@/types/database";
+import type { Device, JobStatus, SubrentalStatus } from "@/types/database";
 
 // ============================================================
 // Verfügbarkeits-Engine (Zeitraum-basiert)
@@ -27,6 +27,23 @@ export const STOCK_BINDING_STATUSES = [
 
 export function bindsStock(status: JobStatus): boolean {
   return (STOCK_BINDING_STATUSES as readonly JobStatus[]).includes(status);
+}
+
+/**
+ * Subrental-Status, die als Verfügbarkeits-**Zugang** zählen (E3). Konservativitäts-
+ * Symmetrie zu `STOCK_BINDING_STATUSES`: Eigenbestand bindet schon ab „anfrage"
+ * (konservativ), Anmiet-Zugänge zählen dagegen erst, sobald der Verleiher wirklich
+ * zugesagt hat — „entwurf"/„angefragt" sind noch nicht verlässlich, „storniert" zählt
+ * nie.
+ */
+export const SUBRENTAL_COUNTING_STATUSES = [
+  "bestaetigt",
+  "uebernommen",
+  "zurueckgegeben",
+] as const satisfies readonly SubrentalStatus[];
+
+export function countsAsSubrentalAddition(status: SubrentalStatus): boolean {
+  return (SUBRENTAL_COUNTING_STATUSES as readonly SubrentalStatus[]).includes(status);
 }
 
 /** Eine fremde Buchung eines Geräts (Packlist-Posten eines überlappenden Jobs). */
@@ -66,22 +83,25 @@ export function sumBookedQuantity(bookings: { quantity: number }[] | undefined):
 
 /**
  * Frei verfügbare Stückzahl eines Geräts im Zeitraum:
- * Lagerbestand − dauerhaft defekt − durch fremde überlappende Jobs gebunden.
- * Nie negativ (0 = ausgebucht/überbucht).
+ * Lagerbestand − dauerhaft defekt + Anmiet-Zugänge (E3) − durch fremde überlappende
+ * Jobs gebunden. Nie negativ (0 = ausgebucht/überbucht). `subrentalAdditions` fließt
+ * VOR dem Nullpunkt-Deckel ein, damit die Anmietung echte zusätzliche Kapazität
+ * gegen die Fremdbuchungen stellt (nicht nur additiv auf ein schon gedeckeltes „frei").
  */
 export function availableInRange(
   device: Pick<Device, "stock_quantity" | "defective_quantity">,
   otherBookings: { quantity: number }[] | undefined,
+  subrentalAdditions = 0,
 ): number {
   return Math.max(
     0,
-    device.stock_quantity - (device.defective_quantity ?? 0) - sumBookedQuantity(otherBookings),
+    device.stock_quantity - (device.defective_quantity ?? 0) + subrentalAdditions - sumBookedQuantity(otherBookings),
   );
 }
 
 /** Ergebnis der Konfliktprüfung eines Packlist-Postens gegen den Zeitraum. */
 export interface AvailabilityCheck {
-  /** Frei im Zeitraum (ohne die eigene gewünschte Menge). */
+  /** Frei im Zeitraum (ohne die eigene gewünschte Menge), inkl. Anmiet-Zugänge. */
   free: number;
   /** Gewünschte Menge übersteigt die freie Menge? */
   over: boolean;
@@ -89,23 +109,26 @@ export interface AvailabilityCheck {
   shortfall: number;
   /** Die verursachenden fremden Buchungen, nach Startdatum sortiert. */
   conflicts: DeviceBooking[];
+  /** Davon aus bestätigten/übernommenen/zurückgegebenen Anmietungen im Zeitraum (E3). */
+  subrentalAdditions: number;
 }
 
 /**
- * Prüft eine gewünschte Menge gegen Bestand + fremde Buchungen im Zeitraum.
- * `conflicts` ist nur gefüllt, wenn tatsächlich überbucht wird — für die
+ * Prüft eine gewünschte Menge gegen Bestand + Anmiet-Zugänge (E3) + fremde Buchungen
+ * im Zeitraum. `conflicts` ist nur gefüllt, wenn tatsächlich überbucht wird — für die
  * Anzeige „auch verplant in: …".
  */
 export function checkAvailability(
   device: Pick<Device, "stock_quantity" | "defective_quantity">,
   wantedQuantity: number,
   otherBookings: DeviceBooking[] | undefined,
+  subrentalAdditions = 0,
 ): AvailabilityCheck {
-  const free = availableInRange(device, otherBookings);
+  const free = availableInRange(device, otherBookings, subrentalAdditions);
   const shortfall = Math.max(0, wantedQuantity - free);
   const conflicts =
     shortfall > 0
       ? [...(otherBookings ?? [])].sort((a, b) => a.start_date.localeCompare(b.start_date))
       : [];
-  return { free, over: shortfall > 0, shortfall, conflicts };
+  return { free, over: shortfall > 0, shortfall, conflicts, subrentalAdditions };
 }

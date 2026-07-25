@@ -34,6 +34,7 @@ export function CreateSubrentalDialog({
   onClose,
   jobId,
   editSubrental,
+  presetItem,
 }: {
   open: boolean;
   onClose: () => void;
@@ -41,6 +42,8 @@ export function CreateSubrentalDialog({
   jobId: string;
   /** Wenn gesetzt: Dialog bearbeitet diesen Vorgang statt einen neuen anzulegen. */
   editSubrental?: Subrental;
+  /** Vorbefüllte erste Position, z.B. aus der Packlisten-Fehlmenge übernommen. */
+  presetItem?: SubrentalItemInput;
 }) {
   const { data: suppliers } = useSuppliers();
   const { data: devices } = useDevices();
@@ -94,14 +97,14 @@ export function CreateSubrentalDialog({
       setLogistics("abholung");
       setStatus("entwurf");
       setNotes("");
-      setItems([]);
+      setItems(presetItem ? [{ ...presetItem, key: nextKey() }] : []);
     }
     setDeviceToAdd("");
     setFormError(null);
     setPendingFile(null);
     setExtractError(null);
     setExtractedSupplierMissing(null);
-  }, [open, editSubrental]);
+  }, [open, editSubrental, presetItem]);
 
   const totals = subrentalTotals(items);
 
