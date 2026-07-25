@@ -137,6 +137,17 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Doku aufgeräumt** (2026-07-25, keine Migration): Till störte sich daran, dass zu
+  viele MD-Dateien im Root nebeneinander standen, obwohl die Neuausrichtung fast fertig
+  ist. `PLAN-V1-ABSICHERN.md` (A1–A4 seit 2026-07-19 komplett), `PLAN-UI-NEUSCHNITT.md`
+  (U1–U6 seit 2026-07-19 komplett), `PLAN-FABLE5.md` (nie in `CLAUDE.md` verlinkt,
+  größtenteils anderweitig erledigt), das veraltete Root-`HANDOVER.md` und die
+  UI-Review-Momentaufnahme nach `docs/archiv/` verschoben (git mv, Historie bleibt).
+  `CLAUDE.md`, `ROADMAP.md` und `README.md` zeigen jetzt den echten Stand (Block B der
+  Neuausrichtung im Kern komplett, Migrationszählung/Edge-Function-Liste in `README.md`
+  nachgezogen). Root hat jetzt 9 statt 14 MD-Dateien, nur zwei aktive Pläne
+  (`PLAN-NEUAUSRICHTUNG.md`, `PLAN-MEIN-PLAN.md`).
+
 - **KI-Erkennung: stiller Hänger behoben** (2026-07-25, keine Migration): Till
   testete die Verleiher-PDF-Erkennung real übers Handy (Tailscale) — Seite lud
   neu, "es passierte nichts". Docker-Logs zeigten: die Anfrage hing über 3
