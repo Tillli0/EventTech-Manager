@@ -4,9 +4,15 @@ import type {
   InvoiceItem,
   InvoicePayment,
   Job,
+  JobCost,
+  Offer,
+  OfferItem,
   PacklistItem,
+  Subrental,
+  SubrentalItem,
 } from "@/types/database";
 import { invoiceDerivedStatus, invoicePaidSum, offerTotals } from "@/types/database";
+import { computeJobCosting } from "@/lib/jobCosting";
 
 // ============================================================
 // Auswertungen — reine Aggregationslogik (getestet in reports.test.ts)
@@ -252,4 +258,116 @@ export function topCustomers(invoices: ReportInvoice[], from: Date, limit: numbe
     map.set(inv.customer_id, entry);
   }
   return [...map.values()].sort((a, b) => b.gross - a.gross).slice(0, limit);
+}
+
+// ------------------------------------------------------------
+// Deckungsbeitrag (E7-Rest) — Job-Kalkulation über alle Jobs aggregiert
+// ------------------------------------------------------------
+
+export type MarginJob = Pick<Job, "id" | "title" | "status" | "start_date" | "deleted_at">;
+export type MarginOffer = Pick<Offer, "job_id" | "status" | "tax_rate"> & {
+  items?: Pick<OfferItem, "quantity" | "rental_days" | "unit_price">[];
+};
+export type MarginInvoice = Pick<Invoice, "job_id" | "status" | "invoice_date" | "tax_rate"> & {
+  items?: Pick<InvoiceItem, "quantity" | "rental_days" | "unit_price">[];
+};
+export type MarginSubrental = Pick<Subrental, "job_id" | "status"> & {
+  items?: Pick<SubrentalItem, "quantity" | "unit_cost">[];
+};
+export type MarginJobCost = Pick<JobCost, "job_id" | "cost_type" | "amount">;
+
+export interface JobMarginRow {
+  jobId: string;
+  jobTitle: string;
+  /** Marge bevorzugt Abgerechnet (Ist), sonst Kalkuliert (Soll aus angenommenem Angebot). */
+  margin: number;
+  marginPct: number | null;
+  /** true = aus gestellten Rechnungen (Ist), false = nur aus angenommenem Angebot (Soll). */
+  isActual: boolean;
+}
+
+function groupByJobId<T extends { job_id: string | null }>(rows: T[]): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const row of rows) {
+    if (!row.job_id) continue;
+    const list = map.get(row.job_id) ?? [];
+    list.push(row);
+    map.set(row.job_id, list);
+  }
+  return map;
+}
+
+/**
+ * Deckungsbeitrag je Job (Muster `computeJobCosting`, hier über alle Jobs
+ * hinweg gruppiert). Nur Jobs mit tatsächlicher Kalkulations-Grundlage (Angebot
+ * angenommen, Rechnung gestellt, Anmiet- oder sonstige Kosten erfasst) liefern
+ * eine Zeile — ansonsten würde jeder unberührte Job als „0 € Marge" die Rangliste
+ * verwässern.
+ */
+export function jobMargins(
+  jobs: MarginJob[],
+  offers: MarginOffer[],
+  invoices: MarginInvoice[],
+  subrentals: MarginSubrental[],
+  costs: MarginJobCost[],
+): JobMarginRow[] {
+  const offersByJob = groupByJobId(offers);
+  const invoicesByJob = groupByJobId(invoices);
+  const subrentalsByJob = groupByJobId(subrentals);
+  const costsByJob = groupByJobId(costs);
+
+  const rows: JobMarginRow[] = [];
+  for (const job of jobs) {
+    if (!countsAsJob(job)) continue;
+    const jobOffers = offersByJob.get(job.id) ?? [];
+    const jobInvoices = invoicesByJob.get(job.id) ?? [];
+    const jobSubrentals = subrentalsByJob.get(job.id) ?? [];
+    const jobCosts = costsByJob.get(job.id) ?? [];
+    // Nur zählen, was tatsächlich in die Kalkulation einfließt — ein Angebot im
+    // Entwurf/gesendet ohne Annahme wäre sonst „Grundlage" für eine 0-€-Zeile.
+    const hasBasis =
+      jobOffers.some((o) => o.status === "angenommen") ||
+      jobInvoices.some(isIssued) ||
+      jobSubrentals.length > 0 ||
+      jobCosts.length > 0;
+    if (!hasBasis) continue;
+
+    const costing = computeJobCosting({
+      offers: jobOffers,
+      invoices: jobInvoices,
+      subrentals: jobSubrentals,
+      costs: jobCosts,
+    });
+    const isActual = costing.revenueInvoiced != null;
+    rows.push({
+      jobId: job.id,
+      jobTitle: job.title,
+      margin: isActual ? costing.marginInvoiced! : costing.marginQuoted,
+      marginPct: isActual ? costing.marginPctInvoiced : costing.marginPctQuoted,
+      isActual,
+    });
+  }
+  return rows;
+}
+
+/** Die `limit` Jobs mit dem höchsten Deckungsbeitrag. */
+export function topJobsByMargin(rows: JobMarginRow[], limit: number): JobMarginRow[] {
+  return [...rows].sort((a, b) => b.margin - a.margin).slice(0, limit);
+}
+
+/**
+ * Deckungsbeitrag je Monat — jeder Job zählt komplett im Monat seines Startdatums
+ * (Muster `jobsByMonth`), nicht anteilig über Rechnungsdatum verteilt.
+ */
+export function marginByMonth(jobs: MarginJob[], rows: JobMarginRow[], buckets: MonthBucket[]): number[] {
+  const values = buckets.map(() => 0);
+  const marginByJobId = new Map(rows.map((r) => [r.jobId, r.margin]));
+  for (const job of jobs) {
+    if (!countsAsJob(job)) continue;
+    const margin = marginByJobId.get(job.id);
+    if (margin == null) continue;
+    const i = bucketIndex(buckets, job.start_date);
+    if (i >= 0) values[i] += margin;
+  }
+  return values;
 }

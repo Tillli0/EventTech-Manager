@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { BarChart3, Receipt, Wallet, AlertTriangle, Package, Users } from "lucide-react";
+import { Link } from "react-router-dom";
+import { BarChart3, Receipt, Wallet, AlertTriangle, Package, Users, TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -8,6 +9,10 @@ import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useJobs } from "@/hooks/useJobs";
 import { useDevices } from "@/hooks/useDevices";
+import { useOffers } from "@/hooks/useOffers";
+import { useSubrentals } from "@/hooks/useSubrentals";
+import { useJobCosts } from "@/hooks/useJobCosts";
+import { useAuth } from "@/auth/AuthProvider";
 import {
   lastMonths,
   revenueByMonth,
@@ -16,12 +21,15 @@ import {
   jobsByMonth,
   topDevices,
   topCustomers,
+  jobMargins,
+  topJobsByMargin,
+  marginByMonth,
   type MonthBucket,
 } from "@/lib/reports";
 import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { kpiToneClass, type KpiTone } from "@/lib/statusTone";
+import { kpiToneClass, levelTone, marginLevel, type KpiTone } from "@/lib/statusTone";
 
 /**
  * Auswertungen — Finanz-, Job- und Geräte-Kennzahlen aus den bestehenden
@@ -32,6 +40,11 @@ export function ReportsPage() {
   const { data: invoices, isLoading: invLoading, error: invError } = useInvoices();
   const { data: jobs, isLoading: jobsLoading, error: jobsError } = useJobs();
   const { data: devices } = useDevices();
+  const { hasArea } = useAuth();
+  const darfAnmietungSehen = hasArea("anmietung");
+  const { data: offers } = useOffers();
+  const { data: subrentals } = useSubrentals();
+  const { data: jobCosts } = useJobCosts();
 
   const now = useMemo(() => new Date(), []);
   const buckets = useMemo(() => lastMonths(12, now), [now]);
@@ -48,6 +61,17 @@ export function ReportsPage() {
   );
   const bestDevices = useMemo(() => topDevices(jobs ?? [], twelveMonthsAgo, 8), [jobs, twelveMonthsAgo]);
   const bestCustomers = useMemo(() => topCustomers(invoices ?? [], twelveMonthsAgo, 5), [invoices, twelveMonthsAgo]);
+
+  // Deckungsbeitrag (E7-Rest) — nur berechnen/zeigen, wenn der Bereich sichtbar ist.
+  const marginRows = useMemo(
+    () =>
+      darfAnmietungSehen
+        ? jobMargins(jobs ?? [], offers ?? [], invoices ?? [], subrentals ?? [], jobCosts ?? [])
+        : [],
+    [darfAnmietungSehen, jobs, offers, invoices, subrentals, jobCosts],
+  );
+  const marginSeries = useMemo(() => marginByMonth(jobs ?? [], marginRows, buckets), [jobs, marginRows, buckets]);
+  const topMarginJobs = useMemo(() => topJobsByMargin(marginRows, 5), [marginRows]);
 
   const jobStatusCounts = useMemo(() => {
     const counts = new Map<JobStatus, number>();
@@ -147,6 +171,64 @@ export function ReportsPage() {
               format={formatCurrency}
             />
           </Card>
+
+          {darfAnmietungSehen && (
+            <div className="grid gap-5 lg:grid-cols-2">
+              {/* Deckungsbeitrag je Monat */}
+              <Card className="p-4">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <TrendingUp size={15} className="text-ink-muted" />
+                  Deckungsbeitrag je Monat
+                  <span className="ml-1 font-normal text-ink-faint">
+                    (Ist wenn Rechnung gestellt, sonst Soll aus Angebot)
+                  </span>
+                </h2>
+                <div className="mt-3">
+                  <MonthBars
+                    buckets={buckets}
+                    series={[{ values: marginSeries, barClass: "bg-accent", name: "Deckungsbeitrag" }]}
+                    format={formatCurrency}
+                  />
+                </div>
+              </Card>
+
+              {/* Top-Jobs nach Deckungsbeitrag */}
+              <Card className="p-4">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <TrendingUp size={15} className="text-ink-muted" />
+                  Top-Jobs nach Deckungsbeitrag
+                </h2>
+                {topMarginJobs.length === 0 ? (
+                  <p className="mt-3 text-sm text-ink-faint">
+                    Noch keine Jobs mit Angebot, Rechnung, Anmietung oder Kosten erfasst.
+                  </p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    {topMarginJobs.map((row, i) => {
+                      const tone = levelTone(marginLevel(row.marginPct));
+                      return (
+                        <Link
+                          key={row.jobId}
+                          to={`/jobs/${row.jobId}`}
+                          className="flex items-center gap-3 rounded-md text-sm transition-colors hover:bg-bg-raised"
+                        >
+                          <span className="w-5 text-right font-mono text-xs text-ink-faint">{i + 1}.</span>
+                          <span className="min-w-0 flex-1 truncate text-ink">{row.jobTitle}</span>
+                          <span className="text-xs text-ink-faint">{row.isActual ? "Ist" : "Soll"}</span>
+                          {row.marginPct != null && (
+                            <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${tone.bg} ${tone.text}`}>
+                              {Math.round(row.marginPct)} %
+                            </span>
+                          )}
+                          <span className="w-24 text-right font-mono text-ink">{formatCurrency(row.margin)}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
+          )}
 
           <div className="grid gap-5 lg:grid-cols-2">
             {/* Jobs */}

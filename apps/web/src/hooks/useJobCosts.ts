@@ -5,6 +5,18 @@ import type { JobCost, JobCostType } from "@/types/database";
 const JOB_COSTS_KEY = ["job-costs"] as const;
 const SELECT = "*, profile:profiles(id, full_name)";
 
+/** Alle Kosten-Positionen (für die Auswertungen-Seite — Deckungsbeitrag über alle Jobs). */
+export function useJobCosts() {
+  return useQuery({
+    queryKey: JOB_COSTS_KEY,
+    queryFn: async (): Promise<JobCost[]> => {
+      const { data, error } = await supabase.from("job_costs").select(SELECT);
+      if (error) throw error;
+      return data as JobCost[];
+    },
+  });
+}
+
 /** Kosten-Positionen eines Jobs (Bereich 'anmietung', wie subrentals). */
 export function useJobCostsForJob(jobId: string | undefined) {
   return useQuery({

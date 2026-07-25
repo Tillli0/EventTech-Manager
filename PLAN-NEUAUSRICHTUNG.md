@@ -9,15 +9,15 @@
 > Qualität der Erkennung noch unzureichend** (Till: „inhaltlich eine Katastrophe") —
 > Prompt/Extraktion braucht Nacharbeit, bevor scharf geschaltet wird. Bewusst **nicht
 > deployt**, auf Eis gelegt zugunsten der nächsten Etappen. **E4 (Bestell-PDF) live &
-> bewiesen. E5 (Bestell-Mail an Verleiher) gebaut & lokal bewiesen, Edge Function
-> `send-subrental-order` aber bewusst NOCH NICHT deployt** — braucht Tills Freigabe
-> zum Deploy (nach-außen-wirkend) + einen RESEND_API_KEY (bereits für Mahnwesen/Leads
-> vorhanden, kein neuer Key nötig). **E6 (Kosten am Job) live & bewiesen. E7
-> (Job-Kalkulation) live & bewiesen — ReportsPage-Teil (Deckungsbeitrag-Auswertung,
-> Top-Jobs) noch offen, eigener Nachfolge-Schritt. E8 (Dashboard & Navigation) live &
-> bewiesen — Block B ist damit im Kern komplett.** Als Nächstes: der offene
-> ReportsPage-Teil von E7, oder ein neues Vorhaben (`PLAN-MEIN-PLAN.md` M3–M6). Nach
-> jeder
+> bewiesen. E5 (Bestell-Mail an Verleiher) lokal fertig, Edge Function
+> `send-subrental-order` bewusst NICHT deployt UND der Knopf „Bestell-Mail senden" in
+> der Oberfläche seit 2026-07-25 explizit ausgeblendet** (Konstante
+> `SUBRENTAL_ORDER_MAIL_ENABLED = false` in `JobSubrentalsCard.tsx`) — Till will das
+> erst scharf schalten, wenn er bereit ist; Code/Dialog bleiben unverändert für den
+> späteren Schalter. **E6 (Kosten am Job) live & bewiesen. E7 (Job-Kalkulation +
+> ReportsPage-Auswertung „Deckungsbeitrag"/„Top-Jobs") komplett live & bewiesen. E8
+> (Dashboard & Navigation) live & bewiesen — Block B ist damit im Kern komplett.**
+> Als Nächstes: **E2b** (Prompt-Qualität der KI-Extraktion verbessern). Nach jeder
 > Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
@@ -360,6 +360,14 @@ gebaut + lokal bewiesen, Function bewusst NICHT deployt — „ruhig by default"
   Fehlerpfad ohne Partner-E-Mail UND ohne RESEND_API_KEY (beide klare Fehlermeldungen,
   kein Versand, kein Protokoll-Eintrag — per psql geprüft). **Function-Deploy nur nach
   ausdrücklicher Freigabe.**
+- **2026-07-25 (Nachtrag):** Till will die Mail-Funktion vorerst **nicht** scharf
+  schalten. Der Grund, warum das mehr als „nichts tun" braucht: der Frontend-Code
+  war durch den normalen Push bereits automatisch in der echten (Cloud-)App live —
+  nur die Funktion dahinter fehlte dort. Ein Klick hätte dort also nicht „ruhig"
+  gescheitert, sondern mit einer unschönen technischen Fehlermeldung. Deshalb
+  zusätzlich der Knopf „Bestell-Mail senden" per Konstante
+  `SUBRENTAL_ORDER_MAIL_ENABLED = false` in `JobSubrentalsCard.tsx` ausgeblendet —
+  Dialog/Hooks/Function bleiben unverändert, Umschalten später ist ein Ein-Zeilen-Fix.
 
 **E6 ✔ — Kosten am Job** (Migration 0045 `job_costs`, erledigt 2026-07-25)
 - `job_costs` (job_id, cost_type, profile_id nullable, description Pflicht, hours/
@@ -380,8 +388,7 @@ gebaut + lokal bewiesen, Function bewusst NICHT deployt — „ruhig by default"
   liefert `false`, Karte bliebe unsichtbar. Testdaten restlos entfernt (`job_costs`
   wieder leer).
 
-**E7 ◐ — Kalkulation** (keine Migration; Job-Kalkulation erledigt 2026-07-25,
-ReportsPage-Teil noch offen)
+**E7 ✔ — Kalkulation** (keine Migration; komplett erledigt 2026-07-25)
 - ✔ `lib/jobCosting.ts` + Test: `computeJobCosting({ offers, invoices, subrentals, costs })`
   → revenueQuoted/revenueInvoiced|null, costSubrental/Personal/Other/Total,
   marginQuoted/marginInvoiced|null, marginPctQuoted/marginPctInvoiced|null. Erlös
@@ -393,10 +400,17 @@ ReportsPage-Teil noch offen)
   Abgerechnet, Marge-Ampel über bereits vorhandenes `marginLevel`/`levelTone` aus
   `statusTone.ts` (grün ≥30 %, amber 10–30 %, rot <10 %, neutral wenn nicht
   berechenbar). Guard `hasArea('anmietung')`.
-- ○ **Noch offen:** `lib/reports.ts` + Test erweitern (DB je Monat, Jahres-Kosten);
-  ReportsPage-Karten „Deckungsbeitrag", „Top-Jobs nach DB" — nur bei
-  `hasArea('anmietung')`. Größerer Zusatzschritt (Aggregation über alle Jobs), bewusst
-  als eigener Nachfolge-Schritt zurückgestellt statt in denselben Commit gequetscht.
+- ✔ `lib/reports.ts` erweitert: `jobMargins()` aggregiert `computeJobCosting()` über
+  alle Jobs (Ist-Marge aus gestellter Rechnung bevorzugt vor Soll-Marge aus
+  angenommenem Angebot; Jobs ohne echte Grundlage — kein angenommenes Angebot, keine
+  gestellte Rechnung, keine Anmietung/Kosten — fallen raus, sonst würden sie als
+  „0 €"-Zeilen die Rangliste verwässern), `topJobsByMargin()`, `marginByMonth()`
+  (Job zählt komplett im Monat seines Startdatums, Muster `jobsByMonth`). 6 neue
+  Tests. Neue Sektionen **direkt in der bestehenden Auswertungen-Seite** (kein neuer
+  Tab/keine neue Seite nötig — passt als zusätzlicher Block rein, genau wie die
+  anderen Auswertungs-Karten dort): „Deckungsbeitrag je Monat" (Balkendiagramm) und
+  „Top-Jobs nach Deckungsbeitrag" (Rangliste mit Marge-Ampel, verlinkt zum Job) — nur
+  bei `hasArea('anmietung')`.
 - Beweis: exaktes Plan-Szenario (Angebot 1.000 netto − Anmietung 300 − Personal 200 →
   DB 500, 50 %) als Vitest-Test nachgebildet (3 Tests: Kern-Rechnung, „Rechnung stellen
   füllt Ist-Spalte", Storno/nicht-angenommen werden ignoriert) — alle grün. Browser-
@@ -593,6 +607,20 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   nur bei `hasArea('anmietung')`, Grid wächst von 4 auf 5 Kacheln) und Karte
   „Anmietungen mit Handlungsbedarf" (Seitenspalte, Muster „Fällige Aufgaben",
   verlinkt zum Job). Beweis mit echten Live-Daten (1 offener Vorgang, 2.000 € EK) bei
-  Desktop + 375px, Konsole fehlerfrei. **Damit ist Block B (E1–E8) im Kern komplett**
-  — offen bleiben nur die bewusst zurückgestellten Teile: E2b-Prompt-Qualität,
-  E5-Function-Deploy (Freigabe), E7-ReportsPage-Aggregation.
+  Desktop + 375px, Konsole fehlerfrei. Damit war Block B (E1–E8) im Kern komplett bis
+  auf drei zurückgestellte Teile.
+- **2026-07-25 (Nachtrag, Runde 2):** Till entscheidet: **E5 (Bestell-Mail) bleibt
+  deaktiviert**, bis er es bewusst freigibt — der Knopf „Bestell-Mail senden" ist
+  jetzt per Konstante ausgeblendet (`SUBRENTAL_ORDER_MAIL_ENABLED = false` in
+  `JobSubrentalsCard.tsx`), Grund/Details s. E5-Abschnitt oben. **E7-ReportsPage-Teil
+  nachgeholt** (Till: „geht das nicht in den bestehenden Auswertungs-Tab?" — ja,
+  passt als zwei zusätzliche Karten rein statt eigener Seite): `jobMargins()`/
+  `topJobsByMargin()`/`marginByMonth()` in `lib/reports.ts` (6 neue Tests), Karten
+  „Deckungsbeitrag je Monat" + „Top-Jobs nach Deckungsbeitrag" auf der
+  Auswertungen-Seite. Browser-Beweis mit echten Live-Daten (Job „KEssi" mit
+  −2.000 € DB durch die Anmietung), ein zunächst zu breiter Filter („Geburtstag" mit
+  nur einem nicht angenommenen Angebot rutschte mit 0 € in die Liste) direkt
+  nachgeschärft (nur angenommene Angebote/gestellte Rechnungen/Anmietungen/Kosten
+  zählen als „hat Grundlage"). **Damit ist Block B (E1–E8) im Kern komplett** — offen
+  bleiben nur E2b-Prompt-Qualität und die bewusste E5-Deaktivierung (bis Freigabe).
+  Nächster Schritt: **E2b** (Prompt-Qualität der KI-Extraktion verbessern).

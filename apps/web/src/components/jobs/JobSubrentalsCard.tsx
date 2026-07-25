@@ -14,6 +14,15 @@ import { formatDate, formatCurrency } from "@/lib/format";
 import { useAuth } from "@/auth/AuthProvider";
 import type { Subrental } from "@/types/database";
 
+/**
+ * E5 (Bestell-Mail an Verleiher) ist lokal fertig, aber die Edge Function
+ * `send-subrental-order` bewusst NICHT in der Cloud deployt (nach-außen-wirkend,
+ * braucht Tills Freigabe). Bis dahin bleibt der Knopf ausgeblendet statt einen
+ * verwirrenden „Funktion nicht gefunden"-Fehler zu zeigen, wenn ihn jemand in der
+ * echten App anklickt — Code/Dialog bleiben unverändert für den späteren Schalter.
+ */
+const SUBRENTAL_ORDER_MAIL_ENABLED = false;
+
 /** Anmiet-Vorgänge, die zu diesem Job gehören — Positionen, Status, EK-Summe je Vorgang. */
 export function JobSubrentalsCard({ jobId }: { jobId: string }) {
   const { canEdit } = useAuth();
@@ -114,7 +123,7 @@ export function JobSubrentalsCard({ jobId }: { jobId: string }) {
                         <FileDown size={14} />
                       </button>
                     )}
-                    {mayEdit && subrental.order_number && subrental.status !== "storniert" && (
+                    {SUBRENTAL_ORDER_MAIL_ENABLED && mayEdit && subrental.order_number && subrental.status !== "storniert" && (
                       <button
                         onClick={() => setOrderMailSubrental(subrental)}
                         className="rounded p-1.5 text-ink-faint transition-colors hover:text-accent"

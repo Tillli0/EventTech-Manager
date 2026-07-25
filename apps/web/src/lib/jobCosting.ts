@@ -1,4 +1,4 @@
-import type { Invoice, JobCost, Offer, Subrental } from "@/types/database";
+import type { Invoice, InvoiceItem, JobCost, Offer, OfferItem, Subrental, SubrentalItem } from "@/types/database";
 import { offerTotals } from "@/types/database";
 import { subrentalTotals, isActiveSubrentalStatus } from "@/lib/subrentals";
 import { jobCostsTotal } from "@/lib/jobCosts";
@@ -26,9 +26,13 @@ export interface JobCosting {
  * nie mischen), Kosten aus Anmiet-Vorgängen + Kosten-Positionen (E6). Alles netto.
  */
 export function computeJobCosting(input: {
-  offers: Pick<Offer, "status" | "items" | "tax_rate">[];
-  invoices: Pick<Invoice, "status" | "invoice_date" | "items" | "tax_rate">[];
-  subrentals: Pick<Subrental, "status" | "items">[];
+  offers: (Pick<Offer, "status" | "tax_rate"> & {
+    items?: Pick<OfferItem, "quantity" | "rental_days" | "unit_price">[];
+  })[];
+  invoices: (Pick<Invoice, "status" | "invoice_date" | "tax_rate"> & {
+    items?: Pick<InvoiceItem, "quantity" | "rental_days" | "unit_price">[];
+  })[];
+  subrentals: (Pick<Subrental, "status"> & { items?: Pick<SubrentalItem, "quantity" | "unit_cost">[] })[];
   costs: Pick<JobCost, "cost_type" | "amount">[];
 }): JobCosting {
   const { offers, invoices, subrentals, costs } = input;

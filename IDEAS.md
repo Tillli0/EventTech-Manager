@@ -20,11 +20,10 @@
 > 2. ~~`PLAN-UI-NEUSCHNITT.md`~~ ✅ **komplett** (U1–U6) — helles Theme, neue Navigation,
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
-> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E8) — **im Kern komplett.** E5-Function
->    noch nicht deployt (braucht Tills Freigabe); E7-ReportsPage-Teil
->    (Deckungsbeitrag/Top-Jobs) noch offen; E2b technisch lauffähig, aber inhaltliche
->    Qualität unzureichend — bewusst zurückgestellt, kein Deploy. Als Nächstes:
->    ReportsPage-Teil von E7, oder `PLAN-MEIN-PLAN.md` M3–M6.
+> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E8) — **im Kern komplett, inkl.
+>    ReportsPage-Teil von E7.** E5 (Bestell-Mail) bewusst deaktiviert (Knopf
+>    ausgeblendet, Till entscheidet später über die Freigabe); E2b technisch
+>    lauffähig, aber inhaltliche Qualität unzureichend — als Nächstes ansetzen.
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -61,9 +60,9 @@
 
 ### Aus der Neuausrichtung entstanden (nach den Kern-Etappen)
 
-- [ ] **E7-Rest: ReportsPage „Deckungsbeitrag"/„Top-Jobs nach DB"** — Aggregation von
-      `computeJobCosting()` über alle Jobs, `lib/reports.ts` erweitern (DB je Monat,
-      Jahres-Kosten), nur bei `hasArea('anmietung')`. · M · ★★ · Freigabe
+- [ ] **E5 scharf schalten** — sobald Till bereit ist: `SUBRENTAL_ORDER_MAIL_ENABLED`
+      in `JobSubrentalsCard.tsx` auf `true`, dann `supabase functions deploy
+      send-subrental-order` (nach ausdrücklicher Freigabe). · S · ★★ · Freigabe
 - [ ] **Lieferanten-Preishistorie** — „was hat Verleiher X zuletzt für eine LED-Bar genommen?"
       (EK-Preise je Gerätetyp über Anmiet-Vorgänge). · M · ★★ · Freigabe
 - [ ] **Engpass-Sammelansicht** (E9) — Anmiet-Bedarf über alle anstehenden Jobs, „Anmieten"-
@@ -130,6 +129,20 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E7-Rest — Auswertungsseite + E5-Deaktivierung** (2026-07-25,
+  `PLAN-NEUAUSRICHTUNG.md`, keine Migration): Zwei neue Karten direkt auf der
+  bestehenden Auswertungen-Seite (kein eigener Tab nötig) — „Deckungsbeitrag je
+  Monat" und „Top-Jobs nach Deckungsbeitrag" (Rangliste mit Marge-Ampel, verlinkt
+  zum Job), nur für den Bereich `anmietung`. `lib/reports.ts` um `jobMargins()`
+  (Ist-Marge aus gestellter Rechnung bevorzugt vor Soll aus angenommenem Angebot,
+  Jobs ohne echte Grundlage fallen raus), `topJobsByMargin()`, `marginByMonth()`
+  erweitert (6 neue Tests). Zusätzlich: Till will die Bestell-Mail (E5) vorerst
+  **nicht** scharf schalten — der Knopf „Bestell-Mail senden" ist jetzt per
+  Konstante `SUBRENTAL_ORDER_MAIL_ENABLED = false` in `JobSubrentalsCard.tsx`
+  ausgeblendet (Dialog/Hooks/Function bleiben unverändert, Umschalten später ist ein
+  Ein-Zeilen-Fix). **Damit ist Block B der Neuausrichtung (E1–E8) im Kern komplett**
+  bis auf E2b (Prompt-Qualität) und die bewusste E5-Deaktivierung.
 
 - **Neuausrichtung E8 — Dashboard & Navigation** (2026-07-25,
   `PLAN-NEUAUSRICHTUNG.md`, keine Migration): neue KPI-Kachel „Offene Anmietungen"

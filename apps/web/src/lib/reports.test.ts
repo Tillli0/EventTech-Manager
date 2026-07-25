@@ -8,8 +8,12 @@ import {
   jobDurationDays,
   topDevices,
   topCustomers,
+  jobMargins,
+  topJobsByMargin,
+  marginByMonth,
   type ReportInvoice,
   type ReportJob,
+  type MarginJob,
 } from "@/lib/reports";
 
 // Fester Bezugspunkt für deterministische Tests: 15. Juli 2026.
@@ -216,5 +220,82 @@ describe("topCustomers", () => {
     expect(result[0]).toMatchObject({ customerId: "k1", name: "Acme", invoiceCount: 2 });
     expect(result[0].gross).toBeCloseTo(238, 5);
     expect(result[1]).toMatchObject({ customerId: "k2", name: "Max Muster", invoiceCount: 1 });
+  });
+});
+
+function marginJob(overrides: Partial<MarginJob>): MarginJob {
+  return { id: "j1", title: "Testjob", status: "abgeschlossen", start_date: "2026-07-01", deleted_at: null, ...overrides };
+}
+
+describe("jobMargins", () => {
+  it("berechnet das Plan-Szenario je Job: 1.000 − 300 − 200 → DB 500", () => {
+    const rows = jobMargins(
+      [marginJob({})],
+      [{ job_id: "j1", status: "angenommen", tax_rate: 19, items: [{ quantity: 1, rental_days: 1, unit_price: 1000 }] }],
+      [],
+      [{ job_id: "j1", status: "bestaetigt", items: [{ quantity: 1, unit_cost: 300 }] }],
+      [{ job_id: "j1", cost_type: "personal", amount: 200 }],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ jobId: "j1", jobTitle: "Testjob", margin: 500, marginPct: 50, isActual: false });
+  });
+
+  it("bevorzugt die Ist-Marge (Rechnung gestellt) vor der Soll-Marge", () => {
+    const rows = jobMargins(
+      [marginJob({})],
+      [{ job_id: "j1", status: "angenommen", tax_rate: 19, items: [{ quantity: 1, rental_days: 1, unit_price: 1000 }] }],
+      [
+        {
+          job_id: "j1",
+          status: "gestellt",
+          invoice_date: "2026-07-01",
+          tax_rate: 19,
+          items: [{ quantity: 1, rental_days: 1, unit_price: 800 }],
+        },
+      ],
+      [],
+      [],
+    );
+    expect(rows[0]).toMatchObject({ margin: 800, isActual: true });
+  });
+
+  it("lässt Jobs ohne jede Kalkulations-Grundlage aus (keine 0-€-Verwässerung)", () => {
+    const rows = jobMargins([marginJob({ id: "j2" }), marginJob({ id: "j1" })], [], [], [], []);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("zählt stornierte Jobs nicht mit", () => {
+    const rows = jobMargins(
+      [marginJob({ status: "storniert" })],
+      [],
+      [],
+      [],
+      [{ job_id: "j1", cost_type: "sonstiges", amount: 50 }],
+    );
+    expect(rows).toHaveLength(0);
+  });
+});
+
+describe("topJobsByMargin", () => {
+  it("sortiert absteigend und kürzt auf das Limit", () => {
+    const rows = [
+      { jobId: "a", jobTitle: "A", margin: 100, marginPct: 10, isActual: true },
+      { jobId: "b", jobTitle: "B", margin: 500, marginPct: 50, isActual: true },
+      { jobId: "c", jobTitle: "C", margin: -50, marginPct: null, isActual: false },
+    ];
+    expect(topJobsByMargin(rows, 2).map((r) => r.jobId)).toEqual(["b", "a"]);
+  });
+});
+
+describe("marginByMonth", () => {
+  it("summiert die Marge je Monat nach Job-Startdatum", () => {
+    const jobs = [marginJob({ id: "j1", start_date: "2026-07-05" }), marginJob({ id: "j2", start_date: "2026-07-20" })];
+    const rows = [
+      { jobId: "j1", jobTitle: "A", margin: 200, marginPct: null, isActual: false },
+      { jobId: "j2", jobTitle: "B", margin: 300, marginPct: null, isActual: false },
+    ];
+    const buckets = lastMonths(2, NOW);
+    const values = marginByMonth(jobs, rows, buckets);
+    expect(values[values.length - 1]).toBe(500);
   });
 });
