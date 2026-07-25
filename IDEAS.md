@@ -137,6 +137,15 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **KI-Erkennung: stiller Hänger behoben** (2026-07-25, keine Migration): Till
+  testete die Verleiher-PDF-Erkennung real übers Handy (Tailscale) — Seite lud
+  neu, "es passierte nichts". Docker-Logs zeigten: die Anfrage hing über 3
+  Minuten, bis die Edge-Runtime sie zwangsweise beendete (vermutlich Handy-Foto
+  statt PDF + Mobilverbindung), ohne Rückmeldung lud Till die Seite selbst neu und
+  verlor den Dialog. `useExtractSubrentalDocument.ts` bricht die Wartezeit jetzt
+  nach 25 Sekunden mit klarer Fehlermeldung ab statt endlos zu hängen. Ändert
+  nichts an der Erkennungsqualität selbst (weiterhin zurückgestellt).
+
 - **Neuausrichtung E10 — Eigentümer-Feld am Gerät** (2026-07-25,
   `PLAN-NEUAUSRICHTUNG.md`, Migration 0047 `devices.owner_type`/`owner_name`/
   `counts_toward_value`): Geräte im Inventar können jetzt einem Eigentümer

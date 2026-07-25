@@ -477,6 +477,22 @@ gebaut + lokal bewiesen, Function bewusst NICHT deployt — „ruhig by default"
   Preview-/Browser-Werkzeug verfügbar) — die eigentliche KI-Extraktion mit Kategorie
   ist zudem weiterhin an Tills Deploy-Freigabe der Function gebunden (unverändert
   zu E2b).
+- **Nachtrag (2026-07-25, echter Test übers Handy):** Till hat die KI-Erkennung
+  lokal über Tailscale vom Handy aus ausprobiert (PDF/Foto hochladen im Anmiet-
+  Dialog) — die Seite lud neu, „es passierte nichts". Docker-Logs des
+  `supabase_edge_runtime`-Containers zeigten den Grund: die Anfrage an
+  `extract-subrental-document` hing über 3 Minuten, bis die Runtime sie zwangs-
+  weise beendete („early termination"/„wall clock duration warning") — vermutlich
+  eine sehr lange/hängende Gemini-Antwort (vermutlich Handy-Foto statt PDF, dazu
+  Mobilverbindung über Tailscale). Ohne Rückmeldung lud Till die Seite selbst neu,
+  was den Dialog samt Auswahl verwarf. **Behoben:** `useExtractSubrentalDocument.ts`
+  bricht die Wartezeit jetzt clientseitig nach 25 Sekunden mit einer klaren
+  Fehlermeldung ab (`supabase-js` v2 hat kein `signal`-Option auf
+  `functions.invoke`, daher reiner `Promise.race`-Timeout — die Server-Anfrage
+  läuft im Hintergrund weiter, aber die Oberfläche hängt nicht mehr endlos).
+  Prüfkette grün (138 Tests, keine neue Migration). Ändert nichts an der
+  eigentlichen Erkennungsgeschwindigkeit/-qualität — die bleibt wie zuvor
+  zurückgestellt, bis Till die Function bewusst freigibt.
 
 **E10 🔧 — Eigentümer-Feld am Gerät (Fremdeigentum wie Schule/Privatperson)**
 (gebaut 2026-07-25, Migration 0047 `devices.owner_type`/`owner_name`/

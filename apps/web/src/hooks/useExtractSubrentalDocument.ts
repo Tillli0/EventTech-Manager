@@ -15,6 +15,33 @@ export interface ExtractedSubrentalDocument {
   items: ExtractedSubrentalItem[];
 }
 
+/**
+ * Ohne Zeitgrenze hängt die Erkennung bei einer langsamen/hängenden Gemini-Antwort
+ * (z.B. großes Handy-Foto statt PDF, schlechte Mobilverbindung) ohne Rückmeldung —
+ * das führte dazu, dass Nutzer die Seite neu geladen haben, weil scheinbar nichts
+ * passierte. `supabase-js` v2 unterstützt hier kein `signal`-Option auf
+ * `functions.invoke`, daher ein reiner Client-seitiger Timeout per `Promise.race`:
+ * bricht die Wartezeit nach `ms` mit einer klaren Fehlermeldung ab (die eigentliche
+ * Server-Anfrage läuft im Hintergrund weiter, aber die UI hängt nicht mehr endlos).
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+const EXTRACTION_TIMEOUT_MS = 25_000;
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -37,9 +64,13 @@ export function useExtractSubrentalDocument() {
   return useMutation({
     mutationFn: async (file: File): Promise<ExtractedSubrentalDocument> => {
       const file_base64 = await fileToBase64(file);
-      const { data, error } = await supabase.functions.invoke("extract-subrental-document", {
-        body: { file_base64, mime_type: file.type || "application/pdf" },
-      });
+      const { data, error } = await withTimeout(
+        supabase.functions.invoke("extract-subrental-document", {
+          body: { file_base64, mime_type: file.type || "application/pdf" },
+        }),
+        EXTRACTION_TIMEOUT_MS,
+        "Die Erkennung hat zu lange gedauert und wurde abgebrochen. Bitte die Positionen manuell eingeben (bei einem Handy-Foto hilft oft ein kleineres Bild statt eines PDFs).",
+      );
       if (error) {
         let message = error.message;
         const ctx = (error as { context?: Response }).context;
