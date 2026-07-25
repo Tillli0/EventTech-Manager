@@ -386,6 +386,35 @@ export interface SubrentalItem {
   created_at: string;
 }
 
+// ============================================================
+// ANMIETUNG (Block B / E6) — Kosten am Job
+// ============================================================
+
+export type JobCostType = "personal" | "transport" | "fremdleistung" | "sonstiges";
+
+export const JOB_COST_TYPE_LABELS: Record<JobCostType, string> = {
+  personal: "Personal",
+  transport: "Transport",
+  fremdleistung: "Fremdleistung",
+  sonstiges: "Sonstiges",
+};
+
+export interface JobCost {
+  id: string;
+  job_id: string;
+  cost_type: JobCostType;
+  profile_id: string | null;
+  description: string;
+  /** Komfort-Rechner (Stunden × Satz) — die Wahrheit ist `amount`. */
+  hours: number | null;
+  hourly_rate: number | null;
+  amount: number;
+  cost_date: string | null;
+  created_at: string;
+  updated_at: string;
+  profile?: Pick<Profile, "id" | "full_name"> | null;
+}
+
 export interface Customer {
   id: string;
   company_name: string | null;

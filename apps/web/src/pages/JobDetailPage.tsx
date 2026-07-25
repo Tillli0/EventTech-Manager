@@ -24,6 +24,7 @@ import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { Textarea } from "@/components/ui/Input";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
 import { JobSubrentalsCard } from "@/components/jobs/JobSubrentalsCard";
+import { JobCostsCard } from "@/components/jobs/JobCostsCard";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
@@ -179,6 +180,7 @@ export function JobDetailPage() {
             <>
               <JobOffersCard jobId={job.id} />
               <JobInvoicesCard jobId={job.id} />
+              <JobCostsCard job={job} />
             </>
           )}
 

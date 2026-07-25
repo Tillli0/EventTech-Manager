@@ -12,8 +12,9 @@
 > bewiesen. E5 (Bestell-Mail an Verleiher) gebaut & lokal bewiesen, Edge Function
 > `send-subrental-order` aber bewusst NOCH NICHT deployt** — braucht Tills Freigabe
 > zum Deploy (nach-außen-wirkend) + einen RESEND_API_KEY (bereits für Mahnwesen/Leads
-> vorhanden, kein neuer Key nötig). Als Nächstes: **E6** (Kosten am Job). Nach jeder
-> Etappe: Haken + Datum, Stand-Vermerk oben.
+> vorhanden, kein neuer Key nötig). **E6 (Kosten am Job) live & bewiesen.** Als
+> Nächstes: **E7** (Kalkulation — Deckungsbeitrag je Job). Nach jeder Etappe: Haken +
+> Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -356,13 +357,24 @@ gebaut + lokal bewiesen, Function bewusst NICHT deployt — „ruhig by default"
   kein Versand, kein Protokoll-Eintrag — per psql geprüft). **Function-Deploy nur nach
   ausdrücklicher Freigabe.**
 
-**E6 — Kosten am Job** (Migration 0043 `job_costs`)
+**E6 ✔ — Kosten am Job** (Migration 0045 `job_costs`, erledigt 2026-07-25)
 - `job_costs` (job_id, cost_type, profile_id nullable, description Pflicht, hours/
   hourly_rate nullable, amount netto, cost_date nullable); RLS `anmietung`; GRANTs.
-- `types/database.ts`, `hooks/useJobCosts.ts`, `components/jobs/JobCostsCard.tsx`
-  (Typ-Badges, Stunden×Satz-Rechner → amount, read-only-Zeile „Anmietungen aus
-  Vorgängen", Knopf „Zugewiesene übernehmen"). Guard `hasArea('anmietung')`.
-- Beweis: alle Typen, Rechner, Summen; Rechte-Probe (ohne Bereich Karte unsichtbar).
+- `types/database.ts`, `hooks/useJobCosts.ts`, `components/jobs/CreateJobCostDialog.tsx`,
+  `components/jobs/JobCostsCard.tsx` (Typ-Badges, Stunden×Satz-Rechner → amount
+  read-only sobald beide gesetzt, read-only-Zeile „Anmietungen aus Vorgängen" (Summe
+  aktiver, nicht stornierter Anmiet-Vorgänge), Knopf „Zugewiesene übernehmen" — legt je
+  zugewiesenem Nutzer ohne bestehende Personal-Zeile eine leere Zeile an, Admin-Profile
+  bewusst ausgeschlossen wie bei der Job-Zuweisung selbst). Karte im Job-Tab „Geld".
+  Guard `hasArea('anmietung')` (Sichtbarkeit) / `canEdit('anmietung')` (Bearbeiten).
+- Beweis: Rechner (8 Std. × 25 € → 200 €), Summen (Anmietung 2.000 € + Personal 200 €
+  = 2.200 €), Zugewiesene-übernehmen (2 Zeilen für 2 zugewiesene Nutzer, Admin
+  korrekt ausgeschlossen), Löschen (Button „Zugewiesene übernehmen" taucht danach
+  wieder auf), alles im Browser durchgespielt und per psql gegengeprüft. Rechte-Probe
+  als Logik-Check (kein Live-Login als Nicht-Bereichs-Nutzer): realer Nutzer „Max
+  Deger" ohne Bereich `anmietung` und ohne Admin-Rolle → `has_area('anmietung')`
+  liefert `false`, Karte bliebe unsichtbar. Testdaten restlos entfernt (`job_costs`
+  wieder leer).
 
 **E7 — Kalkulation** (keine Migration)
 - `lib/jobCosting.ts` + Test: `computeJobCosting({ offers, invoices, subrentals, costs })`
@@ -515,5 +527,20 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   default"), psql bestätigt: kein Protokoll-Eintrag, Status unverändert. Testdaten
   (Partner-E-Mail) danach entfernt. **Die Function ist bewusst NICHT deployt** —
   braucht Tills Freigabe (nach-außen-wirkend); der vorhandene `RESEND_API_KEY`
-  (Mahnwesen/Leads) reicht, kein neuer Key nötig. Nächster Schritt: **E6** (Kosten am
-  Job, Migration `job_costs`).
+  (Mahnwesen/Leads) reicht, kein neuer Key nötig.
+- **2026-07-25 (letzter Schritt):** **E6 abgeschlossen** — Kosten am Job: Migration
+  0045 (`job_costs`, EINE generische Tabelle für personal/transport/fremdleistung/
+  sonstiges, RLS bewusst auf Bereich `anmietung` statt `jobs` — Kosten/Margen sind wie
+  Einkaufspreise sensible kaufmännische Daten). Neue Karte `JobCostsCard.tsx` im
+  Job-Tab „Geld": read-only-Zeile „Anmietungen aus Vorgängen" (Summe aktiver
+  Anmiet-Vorgänge), Kostenpositionen mit Typ-Badge, Stunden×Satz-Rechner (Betrag wird
+  automatisch berechnet, sobald beide Werte gesetzt sind, sonst frei editierbar für
+  Pauschalkosten), Knopf „Zugewiesene übernehmen" (legt je zugewiesenem Nutzer ohne
+  bestehende Personal-Zeile eine leere Zeile an — Admin-Profile bewusst ausgeschlossen,
+  wie bei der Job-Zuweisung selbst). Beweis im Browser: Rechner (8 Std. × 25 € →
+  200 €), Summenbildung (Anmietung 2.000 € + Personal 200 € = 2.200 €),
+  Zugewiesene-übernehmen (2 Zeilen für 2 zugewiesene Nutzer), Löschen (Knopf taucht
+  danach wieder auf), alles per psql gegengeprüft, Testdaten restlos entfernt.
+  Rechte-Probe als Logik-Check (kein Live-Login als anderer Nutzer): realer Nutzer
+  ohne Bereich `anmietung`/ohne Admin-Rolle → `has_area('anmietung')` liefert `false`.
+  Nächster Schritt: **E7** (Kalkulation — Deckungsbeitrag je Job, keine Migration).

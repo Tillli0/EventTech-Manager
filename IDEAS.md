@@ -20,11 +20,10 @@
 > 2. ~~`PLAN-UI-NEUSCHNITT.md`~~ ✅ **komplett** (U1–U6) — helles Theme, neue Navigation,
 >    Startseite „Nächster Einsatz", Kalender-Ebenen, Dokumente als Job-Ordner,
 >    Job-Detailseite in Abschnitte. Hat `PLAN-MEIN-PLAN.md` M1+M2 mitgezogen.
-> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1, E2,
->    E3, E4, E5 erledigt (E5-Function noch nicht deployt, braucht Tills Freigabe);
->    E2b technisch lauffähig (Gemini-Key + Modell-Fix), aber inhaltliche Qualität
->    unzureichend — bewusst zurückgestellt, kein Deploy. Als Nächstes E6 (Kosten am
->    Job).**
+> 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E7) — Anmietung & Kalkulation. **E1–E6
+>    erledigt (E5-Function noch nicht deployt, braucht Tills Freigabe); E2b technisch
+>    lauffähig (Gemini-Key + Modell-Fix), aber inhaltliche Qualität unzureichend —
+>    bewusst zurückgestellt, kein Deploy. Als Nächstes E7 (Kalkulation).**
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -127,6 +126,16 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E6 — Kosten am Job** (2026-07-25, `PLAN-NEUAUSRICHTUNG.md`,
+  Migration 0045 `job_costs`): neue Karte im Job-Tab „Geld" — Kostenpositionen
+  (Personal/Transport/Fremdleistung/Sonstiges) mit Stunden×Satz-Rechner (Betrag wird
+  automatisch berechnet, sobald beide Werte gesetzt sind), read-only-Zeile
+  „Anmietungen aus Vorgängen" (Summe aktiver Anmiet-Vorgänge), Knopf „Zugewiesene
+  übernehmen" legt je zugewiesenem Nutzer eine leere Kostenzeile an. RLS bewusst auf
+  Bereich `anmietung` (nicht `jobs`) — Kosten/Margen sind sensible kaufmännische
+  Daten wie Einkaufspreise. Beweis im Browser: Rechner, Summenbildung, Zuweisen,
+  Löschen — alles per psql gegengeprüft, Testdaten entfernt.
 
 - **Neuausrichtung E5 — Bestell-Mail an Verleiher** (2026-07-25,
   `PLAN-NEUAUSRICHTUNG.md`, Migration 0044 `subrental_order_emails`): Knopf
