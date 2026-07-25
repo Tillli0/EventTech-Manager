@@ -21,10 +21,15 @@
 > 2026-07-25** (Migration 0046) — Prüfkette + DB-Beweis grün, **kein Browser-Beweis
 > diese Session** (kein Preview-Werkzeug verfügbar). **E10 (Eigentümer-Feld am Gerät)
 > ebenfalls gebaut 2026-07-25** (Migration 0047) — gleicher Stand: Prüfkette +
-> DB-Beweis grün, kein Browser-Beweis diese Session. Damit sind beide am 2026-07-25
-> angestoßenen Etappen umgesetzt; als Nächstes steht wieder **E2b** (Prompt-Qualität
-> der KI-Extraktion) oder ein neues Vorhaben an. Nach jeder Etappe: Haken + Datum,
-> Stand-Vermerk oben.
+> DB-Beweis grün, kein Browser-Beweis diese Session. **E11 (Beschaffungs-Katalog aus
+> der Anmiet-Historie) gebaut 2026-07-25** (keine Migration, reines Frontend) — Tills
+> Idee aus dem Ideen-Brainstorming: ein Katalog, der sich automatisch aus bereits
+> erfassten Anmiet-Vorgängen aufbaut (kein Pflege-Datensatz), nutzbar auf einem neuen
+> Tab „Katalog" auf `/anmietung` und beim Angebot schreiben (Verkaufspreis bewusst
+> nicht automatisch vorgeschlagen). Prüfkette grün (147 Tests), kein Browser-Beweis
+> diese Session (kein Preview-Werkzeug verfügbar). Als Nächstes steht wieder **E2b**
+> (Prompt-Qualität der KI-Extraktion) oder ein neues Vorhaben an. Nach jeder Etappe:
+> Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
 > Vorhaben ist dort Phase 1 + 2), `CLAUDE.md` sagt WIE (Regeln/Rituale), hier stehen die
@@ -536,6 +541,47 @@ gebaut + lokal bewiesen, Function bewusst NICHT deployt — „ruhig by default"
 
 **E9 (Folge-Backlog)** — Engpass-Sammelansicht über alle Jobs + InventoryPage-Badge
 „+X angemietet". In IDEAS/ROADMAP-Phase 4.
+
+**E11 ✅ — Beschaffungs-Katalog aus der Anmiet-Historie** (erledigt 2026-07-25,
+keine Migration)
+- Tills Idee zur Neuausrichtung: seit dem Wegfall des eigenen Bestands beantwortet
+  nichts mehr die Frage „was kann ich beschaffen, bei wem, zu welchem Preis?" —
+  dieses Wissen steckte nur in Tills Kopf und verstreut in einzelnen Anmiet-
+  Vorgängen. Bewusst **kein eigener Katalog zum Pflegen** (Rückfrage-Ergebnis) und
+  **kein Verkaufspreis-Vorschlag** — reine Auswertung der vorhandenen Historie,
+  wächst mit jedem Anmiet-Vorgang von selbst.
+- Neue pure Funktion `buildProcurementCatalog()` in `lib/procurementCatalog.ts`
+  (+ 9 Tests): fasst Positionen über alle nicht-stornierten Anmiet-Vorgänge nach
+  Gerät (`device_id`) bzw. normalisierter Freitext-Bezeichnung zusammen. Rechnet
+  `unit_cost` (Einkaufspreis je Stück für den **gesamten Zeitraum**, siehe 0042)
+  auf einen **Tagespreis** um, weil unterschiedlich lange Anmiet-Zeiträume sonst
+  nicht vergleichbar sind (90 €/3 Tage vs. 40 €/1 Tag). Unbepreiste Positionen
+  (`unit_cost = 0`, z. B. aus „Fehlmenge anmieten") zählen für die Häufigkeit,
+  aber nicht für Preisvergleiche — sonst wäre der „günstigste Partner" immer der
+  mit 0 €. Datenquelle ist der bestehende `useSubrentals()` — keine neue Query.
+- Neuer dritter Tab **„Katalog"** auf `/anmietung` (`CatalogListView.tsx`):
+  Kennzahlen-Kopf, Suche, Kategorie-/Partner-Filter, Sortierung (Häufigkeit/Name/
+  Tagespreis), Kategorie-Gruppen wie im Inventar, aufklappbare Beschaffungs-
+  Historie je Artikel mit Job-Verlinkung, CSV-Export. Bewusst **ohne** Jahr-Filter
+  und ohne Monats-/Kundengruppierung — der Katalog ist selbst die Verdichtung
+  über alle Jahre, ein Archiv-Umschalter widerspräche dem Zweck.
+- Angebots-Dialog bekommt einen dritten Knopf **„Aus Katalog"** (nur bei
+  `hasArea("anmietung")` — Einkaufspreise liegen im RLS-Bereich `anmietung`, ein
+  Nutzer mit nur `angebote` bekäme sonst einen toten Knopf mit still leeren
+  Daten). `CatalogPickerDialog.tsx` lässt eine Position suchen und mit Menge
+  übernehmen; der Verkaufspreis bleibt **leer** (Tills Entscheidung — er will
+  weiter selbst entscheiden, was er verlangt). Als Orientierung erscheint unter
+  der übernommenen Position ein Hinweis „Einkauf zuletzt X €/Tag", der rein
+  lokal im Dialog lebt und **nie** mitgespeichert wird (`offer_items` bleibt
+  unverändert — kein Einkaufspreis kann je beim Kunden landen).
+- Beweis: Prüfkette grün (tsc/lint/**147 Tests**/build, 9 neue Tests für
+  `procurementCatalog.ts` — Zusammenführung unterschiedlicher Schreibweisen,
+  `device_id` schlägt Freitext, Storniertes ausgeschlossen, Tagespreis-
+  Umrechnung, 0-€-Positionen zählen für Häufigkeit statt Preis, günstigster
+  Partner korrekt über den Tagespreis, Sortierung). **Kein Browser-Klick-Beweis
+  in dieser Session** (kein Preview-/Browser-Werkzeug verfügbar) — offen bleibt
+  der Browser-/RLS-Durchspiel-Beweis mit echten Anmiet-Vorgängen bei zwei
+  verschiedenen Partnern.
 
 ## 6. Schema-Kurzentwürfe
 

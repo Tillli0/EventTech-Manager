@@ -23,8 +23,9 @@
 > 3. **`PLAN-NEUAUSRICHTUNG.md`** Block B (E1–E8) — **im Kern komplett, inkl.
 >    ReportsPage-Teil von E7.** E5 (Bestell-Mail) bewusst deaktiviert (Knopf
 >    ausgeblendet, Till entscheidet später über die Freigabe); **E2b-Erweiterung
->    (Kategorie an Anmiet-Positionen) und E10 (Eigentümer-Feld am Gerät) gebaut** —
->    beide ohne Browser-Beweis diese Session (kein Preview-Werkzeug verfügbar).
+>    (Kategorie an Anmiet-Positionen), E10 (Eigentümer-Feld am Gerät) und E11
+>    (Beschaffungs-Katalog aus der Anmiet-Historie) gebaut** — alle drei ohne
+>    Browser-Beweis diese Session (kein Preview-Werkzeug verfügbar).
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
@@ -136,6 +137,27 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Neuausrichtung E11 — Beschaffungs-Katalog aus der Anmiet-Historie** (2026-07-25,
+  `PLAN-NEUAUSRICHTUNG.md`, keine Migration): aus einem Ideen-Brainstorming mit Till
+  entstanden — seit dem Wegfall des eigenen Bestands beantwortet nichts mehr die
+  Frage „was kann ich beschaffen, bei wem, zu welchem Preis?". Neue pure Funktion
+  `lib/procurementCatalog.ts` verdichtet alle nicht-stornierten Anmiet-Vorgänge zu
+  einer Nachschlage-Sicht (Gerät/Bezeichnung, Kategorie, Häufigkeit, zuletzt
+  gezahlter Tagespreis, günstigster bekannter Partner) — **ohne neue Tabelle, ohne
+  Pflegeaufwand**, wächst mit jedem Vorgang von selbst. Rechnet Einkaufspreise (die
+  je Stück für den gesamten Zeitraum gelten) auf einen Tagespreis um, damit
+  unterschiedlich lange Anmiet-Zeiträume vergleichbar werden; unbepreiste
+  Positionen (z. B. aus „Fehlmenge anmieten") zählen für die Häufigkeit, aber nicht
+  für Preisvergleiche. Neuer Tab „Katalog" auf `/anmietung` (Suche, Kategorie-/
+  Partner-Filter, Sortierung, aufklappbare Historie, CSV) und ein Knopf „Aus
+  Katalog" im Angebots-Dialog (nur Bereich `anmietung`, da Einkaufspreise sonst
+  per RLS still leer kämen) — übernimmt Bezeichnung/Menge, der Verkaufspreis
+  bleibt bewusst **leer** (Tills Entscheidung), ein EK-Hinweis dient nur der
+  Orientierung und wird nie gespeichert. Beweis: Prüfkette grün (147 Tests, 9 neu
+  für `procurementCatalog.ts`). **Kein Browser-Beweis diese Session** (kein
+  Preview-Werkzeug verfügbar) — offen bleibt der Durchspiel-Beweis mit echten
+  Anmiet-Vorgängen bei zwei verschiedenen Partnern.
 
 - **Doku aufgeräumt** (2026-07-25, keine Migration): Till störte sich daran, dass zu
   viele MD-Dateien im Root nebeneinander standen, obwohl die Neuausrichtung fast fertig
