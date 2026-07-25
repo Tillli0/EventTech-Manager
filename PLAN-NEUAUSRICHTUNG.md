@@ -14,8 +14,10 @@
 > zum Deploy (nach-außen-wirkend) + einen RESEND_API_KEY (bereits für Mahnwesen/Leads
 > vorhanden, kein neuer Key nötig). **E6 (Kosten am Job) live & bewiesen. E7
 > (Job-Kalkulation) live & bewiesen — ReportsPage-Teil (Deckungsbeitrag-Auswertung,
-> Top-Jobs) noch offen, eigener Nachfolge-Schritt.** Als Nächstes: **E8** (Dashboard &
-> Navigation neu gewichten) oder der offene ReportsPage-Teil von E7. Nach jeder
+> Top-Jobs) noch offen, eigener Nachfolge-Schritt. E8 (Dashboard & Navigation) live &
+> bewiesen — Block B ist damit im Kern komplett.** Als Nächstes: der offene
+> ReportsPage-Teil von E7, oder ein neues Vorhaben (`PLAN-MEIN-PLAN.md` M3–M6). Nach
+> jeder
 > Etappe: Haken + Datum, Stand-Vermerk oben.
 >
 > Verhältnis zu den anderen Dokumenten: `ROADMAP.md` sagt WOHIN/Reihenfolge (dieses
@@ -403,11 +405,22 @@ ReportsPage-Teil noch offen)
   −2.000 €, Badge „—" (kein Prozentwert bei Erlös 0, korrekt statt Division durch 0),
   „Abgerechnet: Noch keine Rechnung gestellt." — Konsole fehlerfrei.
 
-**E8 — Dashboard & Navigation neu gewichten** (keine Migration)
-- `nav.ts` (Reihenfolge + BottomNav Jobs·Kalender·Anmietung·Aufgaben);
-  `DashboardPage.tsx` (KPI „Offene Anmietungen", Karte „Anmietungen mit Handlungsbedarf",
-  Geräte-Karten nach unten; rollenabhängige KPI).
-- Beweis: 375px + Desktop; Rollen-Sichten intakt.
+**E8 ✔ — Dashboard & Navigation neu gewichten** (keine Migration, erledigt 2026-07-25)
+- `nav.ts`-Reihenfolge (Anmietung im Kaufmännisch-Block, Inventar unter Ablage) und
+  Geräte-Karten unten am Dashboard (Rest-Inventar-Zeile) waren **bereits aus den
+  U-Etappen erledigt** — nur die zwei fehlenden Teile ergänzt:
+- Neue KPI-Kachel „Offene Anmietungen" (Anzahl `entwurf`/`angefragt`-Vorgänge + EK-
+  Summe offen), nur für `hasArea('anmietung')` — Grid wächst dafür von 4 auf 5
+  Kacheln (Desktop), bleibt 2-spaltig mobil.
+- Neue Karte „Anmietungen mit Handlungsbedarf" (Seitenspalte, Muster „Fällige
+  Aufgaben") — Vorgänge, die noch nicht bestätigt sind, verlinkt zum jeweiligen Job.
+- Beweis: Browser mit echten Live-Daten (1 offener Anmiet-Vorgang „Beuchel", 2.000 €
+  EK) bei Desktop und 375px, Konsole fehlerfrei. Die animierte Zähl-Kachel (CountUp)
+  zeigte in der Browser-Automatisierung „0" statt „1" — Ursache identifiziert:
+  `document.hidden === true` im Automatisierungs-Tab pausiert `requestAnimationFrame`;
+  Ampel-Farbe und EK-Summe (dieselbe Datengrundlage, nicht animiert) waren korrekt.
+  Kein echter Bug, sondern ein Artefakt der Testumgebung — bei einem sichtbaren Tab
+  läuft die Animation normal (bestehende, unveränderte CountUp-Komponente).
 
 **E9 (Folge-Backlog)** — Engpass-Sammelansicht über alle Jobs + InventoryPage-Badge
 „+X angemietet". In IDEAS/ROADMAP-Phase 4.
@@ -572,5 +585,14 @@ Indizes auf FKs, RLS-Vierergespann, **explizite GRANTs** (`authenticated` +
   Badge „—" statt Division durch 0, „Noch keine Rechnung gestellt."), Konsole
   fehlerfrei. **Der ReportsPage-Teil (Deckungsbeitrag-Auswertung, „Top-Jobs nach DB")
   ist noch offen** — bewusst als eigener Nachfolge-Schritt zurückgestellt (größere
-  Aggregation über alle Jobs, nicht in denselben Commit gequetscht). Nächster Schritt:
-  **E8** (Dashboard & Navigation) oder der offene ReportsPage-Teil von E7.
+  Aggregation über alle Jobs, nicht in denselben Commit gequetscht).
+- **2026-07-25 (letzter Schritt, Teil 3):** **E8 abgeschlossen** — Dashboard &
+  Navigation (keine Migration). Die Nav-Reihenfolge und die Geräte-Karten-Abwertung
+  waren aus den U-Etappen bereits erledigt; ergänzt wurden die zwei fehlenden Teile:
+  KPI-Kachel „Offene Anmietungen" (Anzahl `entwurf`/`angefragt`-Vorgänge + EK-Summe,
+  nur bei `hasArea('anmietung')`, Grid wächst von 4 auf 5 Kacheln) und Karte
+  „Anmietungen mit Handlungsbedarf" (Seitenspalte, Muster „Fällige Aufgaben",
+  verlinkt zum Job). Beweis mit echten Live-Daten (1 offener Vorgang, 2.000 € EK) bei
+  Desktop + 375px, Konsole fehlerfrei. **Damit ist Block B (E1–E8) im Kern komplett**
+  — offen bleiben nur die bewusst zurückgestellten Teile: E2b-Prompt-Qualität,
+  E5-Function-Deploy (Freigabe), E7-ReportsPage-Aggregation.

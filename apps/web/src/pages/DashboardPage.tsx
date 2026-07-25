@@ -13,16 +13,19 @@ import {
   ArrowUpRight,
   Receipt,
   Files,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { AccountDialog } from "@/components/account/AccountDialog";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
-import { JobStatusBadge } from "@/components/ui/StatusBadge";
+import { JobStatusBadge, SubrentalStatusBadge } from "@/components/ui/StatusBadge";
 import { TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useWebsiteLeads } from "@/hooks/useWebsiteLeads";
 import { useInvoices } from "@/hooks/useInvoices";
+import { useSubrentals } from "@/hooks/useSubrentals";
+import { subrentalTotals } from "@/lib/subrentals";
 import { useAllDocuments, openDocumentInNewTab } from "@/hooks/useDocuments";
 import { CATEGORY_META } from "@/components/documents/categoryMeta";
 import { NextJobHero } from "@/components/dashboard/NextJobHero";
@@ -30,7 +33,7 @@ import { useAuth } from "@/auth/AuthProvider";
 import { DEVICE_STATUS_OPTIONS, invoiceDerivedStatus, offerTotals, invoicePaidSum } from "@/types/database";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import type { Job, Task } from "@/types/database";
+import type { Job, Subrental, Task } from "@/types/database";
 import { deviceTone, kpiToneClass, type KpiTone } from "@/lib/statusTone";
 import { Avatar } from "@/components/ui/Avatar";
 
@@ -49,6 +52,7 @@ export function DashboardPage() {
     useDashboard();
   const { data: leads } = useWebsiteLeads();
   const { data: invoices } = useInvoices();
+  const { data: subrentals } = useSubrentals();
   const { data: documents } = useAllDocuments();
   const { user, profile, isAdmin, hasArea } = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
@@ -74,6 +78,16 @@ export function DashboardPage() {
     (inv) => invoiceDerivedStatus(inv, inv.items, inv.payments) === "ueberfaellig",
   ).length;
   const darfGeldSehen = hasArea("angebote");
+  const darfAnmietungSehen = hasArea("anmietung");
+  // Handlungsbedarf = noch nicht bestätigt (entwurf/angefragt) — sobald bestätigt,
+  // liegt der Ball beim Verleiher, nicht mehr bei uns.
+  const subrentalsNeedingAction = (subrentals ?? [])
+    .filter((s) => s.status === "entwurf" || s.status === "angefragt")
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const subrentalsOpenSum = subrentalsNeedingAction.reduce(
+    (sum, s) => sum + subrentalTotals(s.items ?? []).total,
+    0,
+  );
 
   const available = deviceStatusCounts["verfuegbar"] ?? 0;
   const onLoan = deviceStatusCounts["ausgeliehen"] ?? 0;
@@ -109,7 +123,7 @@ export function DashboardPage() {
       )}
 
       {/* Kennzahlen */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className={cn("grid grid-cols-2 gap-3", darfAnmietungSehen ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
         <MetricCard
           to="/jobs"
           icon={Briefcase}
@@ -154,6 +168,16 @@ export function DashboardPage() {
           value={openTaskCount}
           sub={overdueTasks.length > 0 ? `${overdueTasks.length} überfällig` : "nichts überfällig"}
         />
+        {darfAnmietungSehen && (
+          <MetricCard
+            to="/anmietung"
+            icon={Truck}
+            tone={subrentalsNeedingAction.length > 0 ? "mittel" : "gut"}
+            label="Offene Anmietungen"
+            value={subrentalsNeedingAction.length}
+            sub={subrentalsNeedingAction.length > 0 ? `${formatCurrency(subrentalsOpenSum)} EK offen` : "nichts offen"}
+          />
+        )}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
@@ -243,6 +267,20 @@ export function DashboardPage() {
               </div>
             )}
           </SectionCard>
+
+          {darfAnmietungSehen && (
+            <SectionCard title="Anmietungen mit Handlungsbedarf" action={<CardLink to="/anmietung" label="Alle" />}>
+              {subrentalsNeedingAction.length === 0 ? (
+                <p className="py-3 text-center text-sm text-ink-faint">Nichts offen.</p>
+              ) : (
+                <div className="space-y-2">
+                  {subrentalsNeedingAction.slice(0, 4).map((s) => (
+                    <SubrentalRow key={s.id} subrental={s} />
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          )}
 
           <SectionCard
             title={
@@ -426,6 +464,27 @@ function JobRow({ job }: { job: Job }) {
         </div>
       </div>
       <JobStatusBadge status={job.status} />
+    </Link>
+  );
+}
+
+function SubrentalRow({ subrental }: { subrental: Subrental }) {
+  return (
+    <Link
+      to={`/jobs/${subrental.job_id}`}
+      className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-bg-raised"
+    >
+      <Truck size={14} className="shrink-0 text-ink-faint" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-ink">
+          {subrental.supplier?.name ?? "Verleih-Partner"}
+          {subrental.job?.title && <span className="text-ink-faint"> · {subrental.job.title}</span>}
+        </p>
+        <p className="mt-0.5 text-xs text-ink-muted">
+          {formatDate(subrental.start_date)} – {formatDate(subrental.end_date)}
+        </p>
+      </div>
+      <SubrentalStatusBadge status={subrental.status} />
     </Link>
   );
 }
