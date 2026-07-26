@@ -26,6 +26,7 @@ import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
 import { JobRetrospectiveCard } from "@/components/jobs/JobRetrospectiveCard";
 import { SelfAvailabilityHint } from "@/components/jobs/SelfAvailabilityHint";
 import { JobSubrentalsCard } from "@/components/jobs/JobSubrentalsCard";
+import { JobLogisticsCard } from "@/components/jobs/JobLogisticsCard";
 import { JobCostsCard } from "@/components/jobs/JobCostsCard";
 import { JobCostingCard } from "@/components/jobs/JobCostingCard";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
@@ -181,6 +182,8 @@ export function JobDetailPage() {
           )}
 
           {section === "material" && <JobSubrentalsCard jobId={job.id} />}
+
+          {section === "material" && <JobLogisticsCard jobId={job.id} />}
 
           {section === "geld" && (
             <>
