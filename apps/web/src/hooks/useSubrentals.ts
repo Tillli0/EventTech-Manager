@@ -266,6 +266,37 @@ export function useSubrentalAdditionsMap(startDate: string | undefined, endDate:
   });
 }
 
+/**
+ * Aktuell (heute) zusätzlich verfügbare Menge je Gerät aus laufenden Anmiet-
+ * Vorgängen — fürs Inventar-Badge „+X angemietet" (Muster `useDevicesOutNowMap`,
+ * gleiche Zähl-Regeln wie `useSubrentalAdditionsMap`: nur Positionen MIT
+ * `device_id`, nur `SUBRENTAL_COUNTING_STATUSES`, Zeitraum umfasst heute).
+ */
+export function useCurrentSubrentalAdditionsMap() {
+  return useQuery({
+    queryKey: ["subrental-additions-map", "today"],
+    queryFn: async (): Promise<Map<string, number>> => {
+      const today = new Date().toISOString().slice(0, 10);
+
+      const { data, error } = await supabase
+        .from("subrental_items")
+        .select("device_id, quantity, subrentals!inner(status, start_date, end_date)")
+        .not("device_id", "is", null)
+        .in("subrentals.status", [...SUBRENTAL_COUNTING_STATUSES])
+        .lte("subrentals.start_date", today)
+        .gte("subrentals.end_date", today);
+      if (error) throw error;
+
+      const map = new Map<string, number>();
+      for (const row of data as unknown as { device_id: string | null; quantity: number }[]) {
+        if (!row.device_id) continue;
+        map.set(row.device_id, (map.get(row.device_id) ?? 0) + row.quantity);
+      }
+      return map;
+    },
+  });
+}
+
 // ============================================================
 // Bestell-Mail an Verleiher (E5, Edge Function send-subrental-order)
 // ============================================================

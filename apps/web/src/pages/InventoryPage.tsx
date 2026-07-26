@@ -20,6 +20,7 @@ import {
   sumBookedQuantity,
 } from "@/hooks/useJobs";
 import { useDeviceSets, useAddDeviceSetToJob } from "@/hooks/useDeviceSets";
+import { useCurrentSubrentalAdditionsMap } from "@/hooks/useSubrentals";
 import { ManageLocationsDialog } from "@/components/inventory/ManageLocationsDialog";
 import {
   DEVICE_STATUS_OPTIONS,
@@ -74,6 +75,7 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
   const { data: devices, isLoading, error } = useDevices();
   const { data: categories } = useCategories();
   const { data: outNowMap } = useDevicesOutNowMap();
+  const { data: subrentalAdditionsMap } = useCurrentSubrentalAdditionsMap();
 
   // ── Auswahl-Modus für eine Job-Packliste ──────────────────────────────────
   const selectMode = !!packlistJob;
@@ -584,6 +586,7 @@ export function InventoryPage({ packlistJob }: { packlistJob?: Job } = {}) {
                       device={device}
                       accentColor={group.color}
                       outNow={outNowMap?.get(device.id) ?? 0}
+                      subrentalAdditions={subrentalAdditionsMap?.get(device.id) ?? 0}
                       select={
                         selectMode
                           ? {
@@ -629,11 +632,14 @@ function DeviceListRow({
   device,
   accentColor,
   outNow,
+  subrentalAdditions = 0,
   select,
 }: {
   device: Device;
   accentColor: string;
   outNow: number;
+  /** Zusätzlich heute verfügbare Menge aus laufenden Anmiet-Vorgängen (E3/E11). */
+  subrentalAdditions?: number;
   select?: SelectProps;
 }) {
   const locationName = device.location_ref?.name ?? device.location;
@@ -665,7 +671,17 @@ function DeviceListRow({
         {device.stock_quantity}×
       </span>
       <span className="shrink-0 text-right">
-        <DeviceAvailabilityBadge device={device} outNow={outNow} />
+        <span className="inline-flex items-center gap-2">
+          <DeviceAvailabilityBadge device={device} outNow={outNow} />
+          {subrentalAdditions > 0 && (
+            <span
+              className="inline-flex items-center rounded-full bg-accent-soft px-1.5 py-0.5 text-[0.65rem] font-medium text-accent"
+              title={`${subrentalAdditions} zusätzlich aus laufenden Anmiet-Vorgängen`}
+            >
+              +{subrentalAdditions} angemietet
+            </span>
+          )}
+        </span>
         {select && (
           <span
             className={cn(

@@ -47,7 +47,7 @@ export function printPacklist(job: Job) {
         <style>
           @page { margin: 16mm; }
           * { box-sizing: border-box; }
-          body { margin: 0; font-family: Arial, sans-serif; color: #1a1a1a; font-size: 11pt; }
+          body { margin: 0; font-family: "Inter", system-ui, -apple-system, sans-serif; color: #1a1a1a; font-size: 11pt; }
           h1 { font-size: 18pt; margin: 0 0 4px; }
           .meta { color: #555; font-size: 10pt; margin-bottom: 20px; }
           .meta span:not(:last-child)::after { content: " · "; }

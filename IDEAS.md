@@ -34,10 +34,6 @@
 ## 🔧 Quick Wins (Auto — kann Claude eigenständig erledigen)
 
 - [ ] **Leere-Zustände/Ladezustände** vereinheitlichen, wo noch nicht (Konsistenz-Pass). · S · ★ · Auto
-- [ ] **impeccable-Altbefunde (objektive):** `transition: width` auf DashboardPage:362
-      (Layout-Ruckler — auf transform/grid umstellen) und `font-family: Arial` in
-      `lib/printPacklist.ts:50` (Druck-Layout auf Inter/system-ui angleichen). Die
-      `border-l`-Akzentbalken-Befunde bleiben bewusst — dokumentierte Design-Sprache. · S · ★ · Auto
 
 ## 🚀 Größere Features (Freigabe nötig — Claude schlägt vor)
 
@@ -69,7 +65,6 @@
       (EK-Preise je Gerätetyp über Anmiet-Vorgänge). · M · ★★ · Freigabe
 - [ ] **Engpass-Sammelansicht** (E9) — Anmiet-Bedarf über alle anstehenden Jobs, „Anmieten"-
       Shortcut je Zeile. · M · ★★ · Freigabe
-- [ ] **InventoryPage-Badge „+X angemietet"** — angemietete Mengen am Gerät sichtbar. · S · ★ · Auto
 - [ ] **Stundensatz-Presets** in `company_settings` (bewusst NICHT an `profiles` — Datenschutz),
       als Vorbelegung bei Personalkosten. · S · ★ · Freigabe
 - [ ] **`devices`/`customers`: fehlender `service_role`-Grant nachziehen** — beide Tabellen
@@ -137,6 +132,21 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 - [ ] Optional: evtl. Light-Mode-Toggle (bisher bewusst dark-only).
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
+
+- **Quick Wins nach E11** (2026-07-26, keine Migration): Inventar-Badge „+X
+  angemietet" — Geräte, die aktuell zusätzlich über laufende Anmiet-Vorgänge
+  verfügbar sind (bestätigt/übernommen/zurückgegeben, Zeitraum umfasst heute),
+  zeigen das jetzt neben der Verfügbarkeits-Anzeige (neuer Hook
+  `useCurrentSubrentalAdditionsMap` in `useSubrentals.ts`, Muster
+  `useDevicesOutNowMap`). Dazu `lib/printPacklist.ts:50`: Druck-Layout der
+  Packliste von `Arial` auf den App-Font-Stack (`Inter, system-ui, …`)
+  angeglichen. Der dritte in der Altbefund-Notiz genannte Punkt
+  (`transition: width` auf `DashboardPage`) existierte nicht mehr — der
+  animierte Breiten-Übergang ist inzwischen ein bewusstes, mehrfach
+  wiederverwendetes Muster (Job-Fortschrittsbalken auf `JobsPage`/
+  `InventoryPage`/`TasksPage`), kein Layout-Ruckler mehr. Beweis: Prüfkette
+  grün (147 Tests, Build). **Kein Browser-Beweis diese Session** (kein
+  Preview-Werkzeug verfügbar).
 
 - **Neuausrichtung E11 — Beschaffungs-Katalog aus der Anmiet-Historie** (2026-07-25,
   `PLAN-NEUAUSRICHTUNG.md`, keine Migration): aus einem Ideen-Brainstorming mit Till
