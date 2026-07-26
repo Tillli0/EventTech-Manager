@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, Printer, Trash2, ChevronDown } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Printer, Trash2, ChevronDown, Smartphone } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -120,6 +120,10 @@ export function JobDetailPage() {
         }
         actions={
           <>
+            <Button variant="secondary" onClick={() => navigate(`/jobs/${job.id}/einsatz`)}>
+              <Smartphone size={16} />
+              Einsatztag-Ansicht
+            </Button>
             <Button variant="secondary" onClick={() => printPacklist(job)}>
               <Printer size={16} />
               Packliste drucken

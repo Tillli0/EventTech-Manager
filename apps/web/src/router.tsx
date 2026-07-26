@@ -13,6 +13,7 @@ const DeviceDetailPage = lazy(() => import("@/pages/DeviceDetailPage").then((m) 
 const JobsPage = lazy(() => import("@/pages/JobsPage").then((m) => ({ default: m.JobsPage })));
 const JobDetailPage = lazy(() => import("@/pages/JobDetailPage").then((m) => ({ default: m.JobDetailPage })));
 const JobPacklistPage = lazy(() => import("@/pages/JobPacklistPage").then((m) => ({ default: m.JobPacklistPage })));
+const EinsatzPage = lazy(() => import("@/pages/EinsatzPage").then((m) => ({ default: m.EinsatzPage })));
 const CustomersPage = lazy(() => import("@/pages/CustomersPage").then((m) => ({ default: m.CustomersPage })));
 const CustomerDetailPage = lazy(() => import("@/pages/CustomerDetailPage").then((m) => ({ default: m.CustomerDetailPage })));
 const OffersPage = lazy(() => import("@/pages/OffersPage").then((m) => ({ default: m.OffersPage })));
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
           { path: "jobs", element: <RequireArea area="jobs"><JobsPage /></RequireArea> },
           { path: "jobs/:id", element: <JobDetailPage /> },
           { path: "jobs/:id/packliste", element: <JobPacklistPage /> },
+          { path: "jobs/:id/einsatz", element: <EinsatzPage /> },
           { path: "kunden", element: <RequireArea area="kunden"><CustomersPage /></RequireArea> },
           { path: "kunden/:id", element: <RequireArea area="kunden"><CustomerDetailPage /></RequireArea> },
           { path: "angebote", element: <RequireArea area="angebote"><OffersPage /></RequireArea> },
