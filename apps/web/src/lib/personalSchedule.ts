@@ -7,6 +7,13 @@
 // JS-Date-Objekte (new Date(jahr, monat, tag, stunde, minute)) statt UTC-Arithmetik —
 // dadurch übernimmt JS selbst die Sommerzeit-Umstellung korrekt, ohne dass wir sie
 // manuell nachrechnen müssen.
+//
+// „Kann-ich-das-überhaupt"-Check: dieselbe Auflösung (`resolvePersonalBlocks`) dient auch
+// als Hinweis beim Job-Planen — eigene Zeiten, die sonst nur unsichtbar den Kalender
+// blockieren (Schule/Klausur/Urlaub/Krank, s. `isVisibleBlockCategory`), werden HIER
+// bewusst als Text sichtbar gemacht (`describeResolvedBlock`). Kein Widerspruch zur
+// Kalender-Regel „nie eine Karte" — das ist ein anderer Kontext (Planungs-Hinweis, kein
+// Kalender-Eintrag) und bleibt strikt auf die eigenen Zeilen beschränkt (RLS).
 
 export type PersonalBlockCategory =
   | "koeln_schicht"
@@ -166,4 +173,31 @@ function stripTime(d: Date): number {
 export function personalItemsForDay(items: ResolvedPersonalBlock[], day: Date): ResolvedPersonalBlock[] {
   const key = stripTime(day);
   return items.filter((b) => stripTime(b.start) <= key && stripTime(b.end) >= key);
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function formatDayMonth(d: Date): string {
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.`;
+}
+
+function formatHm(d: Date): string {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/**
+ * Lesbare Kurzbeschreibung eines aufgelösten Termins fürs Planungs-Hinweis
+ * (z.B. „Schule (Fr. 14:00–16:00)" oder „Urlaub (25.07.–28.07.)" bei mehrtägigen
+ * Blöcken). Bewusst ohne Abhängigkeit von `lib/format.ts` (keine Zirkularität,
+ * eigenständig testbar).
+ */
+export function describeResolvedBlock(item: ResolvedPersonalBlock): string {
+  const label = PERSONAL_BLOCK_CATEGORY_LABELS[item.category];
+  const sameDay = stripTime(item.start) === stripTime(item.end);
+  if (sameDay) {
+    return `${label} (${formatHm(item.start)}–${formatHm(item.end)} Uhr)`;
+  }
+  return `${label} (${formatDayMonth(item.start)}–${formatDayMonth(item.end)})`;
 }

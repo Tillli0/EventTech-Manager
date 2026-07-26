@@ -24,6 +24,7 @@ import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { Textarea } from "@/components/ui/Input";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
 import { JobRetrospectiveCard } from "@/components/jobs/JobRetrospectiveCard";
+import { SelfAvailabilityHint } from "@/components/jobs/SelfAvailabilityHint";
 import { JobSubrentalsCard } from "@/components/jobs/JobSubrentalsCard";
 import { JobCostsCard } from "@/components/jobs/JobCostsCard";
 import { JobCostingCard } from "@/components/jobs/JobCostingCard";
@@ -148,6 +149,8 @@ export function JobDetailPage() {
         <div className="space-y-6 md:col-span-2">
           {section === "uebersicht" && (
             <>
+              <SelfAvailabilityHint start={new Date(job.start_date)} end={new Date(job.end_date)} />
+
               <Card>
                 <CardHeader>
                   <h2 className="text-sm font-semibold text-ink">Zeitplan</h2>

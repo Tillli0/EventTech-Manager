@@ -3,8 +3,10 @@ import {
   resolveRecurringBlock,
   resolvePersonalBlocks,
   isVisibleBlockCategory,
+  describeResolvedBlock,
   type PersonalRecurringBlock,
   type PersonalBlock,
+  type ResolvedPersonalBlock,
 } from "./personalSchedule";
 
 function rule(overrides: Partial<PersonalRecurringBlock> = {}): PersonalRecurringBlock {
@@ -101,6 +103,34 @@ describe("resolvePersonalBlocks", () => {
     ];
     const results = resolvePersonalBlocks(blocks, [], new Date(2026, 6, 1), new Date(2026, 6, 20));
     expect(results).toHaveLength(0);
+  });
+});
+
+describe("describeResolvedBlock", () => {
+  function resolved(overrides: Partial<ResolvedPersonalBlock> = {}): ResolvedPersonalBlock {
+    return {
+      id: "r1",
+      category: "schule",
+      title: null,
+      start: new Date(2026, 6, 3, 8, 0),
+      end: new Date(2026, 6, 3, 13, 30),
+      source: "recurring",
+      sourceId: "rule-1",
+      ...overrides,
+    };
+  }
+
+  it("zeigt Uhrzeiten bei eintägigen Terminen", () => {
+    expect(describeResolvedBlock(resolved())).toBe("Schule (08:00–13:30 Uhr)");
+  });
+
+  it("zeigt Tag.Monat bei mehrtägigen Terminen", () => {
+    const item = resolved({
+      category: "urlaub",
+      start: new Date(2026, 6, 25, 0, 0),
+      end: new Date(2026, 6, 28, 23, 59),
+    });
+    expect(describeResolvedBlock(item)).toBe("Urlaub (25.07.–28.07.)");
   });
 });
 

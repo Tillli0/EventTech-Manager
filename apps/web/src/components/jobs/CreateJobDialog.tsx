@@ -10,6 +10,7 @@ import { JobDateRangePicker } from "@/components/jobs/JobDateRangePicker";
 import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
 import { useCustomers } from "@/hooks/useCustomers";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
+import { SelfAvailabilityHint } from "@/components/jobs/SelfAvailabilityHint";
 import { randomJobColor } from "@/types/database";
 
 interface CreateJobDialogProps {
@@ -162,6 +163,9 @@ export function CreateJobDialog({
               setEndDate(e);
             }}
           />
+          <div className="mt-2">
+            <SelfAvailabilityHint start={startDate} end={endDate} />
+          </div>
         </div>
 
         <FormField label="Notizen / weitere Infos" hint="Freitext zum Job — z.B. Details aus der Website-Anfrage, Absprachen, Besonderheiten.">
