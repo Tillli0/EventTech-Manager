@@ -133,6 +133,28 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Erfahrungsgedächtnis nach dem Job — Rückblick** (2026-07-26, Migration 0048
+  `job_retrospectives`): aus einem Ideen-Brainstorming mit Till entstanden — bei
+  einem kleinen Betrieb steckt das Wissen „Aufbau hat länger gedauert als
+  gedacht, die Nebelmaschine war unnötig, der Verleiher kam zu spät" sonst nur
+  im Kopf und geht verloren, sobald jemand anders mitarbeitet. Neue Karte
+  „Rückblick" auf der Job-Übersicht: geplante/tatsächliche Stunden + Notiz in
+  ca. 2 Minuten festhalten (`job_retrospectives`, ein Rückblick je Job,
+  `unique(job_id)`), Abweichung farbig markiert. Zweiter Teil „Ähnliche frühere
+  Jobs": findet vergangene Jobs mit überschneidenden Gerätekategorien aus der
+  Packliste (`rankSimilarRetrospectives` in `lib/jobRetrospectives.ts`, 9
+  Tests) und zeigt deren Rückblick direkt an — die Erfahrung taucht beim
+  nächsten ähnlichen Job automatisch wieder auf, ohne dass jemand manuell
+  vergleichen muss. RLS-Bereich `jobs`, Lesen an `can_see_job(job_id)`
+  gekoppelt (Job-Wissen, keine kaufmännische Sensibilität wie `job_costs`).
+  Beweis: Prüfkette grün (156 Tests, 9 neu), Migration vom
+  `migrations-pruefer`-Subagenten geprüft (BEREIT), RLS-Probe mit echtem
+  Nutzer (Max Deger, `job_view_mode: zugewiesene`) — Rückblick eines fremden
+  Jobs bleibt unsichtbar, des zugewiesenen sichtbar, Testdaten per
+  Transaktions-Rollback restlos entfernt, Cloud-Schema nach dem Push
+  verifiziert (`information_schema.columns`). **Kein Browser-Beweis diese
+  Session** (kein Preview-Werkzeug verfügbar).
+
 - **Quick Wins nach E11** (2026-07-26, keine Migration): Inventar-Badge „+X
   angemietet" — Geräte, die aktuell zusätzlich über laufende Anmiet-Vorgänge
   verfügbar sind (bestätigt/übernommen/zurückgegeben, Zeitraum umfasst heute),
