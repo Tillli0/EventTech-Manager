@@ -437,6 +437,21 @@ export interface JobCost {
   profile?: Pick<Profile, "id" | "full_name"> | null;
 }
 
+// ============================================================
+// RÜCKBLICK NACH DEM JOB (Erfahrungsgedächtnis)
+// ============================================================
+
+export interface JobRetrospective {
+  id: string;
+  job_id: string;
+  planned_hours: number | null;
+  actual_hours: number | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Customer {
   id: string;
   company_name: string | null;

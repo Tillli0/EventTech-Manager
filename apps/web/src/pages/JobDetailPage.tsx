@@ -23,6 +23,7 @@ import { JobTasksSection } from "@/components/tasks/JobTasksSection";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { Textarea } from "@/components/ui/Input";
 import { JobMilestonesSection } from "@/components/jobs/JobMilestonesSection";
+import { JobRetrospectiveCard } from "@/components/jobs/JobRetrospectiveCard";
 import { JobSubrentalsCard } from "@/components/jobs/JobSubrentalsCard";
 import { JobCostsCard } from "@/components/jobs/JobCostsCard";
 import { JobCostingCard } from "@/components/jobs/JobCostingCard";
@@ -160,6 +161,7 @@ export function JobDetailPage() {
               </Card>
 
               <JobNotesCard job={job} mayEdit={mayEdit} />
+              <JobRetrospectiveCard job={job} mayEdit={mayEdit} />
             </>
           )}
 
