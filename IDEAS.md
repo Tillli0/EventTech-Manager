@@ -133,6 +133,34 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Vier Ideen aus dem Brainstorming: Kann-ich-das-Check, Preis rückwärts,
+  Logistik-Faden, Einsatztag-Ansicht** (2026-07-26, keine Migration —
+  zusammen mit dem Rückblick unten alle sechs Brainstorming-Ideen umgesetzt):
+  - **Kann-ich-das-überhaupt-Check** (`SelfAvailabilityHint.tsx`): beim Job
+    anlegen (und auf bestehenden Jobs) warnt die App, wenn der eigene
+    Zeitraum mit eigenen Terminen (Schule/Klausur/Köln-Schicht/Urlaub/Krank)
+    kollidiert — reine Auswertung der bereits vorhandenen `personal_blocks`/
+    `personal_recurring_blocks` (strikte Eigen-Sicht-RLS aus Migration 0039,
+    kein neues Schema). Neue Funktion `describeResolvedBlock()` in
+    `lib/personalSchedule.ts`, 2 neue Tests.
+  - **Preis rückwärts rechnen** (`lib/pricingCalculator.ts`,
+    `suggestedPriceForMargin`/`marginPctForPrice`, 7 Tests): neue Rechner-Zeile
+    im Angebots-Dialog (Bereich `anmietung`) — Kosten werden aus Anmietungen +
+    Job-Kosten des verknüpften Jobs vorbelegt, Wunsch-Marge eingeben, App
+    zeigt den nötigen Netto-Gesamtpreis und vergleicht ihn live mit der
+    aktuellen Positionssumme.
+  - **Logistik-Faden** (`lib/subrentalLogistics.ts`, `buildLogisticsTimeline`,
+    7 Tests, neue Karte `JobLogisticsCard` im Tab „Material"): chronologische
+    Zeitleiste „Abholen/Zurückbringen" über alle Anmiet-Vorgänge eines Jobs,
+    warnt bei Wochenend-Terminen.
+  - **Einsatztag-Ansicht fürs Handy** (`pages/EinsatzPage.tsx`, Route
+    `/jobs/:id/einsatz`, verlinkt von der Job-Detailseite): eine einzige
+    kompakte Seite für den Eventtag — Ort mit Routen-Link, Kundenkontakt
+    (tel:/mailto:), Team, Packlisten-Fortschritt, Logistik-Faden, offene
+    Aufgaben. Reine Lesesicht, bündelt nur vorhandene Hooks/Komponenten.
+  Beweis (alle vier): Prüfkette grün (172 Tests, 16 neu, Build). **Kein
+  Browser-Beweis diese Session** (kein Preview-Werkzeug verfügbar).
+
 - **Erfahrungsgedächtnis nach dem Job — Rückblick** (2026-07-26, Migration 0048
   `job_retrospectives`): aus einem Ideen-Brainstorming mit Till entstanden — bei
   einem kleinen Betrieb steckt das Wissen „Aufbau hat länger gedauert als
