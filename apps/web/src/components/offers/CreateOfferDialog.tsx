@@ -14,6 +14,11 @@ import { formatCurrency } from "@/lib/format";
 import { useAuth } from "@/auth/AuthProvider";
 import { CatalogPickerDialog } from "@/components/offers/CatalogPickerDialog";
 import type { CatalogEntry } from "@/lib/procurementCatalog";
+import { useSubrentalsForJob } from "@/hooks/useSubrentals";
+import { useJobCostsForJob } from "@/hooks/useJobCosts";
+import { subrentalTotals, isActiveSubrentalStatus } from "@/lib/subrentals";
+import { suggestedPriceForMargin } from "@/lib/pricingCalculator";
+import { cn } from "@/lib/cn";
 
 interface DraftItem extends CreateOfferItemInput {
   /** lokale Zeilen-ID nur fürs Rendering */
@@ -72,6 +77,33 @@ export function CreateOfferDialog({
   // Einkaufspreis-Hinweis je übernommener Position — rein zur Orientierung
   // beim Kalkulieren, wird NIE mitgespeichert (offer_items kennt keinen EK).
   const [purchaseHints, setPurchaseHints] = useState<Record<string, number>>({});
+
+  // Preis rückwärts rechnen: aus Kosten + Wunsch-Marge den nötigen Angebotspreis
+  // ableiten. Nur zur Orientierung — rein clientseitig, nichts davon wird gespeichert.
+  const effectiveJobId = editOffer?.job_id ?? presetJobId;
+  const { data: jobSubrentals } = useSubrentalsForJob(mayUseCatalog ? effectiveJobId : undefined);
+  const { data: jobCosts } = useJobCostsForJob(mayUseCatalog ? effectiveJobId : undefined);
+  const knownCosts = useMemo(() => {
+    const subrentalCost = (jobSubrentals ?? [])
+      .filter((s) => isActiveSubrentalStatus(s.status))
+      .reduce((sum, s) => sum + subrentalTotals(s.items ?? []).total, 0);
+    const otherCosts = (jobCosts ?? []).reduce((sum, c) => sum + c.amount, 0);
+    return subrentalCost + otherCosts;
+  }, [jobSubrentals, jobCosts]);
+  const [costsInput, setCostsInput] = useState("");
+  const [marginInput, setMarginInput] = useState("30");
+
+  // Kosten aus Anmietung/Job-Kosten vorbelegen, sobald sie geladen sind — bleibt
+  // trotzdem editierbar (z.B. wenn noch nichts erfasst ist, aber schon geschätzt
+  // werden soll).
+  useEffect(() => {
+    if (!open) return;
+    setCostsInput(knownCosts > 0 ? String(Math.round(knownCosts * 100) / 100) : "");
+  }, [open, knownCosts]);
+
+  const parsedCosts = Math.max(0, parseFloat(costsInput.replace(",", ".")) || 0);
+  const parsedMargin = Math.max(0, Math.min(99, parseFloat(marginInput.replace(",", ".")) || 0));
+  const suggestedPrice = suggestedPriceForMargin(parsedCosts, parsedMargin);
 
   function applyDaysToAll() {
     const d = Math.max(1, parseInt(bulkDays, 10) || 1);
@@ -413,6 +445,57 @@ export function CreateOfferDialog({
             </div>
           )}
         </div>
+
+        {mayUseCatalog && (
+          <div className="rounded-lg border border-border bg-bg-raised px-3 py-2.5">
+            <p className="mb-2 text-xs font-medium text-ink-muted">
+              Preis rückwärts rechnen — was muss auf der Rechnung stehen?
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-32">
+                <FormField label="Kosten (netto)">
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={costsInput}
+                    onChange={(e) => setCostsInput(e.target.value)}
+                  />
+                </FormField>
+              </div>
+              <div className="w-24">
+                <FormField label="Wunsch-Marge (%)">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={99}
+                    step="1"
+                    value={marginInput}
+                    onChange={(e) => setMarginInput(e.target.value)}
+                  />
+                </FormField>
+              </div>
+              <div className="text-sm">
+                <p className="text-ink-muted">nötiger Netto-Gesamtpreis</p>
+                <p className="font-mono font-semibold text-ink">
+                  {suggestedPrice != null ? formatCurrency(suggestedPrice) : "—"}
+                </p>
+              </div>
+              {suggestedPrice != null && totals.net > 0 && (
+                <p
+                  className={cn(
+                    "text-xs",
+                    totals.net >= suggestedPrice ? "text-status-verfuegbar" : "text-status-wartung",
+                  )}
+                >
+                  {totals.net >= suggestedPrice
+                    ? "Aktuelles Angebot erreicht die Wunsch-Marge."
+                    : `Aktuelles Angebot liegt ${formatCurrency(suggestedPrice - totals.net)} darunter.`}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Summen */}
         <div className="ml-auto w-56 space-y-1 text-sm">
