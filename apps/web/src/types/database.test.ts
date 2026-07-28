@@ -151,7 +151,33 @@ describe("isJobCompletelyPast", () => {
   it("späte Zeitplan-Termine halten den Job aktuell", () => {
     const j = job({});
     j.milestones = [
-      { id: "m1", job_id: "j1", title: "Abbau", at: "2026-07-05T08:00:00", photo_path: null, created_at: "" },
+      {
+        id: "m1",
+        job_id: "j1",
+        title: "Abbau",
+        at: "2026-07-05T08:00:00",
+        end_at: null,
+        notes: null,
+        photo_path: null,
+        created_at: "",
+      },
+    ];
+    expect(isJobCompletelyPast(j, now)).toBe(false);
+  });
+
+  it("ein spätes end_at hält den Job aktuell, auch wenn 'at' schon vorbei ist", () => {
+    const j = job({ end_date: "2026-07-01T23:59:59" });
+    j.milestones = [
+      {
+        id: "m1",
+        job_id: "j1",
+        title: "Nachtschicht",
+        at: "2026-07-01T22:00:00",
+        end_at: "2026-07-10T02:00:00",
+        notes: null,
+        photo_path: null,
+        created_at: "",
+      },
     ];
     expect(isJobCompletelyPast(j, now)).toBe(false);
   });

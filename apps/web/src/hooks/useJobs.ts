@@ -30,7 +30,7 @@ export function useJobs() {
         // Mengen (ohne Geräte-Join) für den Fortschrittsbalken in der Job-Karte,
         // Zuweisungen für die Avatar-Gruppe.
         .select(
-          "*, customer:customers(*), venue:venues(id, name, address_street, address_zip, address_city), milestones:job_milestones(id, title, at), packlist_items(id, job_id, device_id, quantity, quantity_picked_up, quantity_returned_ok, quantity_damaged, quantity_missing, picked_up_at, returned_at, is_damaged_on_return, damage_notes, created_at), assignees:job_assignees(user_id)",
+          "*, customer:customers(*), venue:venues(id, name, address_street, address_zip, address_city), milestones:job_milestones(id, title, at, end_at), packlist_items(id, job_id, device_id, quantity, quantity_picked_up, quantity_returned_ok, quantity_damaged, quantity_missing, picked_up_at, returned_at, is_damaged_on_return, damage_notes, created_at), assignees:job_assignees(user_id)",
         )
         .is("deleted_at", null)
         .order("start_date", { ascending: true });
@@ -799,10 +799,22 @@ export function useDeviceAvailability(
 export function useCreateJobMilestone() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ jobId, title, at }: { jobId: string; title: string; at: string }) => {
+    mutationFn: async ({
+      jobId,
+      title,
+      at,
+      endAt,
+      notes,
+    }: {
+      jobId: string;
+      title: string;
+      at: string;
+      endAt?: string | null;
+      notes?: string | null;
+    }) => {
       const { data, error } = await supabase
         .from("job_milestones")
-        .insert({ job_id: jobId, title, at })
+        .insert({ job_id: jobId, title, at, end_at: endAt ?? null, notes: notes ?? null })
         .select()
         .single();
       if (error) throw error;
@@ -824,7 +836,7 @@ export function useUpdateJobMilestone() {
       // jobId nur hier herausgelöst, damit es nicht im DB-Update landet (genutzt in onSuccess).
       jobId: _jobId,
       ...fields
-    }: { id: string; jobId: string } & Partial<Pick<JobMilestone, "title" | "at">>) => {
+    }: { id: string; jobId: string } & Partial<Pick<JobMilestone, "title" | "at" | "end_at" | "notes">>) => {
       const { data, error } = await supabase
         .from("job_milestones")
         .update(fields)

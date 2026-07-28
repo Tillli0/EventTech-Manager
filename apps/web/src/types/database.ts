@@ -575,6 +575,11 @@ export interface JobMilestone {
   job_id: string;
   title: string;
   at: string;
+  /** Ende des Programmpunkts — nullable, ein reiner Zeitpunkt bleibt gültig. */
+  end_at: string | null;
+  /** Interne Notiz (z.B. Absprachen) — der Ablaufplan (P2b) blendet sie über
+   * den Schalter "interne Notizen mitdrucken" ein oder aus. */
+  notes: string | null;
   /** Optionales Foto (Storage-Pfad im Bucket job-photos), z.B. Bühnenplan. */
   photo_path: string | null;
   created_at: string;
@@ -591,7 +596,10 @@ export function isJobCompletelyPast(job: Job, now: Date = new Date()): boolean {
   todayStart.setHours(0, 0, 0, 0);
   let latest = new Date(job.end_date).getTime();
   if (job.return_at) latest = Math.max(latest, new Date(job.return_at).getTime());
-  for (const m of job.milestones ?? []) latest = Math.max(latest, new Date(m.at).getTime());
+  for (const m of job.milestones ?? []) {
+    latest = Math.max(latest, new Date(m.at).getTime());
+    if (m.end_at) latest = Math.max(latest, new Date(m.end_at).getTime());
+  }
   return latest < todayStart.getTime();
 }
 

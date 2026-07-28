@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Plus, Trash2, Pencil, Check, X, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Input, Textarea } from "@/components/ui/Input";
 import { DateTimeField } from "@/components/ui/DateTimeField";
 import {
   useCreateJobMilestone,
@@ -31,17 +31,27 @@ export function JobMilestonesSection({
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [at, setAt] = useState<Date | null>(null);
+  const [endAt, setEndAt] = useState<Date | null>(null);
+  const [notes, setNotes] = useState("");
 
   function openForm() {
     setTitle("");
     setAt(toDate(defaultAt));
+    setEndAt(null);
+    setNotes("");
     setShowForm(true);
   }
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !at) return;
-    createMilestone.mutate({ jobId, title: title.trim(), at: at.toISOString() });
+    createMilestone.mutate({
+      jobId,
+      title: title.trim(),
+      at: at.toISOString(),
+      endAt: endAt ? endAt.toISOString() : null,
+      notes: notes.trim() || null,
+    });
     setShowForm(false);
   }
 
@@ -71,7 +81,20 @@ export function JobMilestonesSection({
             placeholder="z.B. Aufbau, Soundcheck, Eventstart, Abbau"
             autoFocus
           />
-          <DateTimeField value={at} onChange={setAt} />
+          <div>
+            <p className="mb-1 text-xs text-ink-faint">Beginn</p>
+            <DateTimeField value={at} onChange={setAt} />
+          </div>
+          <div>
+            <p className="mb-1 text-xs text-ink-faint">Ende (optional)</p>
+            <DateTimeField value={endAt} onChange={setEndAt} min={at} />
+          </div>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Interne Notiz (optional) — z.B. Absprachen, Besonderheiten"
+            rows={2}
+          />
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={!title.trim() || !at}>
               Hinzufügen
@@ -103,6 +126,8 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(milestone.title);
   const [at, setAt] = useState<Date | null>(toDate(milestone.at));
+  const [endAt, setEndAt] = useState<Date | null>(toDate(milestone.end_at));
+  const [notes, setNotes] = useState(milestone.notes ?? "");
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -113,13 +138,22 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
 
   function save() {
     if (!title.trim() || !at) return;
-    updateMilestone.mutate({ id: milestone.id, jobId, title: title.trim(), at: at.toISOString() });
+    updateMilestone.mutate({
+      id: milestone.id,
+      jobId,
+      title: title.trim(),
+      at: at.toISOString(),
+      end_at: endAt ? endAt.toISOString() : null,
+      notes: notes.trim() || null,
+    });
     setEditing(false);
   }
 
   function cancel() {
     setTitle(milestone.title);
     setAt(toDate(milestone.at));
+    setEndAt(toDate(milestone.end_at));
+    setNotes(milestone.notes ?? "");
     setEditing(false);
   }
 
@@ -132,6 +166,7 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
         </span>
         <span className="shrink-0 whitespace-nowrap text-xs font-medium tabular-nums text-ink-muted">
           {formatDate(milestone.at)} · {formatTime(milestone.at)}
+          {milestone.end_at && `–${formatTime(milestone.end_at)}`}
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{milestone.title}</span>
         <button
@@ -163,6 +198,11 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
         </button>
       </div>
 
+      {/* Interne Notiz (falls vorhanden, nicht während der Bearbeitung) */}
+      {!editing && milestone.notes && (
+        <p className="whitespace-pre-wrap px-3 pb-2.5 pl-10 text-xs text-ink-muted">{milestone.notes}</p>
+      )}
+
       {/* Foto-Vorschau (falls vorhanden) */}
       {milestone.photo_path && (
         <div className="px-3 pb-2.5">
@@ -187,11 +227,24 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
         </div>
       )}
 
-      {/* Bearbeiten: Titel + Zeitpunkt */}
+      {/* Bearbeiten: Titel + Zeitpunkt + Notiz */}
       {editing && (
         <div className="space-y-2 px-3 py-2.5">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Bezeichnung" autoFocus />
-          <DateTimeField value={at} onChange={setAt} />
+          <div>
+            <p className="mb-1 text-xs text-ink-faint">Beginn</p>
+            <DateTimeField value={at} onChange={setAt} />
+          </div>
+          <div>
+            <p className="mb-1 text-xs text-ink-faint">Ende (optional)</p>
+            <DateTimeField value={endAt} onChange={setEndAt} min={at} />
+          </div>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Interne Notiz (optional)"
+            rows={2}
+          />
           <div className="flex gap-2">
             <Button size="sm" onClick={save} disabled={!title.trim() || !at}>
               <Check size={14} />
