@@ -6,6 +6,7 @@ import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateField";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useDevices } from "@/hooks/useDevices";
+import { useJobs } from "@/hooks/useJobs";
 import {
   useCreateInvoice,
   useUpdateInvoice,
@@ -13,7 +14,7 @@ import {
   type CreateInvoiceItemInput,
 } from "@/hooks/useInvoices";
 import { offerTotals, type Invoice } from "@/types/database";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 interface DraftItem extends CreateInvoiceItemInput {
   /** lokale Zeilen-ID nur fürs Rendering */
@@ -45,12 +46,14 @@ export function InvoiceDialog({
 }) {
   const { data: customers } = useCustomers();
   const { data: devices } = useDevices();
+  const { data: jobs } = useJobs();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const isEdit = !!editInvoice;
   const itemsLocked = isEdit && editInvoice!.status !== "entwurf";
 
   const [customerId, setCustomerId] = useState("");
+  const [jobId, setJobId] = useState("");
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [serviceDate, setServiceDate] = useState("");
@@ -64,6 +67,7 @@ export function InvoiceDialog({
     if (!open) return;
     if (editInvoice) {
       setCustomerId(editInvoice.customer_id ?? "");
+      setJobId(editInvoice.job_id ?? "");
       setTitle(editInvoice.title);
       setDueDate(editInvoice.due_date ?? "");
       setServiceDate(editInvoice.service_date ?? "");
@@ -83,6 +87,7 @@ export function InvoiceDialog({
       );
     } else {
       setCustomerId(preset?.customer_id ?? "");
+      setJobId(preset?.job_id ?? "");
       setTitle(preset?.title ?? "");
       setDueDate(preset?.due_date ?? "");
       setServiceDate(preset?.service_date ?? "");
@@ -153,7 +158,8 @@ export function InvoiceDialog({
         await updateInvoice.mutateAsync({
           id: editInvoice.id,
           customer_id: customerId || null,
-          job_id: editInvoice.job_id ?? null,
+          job_id: jobId || null,
+          previousJobId: editInvoice.job_id,
           offer_id: editInvoice.offer_id ?? null,
           title: title.trim(),
           due_date: dueDate || null,
@@ -165,7 +171,7 @@ export function InvoiceDialog({
       } else {
         await createInvoice.mutateAsync({
           customer_id: customerId || null,
-          job_id: preset?.job_id ?? null,
+          job_id: jobId || null,
           offer_id: preset?.offer_id ?? null,
           title: title.trim(),
           due_date: dueDate || null,
@@ -213,6 +219,17 @@ export function InvoiceDialog({
             />
           </FormField>
         </div>
+
+        <FormField label="Zugehöriger Job" hint="Damit der Erlös in der Job-Kalkulation erscheint.">
+          <Select value={jobId} onChange={(e) => setJobId(e.target.value)}>
+            <option value="">Kein Job</option>
+            {jobs?.map((j) => (
+              <option key={j.id} value={j.id}>
+                {j.title} ({formatDate(j.start_date)})
+              </option>
+            ))}
+          </Select>
+        </FormField>
 
         <FormField label="Betreff *">
           <Input

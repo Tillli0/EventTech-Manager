@@ -10,8 +10,9 @@ import { Boxes, Euro, LayoutList, FolderClosed } from "lucide-react";
 import { useJob, useUpdateJobStatus, useUpdateJob, useSoftDeleteJob } from "@/hooks/useJobs";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useOffersForJob, fetchOfferWithItems } from "@/hooks/useOffers";
-import { useInvoicesForJob } from "@/hooks/useInvoices";
+import { useInvoicesForJob, type CreateInvoiceInput } from "@/hooks/useInvoices";
 import { LinkedOffersCard, LinkedInvoicesCard } from "@/components/shared/LinkedFinanceCards";
+import { InvoiceDialog } from "@/components/invoices/InvoiceDialog";
 import { downloadOfferPdf } from "@/lib/offerPdf";
 import { useToast } from "@/components/ui/Toast";
 import { JOB_STATUS_OPTIONS, type JobStatus } from "@/types/database";
@@ -192,7 +193,7 @@ export function JobDetailPage() {
           {section === "geld" && (
             <>
               <JobOffersCard jobId={job.id} />
-              <JobInvoicesCard jobId={job.id} />
+              <JobInvoicesCard job={job} />
               <JobCostsCard job={job} />
             </>
           )}
@@ -317,10 +318,28 @@ function JobOffersCard({ jobId }: { jobId: string }) {
   return <LinkedOffersCard offers={offers} onDownload={handleDownload} downloadingId={downloadingId} />;
 }
 
-/** Rechnungen, die zu diesem Job gehören — mit Status und offenem Betrag. */
-function JobInvoicesCard({ jobId }: { jobId: string }) {
-  const { data: invoices } = useInvoicesForJob(jobId);
-  return <LinkedInvoicesCard invoices={invoices} />;
+/**
+ * Rechnungen, die zu diesem Job gehören — mit Status und offenem Betrag.
+ * "Rechnung erstellen" direkt am Job (P0-Befund): job_id landet dadurch von
+ * Anfang an korrekt, ohne den Umweg über ein Angebot.
+ */
+function JobInvoicesCard({ job }: { job: Job }) {
+  const { data: invoices } = useInvoicesForJob(job.id);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const preset: CreateInvoiceInput = {
+    customer_id: job.customer_id,
+    job_id: job.id,
+    title: job.title,
+    items: [],
+  };
+
+  return (
+    <>
+      <LinkedInvoicesCard invoices={invoices} onCreate={() => setDialogOpen(true)} />
+      <InvoiceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} preset={preset} />
+    </>
+  );
 }
 
 /** Notizen / weitere Infos zum Job — editierbar (übernimmt u.a. die Website-Anfrage-Nachricht). */

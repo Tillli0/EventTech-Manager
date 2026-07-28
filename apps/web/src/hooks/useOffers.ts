@@ -207,6 +207,8 @@ export function useCreateOffer() {
 export interface UpdateOfferInput extends CreateOfferInput {
   id: string;
   status: OfferStatus;
+  /** Job-Verknüpfung vor dieser Änderung — nur für die Cache-Invalidierung, wird nicht gespeichert. */
+  previousJobId?: string | null;
 }
 
 /**
@@ -218,7 +220,7 @@ export function useUpdateOffer() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: UpdateOfferInput): Promise<Offer> => {
-      const { id, items, inquiry_id, ...offerFields } = input;
+      const { id, items, inquiry_id, previousJobId: _previousJobId, ...offerFields } = input;
 
       const { data, error } = await supabase
         .from("offers")
@@ -249,7 +251,7 @@ export function useUpdateOffer() {
 
       return offer;
     },
-    onSuccess: (offer) => {
+    onSuccess: (offer, variables) => {
       queryClient.invalidateQueries({ queryKey: OFFERS_KEY });
       queryClient.invalidateQueries({ queryKey: [...OFFERS_KEY, offer.id] });
       if (offer.customer_id) {
@@ -257,6 +259,11 @@ export function useUpdateOffer() {
       }
       if (offer.job_id) {
         queryClient.invalidateQueries({ queryKey: [...OFFERS_KEY, "by-job", offer.job_id] });
+      }
+      // Job-Verknüpfung geändert/entfernt: auch den alten Job-Cache entwerten,
+      // sonst zeigt er das Angebot weiter an (P0-Befund).
+      if (variables.previousJobId && variables.previousJobId !== offer.job_id) {
+        queryClient.invalidateQueries({ queryKey: [...OFFERS_KEY, "by-job", variables.previousJobId] });
       }
     },
   });

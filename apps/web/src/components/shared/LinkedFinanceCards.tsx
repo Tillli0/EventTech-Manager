@@ -86,16 +86,18 @@ export function LinkedOffersCard({
   );
 }
 
-/** Verknüpfte Rechnungen mit Status und offenem Betrag. */
+/** Verknüpfte Rechnungen mit Status und offenem Betrag. `onCreate` optional (nur wo Anlegen erlaubt/sinnvoll ist). */
 export function LinkedInvoicesCard({
   invoices,
   hideWhenEmpty = false,
+  onCreate,
 }: {
   invoices: Invoice[] | undefined;
   hideWhenEmpty?: boolean;
+  onCreate?: () => void;
 }) {
   const isEmpty = !invoices || invoices.length === 0;
-  if (isEmpty && hideWhenEmpty) return null;
+  if (isEmpty && hideWhenEmpty && !onCreate) return null;
 
   const openTotal = (invoices ?? []).reduce((sum, inv) => {
     if (inv.status !== "gestellt") return sum;
@@ -110,7 +112,17 @@ export function LinkedInvoicesCard({
           <Receipt size={14} />
           Rechnungen
         </h2>
-        {openTotal > 0 && <span className="font-mono text-xs text-ink-muted">offen: {formatCurrency(openTotal)}</span>}
+        <div className="flex items-center gap-2">
+          {openTotal > 0 && (
+            <span className="font-mono text-xs text-ink-muted">offen: {formatCurrency(openTotal)}</span>
+          )}
+          {onCreate && (
+            <Button size="sm" variant="secondary" onClick={onCreate}>
+              <Plus size={14} />
+              Rechnung erstellen
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardBody>
         {isEmpty ? (

@@ -6,11 +6,12 @@ import { FormField, Input, Select, Textarea } from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateField";
 import { useCustomers, useInquiries } from "@/hooks/useCustomers";
 import { useDevices } from "@/hooks/useDevices";
+import { useJobs } from "@/hooks/useJobs";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCreateOffer, useUpdateOffer, fetchOfferWithItems, type CreateOfferItemInput } from "@/hooks/useOffers";
 import { archiveOfferPdf } from "@/hooks/useDocuments";
 import { offerTotals, OFFER_STATUS_OPTIONS, type Offer, type OfferStatus } from "@/types/database";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { useAuth } from "@/auth/AuthProvider";
 import { CatalogPickerDialog } from "@/components/offers/CatalogPickerDialog";
 import type { CatalogEntry } from "@/lib/procurementCatalog";
@@ -55,6 +56,7 @@ export function CreateOfferDialog({
   const { data: customers } = useCustomers();
   const { data: inquiries } = useInquiries();
   const { data: devices } = useDevices();
+  const { data: jobs } = useJobs();
   const { hasArea } = useAuth();
   const mayUseCatalog = hasArea("anmietung");
   const createOffer = useCreateOffer();
@@ -64,6 +66,7 @@ export function CreateOfferDialog({
 
   const [customerId, setCustomerId] = useState(presetCustomerId ?? "");
   const [inquiryId, setInquiryId] = useState(presetInquiryId ?? "");
+  const [jobId, setJobId] = useState(presetJobId ?? "");
   const [title, setTitle] = useState(presetTitle ?? "");
   const [validUntil, setValidUntil] = useState("");
   const [taxRate, setTaxRate] = useState("19");
@@ -80,9 +83,8 @@ export function CreateOfferDialog({
 
   // Preis rückwärts rechnen: aus Kosten + Wunsch-Marge den nötigen Angebotspreis
   // ableiten. Nur zur Orientierung — rein clientseitig, nichts davon wird gespeichert.
-  const effectiveJobId = editOffer?.job_id ?? presetJobId;
-  const { data: jobSubrentals } = useSubrentalsForJob(mayUseCatalog ? effectiveJobId : undefined);
-  const { data: jobCosts } = useJobCostsForJob(mayUseCatalog ? effectiveJobId : undefined);
+  const { data: jobSubrentals } = useSubrentalsForJob(mayUseCatalog && jobId ? jobId : undefined);
+  const { data: jobCosts } = useJobCostsForJob(mayUseCatalog && jobId ? jobId : undefined);
   const knownCosts = useMemo(() => {
     const subrentalCost = (jobSubrentals ?? [])
       .filter((s) => isActiveSubrentalStatus(s.status))
@@ -115,6 +117,7 @@ export function CreateOfferDialog({
     if (editOffer) {
       setCustomerId(editOffer.customer_id ?? "");
       setInquiryId(editOffer.inquiry_id ?? "");
+      setJobId(editOffer.job_id ?? "");
       setTitle(editOffer.title);
       setValidUntil(editOffer.valid_until ?? "");
       setTaxRate(String(editOffer.tax_rate ?? 19));
@@ -135,6 +138,7 @@ export function CreateOfferDialog({
     } else {
       setCustomerId(presetCustomerId ?? "");
       setInquiryId(presetInquiryId ?? "");
+      setJobId(presetJobId ?? "");
       setTitle(presetTitle ?? "");
       setValidUntil("");
       setTaxRate("19");
@@ -146,7 +150,7 @@ export function CreateOfferDialog({
     setBulkDays("");
     setFormError(null);
     setPurchaseHints({});
-  }, [open, editOffer, presetCustomerId, presetInquiryId, presetTitle, presetItems]);
+  }, [open, editOffer, presetCustomerId, presetInquiryId, presetJobId, presetTitle, presetItems]);
 
   const customerInquiries = useMemo(
     () => (inquiries ?? []).filter((inq) => inq.customer_id === customerId),
@@ -225,7 +229,8 @@ export function CreateOfferDialog({
           id: editOffer.id,
           customer_id: customerId || null,
           inquiry_id: inquiryId || null,
-          job_id: editOffer.job_id ?? null,
+          job_id: jobId || null,
+          previousJobId: editOffer.job_id,
           title: title.trim(),
           valid_until: validUntil || null,
           tax_rate: parsedTax,
@@ -252,7 +257,7 @@ export function CreateOfferDialog({
         await createOffer.mutateAsync({
           customer_id: customerId || null,
           inquiry_id: inquiryId || null,
-          job_id: presetJobId ?? null,
+          job_id: jobId || null,
           title: title.trim(),
           valid_until: validUntil || null,
           tax_rate: parsedTax,
@@ -299,6 +304,17 @@ export function CreateOfferDialog({
             </Select>
           </FormField>
         </div>
+
+        <FormField label="Zugehöriger Job" hint="Damit Rechnung und Erlös später am Job erscheinen.">
+          <Select value={jobId} onChange={(e) => setJobId(e.target.value)}>
+            <option value="">Kein Job</option>
+            {jobs?.map((j) => (
+              <option key={j.id} value={j.id}>
+                {j.title} ({formatDate(j.start_date)})
+              </option>
+            ))}
+          </Select>
+        </FormField>
 
         <FormField label="Betreff *">
           <Input

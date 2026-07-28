@@ -112,6 +112,8 @@ export function useCreateInvoice() {
 
 export interface UpdateInvoiceInput extends CreateInvoiceInput {
   id: string;
+  /** Job-Verknüpfung vor dieser Änderung — nur für die Cache-Invalidierung, wird nicht gespeichert. */
+  previousJobId?: string | null;
 }
 
 /**
@@ -123,7 +125,7 @@ export function useUpdateInvoice() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: UpdateInvoiceInput): Promise<Invoice> => {
-      const { id, items, ...fields } = input;
+      const { id, items, previousJobId: _previousJobId, ...fields } = input;
       const { data, error } = await supabase.from("invoices").update(fields).eq("id", id).select().single();
       if (error) throw error;
 
@@ -145,7 +147,15 @@ export function useUpdateInvoice() {
       }
       return data as Invoice;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: INVOICES_KEY }),
+    onSuccess: (invoice, variables) => {
+      queryClient.invalidateQueries({ queryKey: INVOICES_KEY });
+      // Job-Verknüpfung geändert/entfernt: auch den alten Job-Cache entwerten
+      // (dieselbe Prefix-Invalidierung deckt "by-job" nicht automatisch für den
+      // alten Job ab, weil dessen jobId nicht mehr im neuen Datensatz steht).
+      if (variables.previousJobId && variables.previousJobId !== invoice.job_id) {
+        queryClient.invalidateQueries({ queryKey: [...INVOICES_KEY, "by-job", variables.previousJobId] });
+      }
+    },
   });
 }
 
