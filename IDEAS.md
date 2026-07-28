@@ -29,9 +29,9 @@
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
 > 5. **`PLAN-EVENT-PLANUNG.md`** (P0–P6) — 🔴 **in Arbeit.** Erledigt: P0 (Probelauf),
 >    Vorbedingung (Job↔Angebot↔Rechnung), P1 (Orte), P2a (Programmpunkte), M5
->    (Team-Verfügbarkeit), P4/E1 (Crew-Zeiten als Diff) und P4/E2 (Kostenvorschlag
->    ohne Doppelzählung). Offen: F (P5 Fremdgewerke), G (P2b Ablaufplan-PDF), H (P3
->    Vorlagen), I (P6 Gesprächsverlauf), Abschluss.
+>    (Team-Verfügbarkeit), P4/E1 (Crew-Zeiten als Diff), P4/E2 (Kostenvorschlag
+>    ohne Doppelzählung) und P5 (Fremdgewerke koordinieren). Offen: G (P2b
+>    Ablaufplan-PDF), H (P3 Vorlagen), I (P6 Gesprächsverlauf), Abschluss.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
 > Struktur einziehen. Grundlage des Neuschnitts: `docs/archiv/UI-REVIEW-2026-07-18.md`.
@@ -144,6 +144,16 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **P5 — Fremdgewerke koordinieren** (2026-07-28, Migration `0055`, Teil von
+  `PLAN-EVENT-PLANUNG.md`): neue Karte „Fremdgewerke" am Job (Übersicht-Tab) —
+  Partner, Status (angefragt/zugesagt/abgesagt), Zeit vor Ort. Neue Tabelle
+  `job_services` bewusst **ohne Preisspalte** (Geld bleibt in `job_costs`,
+  Bereich `anmietung`); `suppliers` bekommt ein `trade`-Feld (Gewerk) statt
+  eines zweiten Partner-Stamms. `suppliers`-Lesezugriff auf Bereich `jobs`
+  erweitert, damit ein Crew-Mitglied ohne Anmietung-Zugriff sehen kann, welcher
+  Partner gebucht ist (Name/Telefon) — anlegen/ändern/löschen bleibt exklusiv
+  `anmietung`. Per RLS-Simulation bewiesen: zugewiesenes Crew-Mitglied mit nur
+  Bereich `jobs` sieht das Fremdgewerk, aber null `job_costs`-Zeilen.
 - **P4/E2 — Kostenvorschlag aus Crew-Zeiten ohne Doppelzählung** (2026-07-28,
   Migration `0054`, Teil von `PLAN-EVENT-PLANUNG.md`): Knopf „Zeiten übernehmen"
   in `JobCostsCard.tsx` legt für jede zugewiesene Person eine Personal-Kostenzeile
