@@ -30,8 +30,9 @@
 > 5. **`PLAN-EVENT-PLANUNG.md`** (P0–P6) — 🔴 **in Arbeit.** Erledigt: P0 (Probelauf),
 >    Vorbedingung (Job↔Angebot↔Rechnung), P1 (Orte), P2a (Programmpunkte), M5
 >    (Team-Verfügbarkeit), P4/E1 (Crew-Zeiten als Diff), P4/E2 (Kostenvorschlag
->    ohne Doppelzählung), P5 (Fremdgewerke koordinieren) und P2b
->    (Ablaufplan-PDF). Offen: H (P3 Vorlagen), I (P6 Gesprächsverlauf), Abschluss.
+>    ohne Doppelzählung), P5 (Fremdgewerke koordinieren), P2b (Ablaufplan-PDF)
+>    und P3 (Vorlagen, v1 nur Programmpunkte). Offen: I (P6 Gesprächsverlauf),
+>    Abschluss.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
 > Struktur einziehen. Grundlage des Neuschnitts: `docs/archiv/UI-REVIEW-2026-07-18.md`.
@@ -144,6 +145,16 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **P3 — Vorlagen je Event-Art** (2026-07-28, Migration `0056`, Teil von
+  `PLAN-EVENT-PLANUNG.md`): „Als Vorlage speichern" + „Vorlage anwenden" am
+  Job (Zeitplan-Karte), **kein Editor** — genau wie im Plan vorgesehen.
+  **Scope-Entscheidung v1** (der Plan nannte das den größten Risikopunkt):
+  eine Vorlage deckt nur Programmpunkte ab, nicht Aufgaben/Material/
+  Crew-Rollen/Gewerke — jede weitere Art bräuchte eine eigene
+  Fremdschlüssel-Auflösung. Zeiten als Minuten-Offset zum Job-Start (nie
+  absolut), reine ms-Arithmetik → automatisch sommerzeit-sicher.
+  Browser-bewiesen: Vorlage aus einem Job erzeugt, auf einen Job mit anderem
+  Datum angewendet — beide Zeiten korrekt verschoben.
 - **P2b — Ablaufplan-PDF (RunSheet)** (2026-07-28, keine Migration, Teil von
   `PLAN-EVENT-PLANUNG.md`): Knopf „Ablaufplan drucken" am Job erzeugt EIN PDF
   (`RunSheetPdfDocument.tsx` + `lib/runSheetPdf.tsx`, Muster `offerPdf`) mit Ort
