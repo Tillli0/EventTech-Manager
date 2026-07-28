@@ -20,6 +20,7 @@ export function CreateSupplierDialog({
   const isEdit = !!editSupplier;
 
   const [name, setName] = useState("");
+  const [trade, setTrade] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -33,6 +34,7 @@ export function CreateSupplierDialog({
   useEffect(() => {
     if (!open) return;
     setName(editSupplier?.name ?? "");
+    setTrade(editSupplier?.trade ?? "");
     setContactPerson(editSupplier?.contact_person ?? "");
     setEmail(editSupplier?.email ?? "");
     setPhone(editSupplier?.phone ?? "");
@@ -49,6 +51,7 @@ export function CreateSupplierDialog({
 
     const fields = {
       name: name.trim(),
+      trade: trade.trim() || null,
       contact_person: contactPerson.trim() || null,
       email: email.trim() || null,
       phone: phone.trim() || null,
@@ -72,9 +75,14 @@ export function CreateSupplierDialog({
   return (
     <Dialog open={open} onClose={onClose} title={isEdit ? "Verleih-Partner bearbeiten" : "Neuen Verleih-Partner anlegen"}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <FormField label="Name *">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="z.B. Sound & Light GmbH" />
-        </FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Name *">
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="z.B. Sound & Light GmbH" />
+          </FormField>
+          <FormField label="Gewerk">
+            <Input value={trade} onChange={(e) => setTrade(e.target.value)} placeholder="z.B. Catering, Security" />
+          </FormField>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Ansprechpartner">

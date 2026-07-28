@@ -29,6 +29,7 @@ import { SelfAvailabilityHint } from "@/components/jobs/SelfAvailabilityHint";
 import { JobSubrentalsCard } from "@/components/jobs/JobSubrentalsCard";
 import { JobLogisticsCard } from "@/components/jobs/JobLogisticsCard";
 import { JobCostsCard } from "@/components/jobs/JobCostsCard";
+import { JobServicesCard } from "@/components/jobs/JobServicesCard";
 import { JobCostingCard } from "@/components/jobs/JobCostingCard";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
@@ -177,6 +178,8 @@ export function JobDetailPage() {
                   />
                 </CardBody>
               </Card>
+
+              <JobServicesCard jobId={job.id} />
 
               <JobNotesCard job={job} mayEdit={mayEdit} />
               <JobRetrospectiveCard job={job} mayEdit={mayEdit} />

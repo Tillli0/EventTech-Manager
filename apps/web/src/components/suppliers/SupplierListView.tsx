@@ -70,6 +70,11 @@ export function SupplierListView() {
             <Card key={supplier.id} className="flex items-center gap-3 border-l-[3px] border-l-accent px-4 py-3">
               <div className="min-w-0 flex-1">
                 <span className="font-medium text-ink">{supplier.name}</span>
+                {supplier.trade && (
+                  <span className="ml-2 rounded bg-bg-raised px-1.5 py-0.5 text-xs font-normal text-ink-faint">
+                    {supplier.trade}
+                  </span>
+                )}
                 {supplier.contact_person && (
                   <p className="text-xs text-ink-faint">{supplier.contact_person}</p>
                 )}

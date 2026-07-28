@@ -30,6 +30,7 @@ export function useSupplier(id: string | undefined) {
 
 interface SupplierInput {
   name: string;
+  trade?: string | null;
   contact_person?: string | null;
   email?: string | null;
   phone?: string | null;

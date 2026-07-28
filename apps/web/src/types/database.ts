@@ -357,6 +357,8 @@ export const DOCUMENT_UPLOAD_CATEGORIES: DocumentCategory[] = [
 export interface Supplier {
   id: string;
   name: string;
+  /** Gewerk, z.B. "Catering", "Security" (P5) — kein zweiter Partner-Stamm für Fremdgewerke. */
+  trade: string | null;
   contact_person: string | null;
   email: string | null;
   phone: string | null;
@@ -367,6 +369,32 @@ export interface Supplier {
   notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ============================================================
+// FREMDGEWERKE KOORDINIEREN (P5) — wer kommt wann, ohne Preis
+// ============================================================
+
+export type JobServiceStatus = "angefragt" | "zugesagt" | "abgesagt";
+
+export const JOB_SERVICE_STATUS_OPTIONS: { value: JobServiceStatus; label: string }[] = [
+  { value: "angefragt", label: "Angefragt" },
+  { value: "zugesagt", label: "Zugesagt" },
+  { value: "abgesagt", label: "Abgesagt" },
+];
+
+/** Fremdgewerk-Koordination am Job — bewusst OHNE Preis (der lebt in JobCost, Bereich 'anmietung'). */
+export interface JobService {
+  id: string;
+  job_id: string;
+  supplier_id: string;
+  status: JobServiceStatus;
+  /** Wann die Person/das Gewerk vor Ort sein soll. */
+  on_site_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  supplier?: Pick<Supplier, "id" | "name" | "trade" | "phone">;
 }
 
 // ============================================================

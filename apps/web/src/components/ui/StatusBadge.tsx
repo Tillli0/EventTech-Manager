@@ -7,6 +7,7 @@ import type {
   OfferStatus,
   InvoiceDerivedStatus,
   SubrentalStatus,
+  JobServiceStatus,
   Device,
 } from "@/types/database";
 import {
@@ -15,6 +16,7 @@ import {
   INQUIRY_PIPELINE_OPTIONS,
   OFFER_STATUS_OPTIONS,
   INVOICE_STATUS_OPTIONS,
+  JOB_SERVICE_STATUS_OPTIONS,
   describeOwner,
 } from "@/types/database";
 import { SUBRENTAL_STATUS_OPTIONS } from "@/lib/subrentals";
@@ -188,6 +190,34 @@ export function SubrentalStatusBadge({ status }: { status: SubrentalStatus }) {
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", subrentalDotClasses[status])} />
+      {option?.label ?? status}
+    </span>
+  );
+}
+
+const jobServiceTextClasses: Record<JobServiceStatus, string> = {
+  angefragt: "text-status-wartung",
+  zugesagt: "text-status-verfuegbar",
+  abgesagt: "text-status-defekt",
+};
+
+const jobServiceDotClasses: Record<JobServiceStatus, string> = {
+  angefragt: "bg-status-wartung",
+  zugesagt: "bg-status-verfuegbar",
+  abgesagt: "bg-status-defekt",
+};
+
+export function JobServiceStatusBadge({ status }: { status: JobServiceStatus }) {
+  const option = JOB_SERVICE_STATUS_OPTIONS.find((o) => o.value === status);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+        "border-current/20",
+        jobServiceTextClasses[status],
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", jobServiceDotClasses[status])} />
       {option?.label ?? status}
     </span>
   );
