@@ -94,7 +94,22 @@ export interface UserAreaAccess {
 export interface JobAssignee {
   job_id: string;
   user_id: string;
+  /** Beginn des Einsatzes dieser Person am Job (nullable — nicht jede Zuweisung hat Zeiten). */
+  start_at: string | null;
+  end_at: string | null;
+  /** Freitext-Rolle (z.B. "Ton", "Licht", "Fahrer") — bewusst kein Enum, siehe Migration 0053. */
+  role: string | null;
   created_at: string;
+  updated_at: string;
+  profile?: Profile;
+}
+
+/** "Wer macht was im Ablauf" — Crew-Zuweisung zu einem einzelnen Programmpunkt. */
+export interface MilestoneAssignee {
+  milestone_id: string;
+  user_id: string;
+  created_at: string;
+  profile?: Profile;
 }
 
 export interface Category {
@@ -583,6 +598,7 @@ export interface JobMilestone {
   /** Optionales Foto (Storage-Pfad im Bucket job-photos), z.B. Bühnenplan. */
   photo_path: string | null;
   created_at: string;
+  assignees?: MilestoneAssignee[];
 }
 
 /**

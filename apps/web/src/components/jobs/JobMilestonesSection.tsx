@@ -11,20 +11,26 @@ import {
   useRemoveMilestonePhoto,
   milestonePhotoUrl,
 } from "@/hooks/useJobs";
-import type { JobMilestone } from "@/types/database";
+import { useSetMilestoneAssignees } from "@/hooks/useJobAssignees";
+import { profileLabel } from "@/hooks/useProfiles";
+import type { JobMilestone, Profile } from "@/types/database";
 import { toDate } from "@/lib/datetime";
 import { formatTime, formatDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
+import { Avatar } from "@/components/ui/Avatar";
 
 export function JobMilestonesSection({
   jobId,
   milestones,
   defaultAt,
+  crew,
 }: {
   jobId: string;
   milestones: JobMilestone[];
   /** Vorbelegung für neue Programmpunkte, z.B. Job-Start. */
   defaultAt: string;
+  /** Dem Job zugewiesene Profile — Auswahl für "wer macht was" je Programmpunkt. */
+  crew: Profile[];
 }) {
   const createMilestone = useCreateJobMilestone();
 
@@ -68,7 +74,7 @@ export function JobMilestonesSection({
       {sorted.length > 0 && (
         <ol className="mb-3 space-y-1.5">
           {sorted.map((m, i) => (
-            <MilestoneRow key={m.id} index={i} milestone={m} jobId={jobId} />
+            <MilestoneRow key={m.id} index={i} milestone={m} jobId={jobId} crew={crew} />
           ))}
         </ol>
       )}
@@ -116,11 +122,22 @@ export function JobMilestonesSection({
 
 /** Eine Zeitplan-Zeile: kompakt „Nr · Datum · Uhrzeit · Titel" in einer Zeile,
  * per Stift-Knopf inline bearbeitbar (Titel + Zeitpunkt). */
-function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: JobMilestone; jobId: string }) {
+function MilestoneRow({
+  index,
+  milestone,
+  jobId,
+  crew,
+}: {
+  index: number;
+  milestone: JobMilestone;
+  jobId: string;
+  crew: Profile[];
+}) {
   const updateMilestone = useUpdateJobMilestone();
   const deleteMilestone = useDeleteJobMilestone();
   const uploadPhoto = useUploadMilestonePhoto();
   const removePhoto = useRemoveMilestonePhoto();
+  const setMilestoneAssignees = useSetMilestoneAssignees();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing] = useState(false);
@@ -128,6 +145,15 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
   const [at, setAt] = useState<Date | null>(toDate(milestone.at));
   const [endAt, setEndAt] = useState<Date | null>(toDate(milestone.end_at));
   const [notes, setNotes] = useState(milestone.notes ?? "");
+
+  const assignedIds = (milestone.assignees ?? []).map((a) => a.user_id);
+
+  function toggleCrew(userId: string) {
+    const next = assignedIds.includes(userId)
+      ? assignedIds.filter((id) => id !== userId)
+      : [...assignedIds, userId];
+    setMilestoneAssignees.mutate({ milestoneId: milestone.id, jobId, currentUserIds: assignedIds, userIds: next });
+  }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -169,6 +195,18 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
           {milestone.end_at && `–${formatTime(milestone.end_at)}`}
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{milestone.title}</span>
+        {(milestone.assignees ?? []).length > 0 && (
+          <span className="flex shrink-0 -space-x-1.5">
+            {(milestone.assignees ?? []).map((a) => (
+              <Avatar
+                key={a.user_id}
+                label={a.profile ? profileLabel(a.profile) : "?"}
+                size="xs"
+                className="border-2 border-bg-raised"
+              />
+            ))}
+          </span>
+        )}
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadPhoto.isPending}
@@ -245,6 +283,36 @@ function MilestoneRow({ index, milestone, jobId }: { index: number; milestone: J
             placeholder="Interne Notiz (optional)"
             rows={2}
           />
+          {crew.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs text-ink-faint">Wer macht das?</p>
+              <div className="flex flex-wrap gap-1.5">
+                {crew.map((p) => {
+                  const active = assignedIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggleCrew(p.id)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2 text-xs font-medium transition-colors",
+                        active
+                          ? "border-accent bg-accent-soft text-ink"
+                          : "border-border text-ink-muted hover:border-accent/40 hover:text-ink",
+                      )}
+                    >
+                      <Avatar
+                        label={profileLabel(p)}
+                        size="xs"
+                        className={active ? "bg-accent text-accent-on" : "bg-bg-raised text-ink-faint"}
+                      />
+                      {profileLabel(p)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="flex gap-2">
             <Button size="sm" onClick={save} disabled={!title.trim() || !at}>
               <Check size={14} />

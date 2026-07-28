@@ -32,14 +32,10 @@ import { JobCostsCard } from "@/components/jobs/JobCostsCard";
 import { JobCostingCard } from "@/components/jobs/JobCostingCard";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
-import { useSetJobAssignees } from "@/hooks/useJobAssignees";
-import { TeamAvailabilityHint } from "@/components/jobs/TeamAvailabilityHint";
-import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
+import { JobAssigneesCard } from "@/components/jobs/JobAssigneesCard";
 import { useAuth } from "@/auth/AuthProvider";
 import type { Job } from "@/types/database";
-import { Users } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { Avatar } from "@/components/ui/Avatar";
 import { jobTone } from "@/lib/statusTone";
 
 // Muss zu den job.*-Farben in tailwind.config.js passen (dort für Badges/Punkte
@@ -173,7 +169,12 @@ export function JobDetailPage() {
                   </p>
                 </CardHeader>
                 <CardBody>
-                  <JobMilestonesSection jobId={job.id} milestones={job.milestones ?? []} defaultAt={job.start_date} />
+                  <JobMilestonesSection
+                    jobId={job.id}
+                    milestones={job.milestones ?? []}
+                    defaultAt={job.start_date}
+                    crew={(job.assignees ?? []).flatMap((a) => (a.profile ? [a.profile] : []))}
+                  />
                 </CardBody>
               </Card>
 
@@ -406,81 +407,3 @@ function JobNotesCard({ job, mayEdit }: { job: Job; mayEdit: boolean }) {
   );
 }
 
-function JobAssigneesCard({ job, canEdit }: { job: Job; canEdit: boolean }) {
-  const { data: allProfiles } = useProfiles();
-  const profiles = assignableProfiles(allProfiles);
-  const setAssignees = useSetJobAssignees();
-  const assignedIds = (job.assignees ?? []).map((a) => a.user_id);
-
-  function toggle(userId: string) {
-    const next = assignedIds.includes(userId)
-      ? assignedIds.filter((id) => id !== userId)
-      : [...assignedIds, userId];
-    setAssignees.mutate({ jobId: job.id, userIds: next });
-  }
-
-  const assignedProfiles = (profiles ?? []).filter((p) => assignedIds.includes(p.id));
-
-  return (
-    <Card>
-      <CardHeader>
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-          <Users size={14} />
-          Zugewiesene Nutzer
-        </h2>
-      </CardHeader>
-      <CardBody className="space-y-3">
-        {canEdit ? (
-          <>
-            <div className="flex flex-wrap gap-2">
-              {(profiles ?? []).map((p) => {
-                const active = assignedIds.includes(p.id);
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => toggle(p.id)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-xs font-medium transition-all",
-                      active
-                        ? "border-accent bg-accent-soft text-ink"
-                        : "border-border text-ink-muted hover:-translate-y-0.5 hover:border-accent/40 hover:text-ink",
-                    )}
-                  >
-                    <Avatar
-                      label={profileLabel(p)}
-                      size="xs"
-                      className={active ? "bg-accent text-accent-on" : "bg-bg-raised text-ink-faint"}
-                    />
-                    {profileLabel(p)}
-                  </button>
-                );
-              })}
-            </div>
-            {assignedProfiles.length > 0 && (
-              <TeamAvailabilityHint
-                assignedProfiles={assignedProfiles}
-                start={job.start_date}
-                end={job.end_date}
-              />
-            )}
-          </>
-        ) : assignedProfiles.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {assignedProfiles.map((p) => (
-              <span
-                key={p.id}
-                className="flex items-center gap-2 rounded-full bg-bg-raised py-1 pl-1 pr-3 text-xs text-ink-muted"
-              >
-                <Avatar label={profileLabel(p)} size="xs" />
-                {profileLabel(p)}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-ink-faint">Niemand zugewiesen.</p>
-        )}
-      </CardBody>
-    </Card>
-  );
-}
