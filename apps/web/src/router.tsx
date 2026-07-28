@@ -16,6 +16,8 @@ const JobPacklistPage = lazy(() => import("@/pages/JobPacklistPage").then((m) =>
 const EinsatzPage = lazy(() => import("@/pages/EinsatzPage").then((m) => ({ default: m.EinsatzPage })));
 const CustomersPage = lazy(() => import("@/pages/CustomersPage").then((m) => ({ default: m.CustomersPage })));
 const CustomerDetailPage = lazy(() => import("@/pages/CustomerDetailPage").then((m) => ({ default: m.CustomerDetailPage })));
+const VenuesPage = lazy(() => import("@/pages/VenuesPage").then((m) => ({ default: m.VenuesPage })));
+const VenueDetailPage = lazy(() => import("@/pages/VenueDetailPage").then((m) => ({ default: m.VenueDetailPage })));
 const OffersPage = lazy(() => import("@/pages/OffersPage").then((m) => ({ default: m.OffersPage })));
 const InvoicesPage = lazy(() => import("@/pages/InvoicesPage").then((m) => ({ default: m.InvoicesPage })));
 const ReportsPage = lazy(() => import("@/pages/ReportsPage").then((m) => ({ default: m.ReportsPage })));
@@ -55,6 +57,8 @@ export const router = createBrowserRouter([
           { path: "jobs/:id/einsatz", element: <EinsatzPage /> },
           { path: "kunden", element: <RequireArea area="kunden"><CustomersPage /></RequireArea> },
           { path: "kunden/:id", element: <RequireArea area="kunden"><CustomerDetailPage /></RequireArea> },
+          { path: "orte", element: <RequireArea area="jobs"><VenuesPage /></RequireArea> },
+          { path: "orte/:id", element: <RequireArea area="jobs"><VenueDetailPage /></RequireArea> },
           { path: "angebote", element: <RequireArea area="angebote"><OffersPage /></RequireArea> },
           { path: "rechnungen", element: <RequireArea area="angebote"><InvoicesPage /></RequireArea> },
           { path: "auswertungen", element: <RequireArea area="angebote"><ReportsPage /></RequireArea> },

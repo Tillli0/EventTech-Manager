@@ -120,6 +120,7 @@ describe("isJobCompletelyPast", () => {
       inquiry_id: null,
       status: "abgeschlossen",
       location: null,
+      venue_id: null,
       start_date: "2026-06-01T00:00:00Z",
       end_date: "2026-06-02T23:59:59Z",
       pickup_at: null,

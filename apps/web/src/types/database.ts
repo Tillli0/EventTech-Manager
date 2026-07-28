@@ -526,7 +526,10 @@ export interface Job {
   customer_id: string | null;
   inquiry_id: string | null;
   status: JobStatus;
+  /** Freitext-Fallback für Altdaten/Jobs ohne festen Ort. Ist venue_id gesetzt,
+   * zeigt die Oberfläche nur noch den Ort-Eintrag (keine Doppelpflege, siehe E-A). */
   location: string | null;
+  venue_id: string | null;
   start_date: string;
   end_date: string;
   pickup_at: string | null;
@@ -539,9 +542,32 @@ export interface Job {
   created_at: string;
   updated_at: string;
   customer?: Customer | null;
+  venue?: Venue | null;
   packlist_items?: PacklistItem[];
   milestones?: JobMilestone[];
   assignees?: JobAssignee[];
+}
+
+/** Ein Veranstaltungsort (PLAN-EVENT-PLANUNG.md P1) — Betriebswissen, kein Lagerort
+ * (die heißen "locations" und gehören zum Inventar, nicht zu Jobs). */
+export interface Venue {
+  id: string;
+  name: string;
+  address_street: string | null;
+  address_zip: string | null;
+  address_city: string | null;
+  contact_person: string | null;
+  contact_phone: string | null;
+  /** Zufahrt (z.B. LKW-Zugang, Hoftor). */
+  access_notes: string | null;
+  /** Parkmöglichkeiten. */
+  parking_notes: string | null;
+  /** Stromanschluss vor Ort (z.B. 32A CEE). */
+  power_notes: string | null;
+  /** Sonstige Besonderheiten. */
+  special_notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface JobMilestone {

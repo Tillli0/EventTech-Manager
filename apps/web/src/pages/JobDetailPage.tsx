@@ -110,11 +110,18 @@ export function JobDetailPage() {
               <Calendar size={13} />
               {formatDateTime(job.start_date)} – {formatDateTime(job.end_date)}
             </span>
-            {job.location && (
-              <span className="flex items-center gap-1">
+            {job.venue ? (
+              <Link to={`/orte/${job.venue.id}`} className="flex items-center gap-1 hover:text-ink">
                 <MapPin size={13} />
-                {job.location}
-              </span>
+                {job.venue.name}
+              </Link>
+            ) : (
+              job.location && (
+                <span className="flex items-center gap-1">
+                  <MapPin size={13} />
+                  {job.location}
+                </span>
+              )
             )}
             {customerLabel && <span>{customerLabel}</span>}
           </span>

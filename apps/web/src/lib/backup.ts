@@ -9,7 +9,14 @@ import { supabase } from "@/lib/supabase";
  * alle fachlichen Daten. Kein Secret, kein Deploy nötig.
  */
 
-/** Alle fachlichen Tabellen (komplette Datensicherung). */
+/**
+ * Alle fachlichen Tabellen (komplette Datensicherung).
+ *
+ * War seit der Rechnungs-/Anmietungs-Neuausrichtung (2026-07) veraltet — Rechnungen,
+ * Dokumente, Verleih-Partner, Anmiet-Vorgänge und Kosten fehlten hier komplett und
+ * wurden bei "Backup erstellen" still nicht mitgesichert. Beim Ergänzen neuer
+ * fachlicher Tabellen IMMER hier eintragen, sonst lügt die Datensicherung weiter.
+ */
 export const FULL_BACKUP_TABLES: string[] = [
   "company_settings",
   "categories",
@@ -25,12 +32,23 @@ export const FULL_BACKUP_TABLES: string[] = [
   "customer_inquiries",
   "customer_notes",
   "website_leads",
+  "venues",
   "jobs",
   "job_assignees",
   "job_milestones",
+  "job_costs",
+  "job_retrospectives",
   "packlist_items",
   "offers",
   "offer_items",
+  "invoices",
+  "invoice_items",
+  "invoice_payments",
+  "invoice_dunnings",
+  "suppliers",
+  "subrentals",
+  "subrental_items",
+  "documents",
   "tasks",
   "task_checklist_items",
   "calendar_entries",

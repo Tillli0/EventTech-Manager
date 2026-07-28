@@ -12,6 +12,7 @@ import {
   Files,
   LayoutDashboard,
   Truck,
+  MapPin,
 } from "lucide-react";
 import type { AppArea } from "@/types/database";
 
@@ -50,6 +51,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "Arbeit",
     items: [
       { to: "/jobs", label: "Jobs", icon: Briefcase, area: "jobs" },
+      { to: "/orte", label: "Orte", icon: MapPin, area: "jobs" },
       { to: "/kalender", label: "Kalender", icon: Calendar, area: "kalender" },
       { to: "/aufgaben", label: "Aufgaben", icon: CheckSquare },
     ],

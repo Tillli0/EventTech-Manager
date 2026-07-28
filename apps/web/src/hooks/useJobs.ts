@@ -30,7 +30,7 @@ export function useJobs() {
         // Mengen (ohne Geräte-Join) für den Fortschrittsbalken in der Job-Karte,
         // Zuweisungen für die Avatar-Gruppe.
         .select(
-          "*, customer:customers(*), milestones:job_milestones(id, title, at), packlist_items(id, job_id, device_id, quantity, quantity_picked_up, quantity_returned_ok, quantity_damaged, quantity_missing, picked_up_at, returned_at, is_damaged_on_return, damage_notes, created_at), assignees:job_assignees(user_id)",
+          "*, customer:customers(*), venue:venues(id, name, address_street, address_zip, address_city), milestones:job_milestones(id, title, at), packlist_items(id, job_id, device_id, quantity, quantity_picked_up, quantity_returned_ok, quantity_damaged, quantity_missing, picked_up_at, returned_at, is_damaged_on_return, damage_notes, created_at), assignees:job_assignees(user_id)",
         )
         .is("deleted_at", null)
         .order("start_date", { ascending: true });
@@ -49,7 +49,7 @@ export function useJob(id: string | undefined) {
       const { data, error } = await supabase
         .from("jobs")
         .select(
-          "*, customer:customers(*), packlist_items(*, device:devices(*, category:categories(*), location_ref:locations!location_id(*), barcodes(*))), milestones:job_milestones(*), assignees:job_assignees(user_id)",
+          "*, customer:customers(*), venue:venues(*), packlist_items(*, device:devices(*, category:categories(*), location_ref:locations!location_id(*), barcodes(*))), milestones:job_milestones(*), assignees:job_assignees(user_id)",
         )
         .eq("id", id)
         .single();
@@ -127,6 +127,7 @@ interface CreateJobInput {
   title: string;
   customer_id: string | null;
   location?: string | null;
+  venue_id?: string | null;
   start_date: string;
   end_date: string;
   notes?: string | null;

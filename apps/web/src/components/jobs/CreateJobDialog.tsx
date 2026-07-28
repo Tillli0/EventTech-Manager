@@ -9,6 +9,7 @@ import { useCreateJob, useJobs } from "@/hooks/useJobs";
 import { JobDateRangePicker } from "@/components/jobs/JobDateRangePicker";
 import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
 import { useCustomers } from "@/hooks/useCustomers";
+import { useVenues } from "@/hooks/useVenues";
 import { JobColorPicker } from "@/components/jobs/JobColorPicker";
 import { SelfAvailabilityHint } from "@/components/jobs/SelfAvailabilityHint";
 import { randomJobColor } from "@/types/database";
@@ -42,12 +43,14 @@ export function CreateJobDialog({
   const createJob = useCreateJob();
   const { data: jobs } = useJobs();
   const { data: customers } = useCustomers();
+  const { data: venues } = useVenues();
   const { data: allProfiles } = useProfiles();
   const profiles = assignableProfiles(allProfiles);
   const toast = useToast();
 
   const [title, setTitle] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const [venueId, setVenueId] = useState("");
   const [location, setLocation] = useState("");
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -61,6 +64,7 @@ export function CreateJobDialog({
     setColor(randomJobColor());
     setTitle(initialTitle ?? "");
     setCustomerId(initialCustomerId ?? "");
+    setVenueId("");
     setLocation(initialLocation ?? "");
     setStartDate(initialStart ?? null);
     setEndDate(initialEnd ?? null);
@@ -72,6 +76,7 @@ export function CreateJobDialog({
   function reset() {
     setTitle("");
     setCustomerId("");
+    setVenueId("");
     setLocation("");
     setStartDate(null);
     setEndDate(null);
@@ -107,7 +112,9 @@ export function CreateJobDialog({
       const job = await createJob.mutateAsync({
         title: title.trim(),
         customer_id: customerId || null,
-        location: location.trim() || null,
+        // E-A: venue_id gesetzt -> location bleibt leer (keine Doppelpflege).
+        venue_id: venueId || null,
+        location: venueId ? null : location.trim() || null,
         // Jobs sind tagesbasiert (keine Uhrzeit): Start = Tagesbeginn, Ende = Tagesende.
         start_date: startOfDay(startDate).toISOString(),
         end_date: endOfDay(endDate).toISOString(),
@@ -143,9 +150,26 @@ export function CreateJobDialog({
           </Select>
         </FormField>
 
-        <FormField label="Ort">
-          <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="z.B. Gasthaus zur Linde, Kassel" />
+        <FormField label="Ort" hint={venueId ? undefined : "Aus der Liste wählen oder unten frei eintragen."}>
+          <Select value={venueId} onChange={(e) => setVenueId(e.target.value)}>
+            <option value="">Freitext (kein fester Ort)</option>
+            {venues?.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </Select>
         </FormField>
+
+        {!venueId && (
+          <FormField label="Ort (Freitext)">
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="z.B. Gasthaus zur Linde, Kassel"
+            />
+          </FormField>
+        )}
 
         <div>
           <Label>Farbe (Kalenderanzeige)</Label>
