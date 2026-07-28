@@ -30,8 +30,8 @@
 > 5. **`PLAN-EVENT-PLANUNG.md`** (P0–P6) — 🔴 **in Arbeit.** Erledigt: P0 (Probelauf),
 >    Vorbedingung (Job↔Angebot↔Rechnung), P1 (Orte), P2a (Programmpunkte), M5
 >    (Team-Verfügbarkeit), P4/E1 (Crew-Zeiten als Diff), P4/E2 (Kostenvorschlag
->    ohne Doppelzählung) und P5 (Fremdgewerke koordinieren). Offen: G (P2b
->    Ablaufplan-PDF), H (P3 Vorlagen), I (P6 Gesprächsverlauf), Abschluss.
+>    ohne Doppelzählung), P5 (Fremdgewerke koordinieren) und P2b
+>    (Ablaufplan-PDF). Offen: H (P3 Vorlagen), I (P6 Gesprächsverlauf), Abschluss.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
 > Struktur einziehen. Grundlage des Neuschnitts: `docs/archiv/UI-REVIEW-2026-07-18.md`.
@@ -144,6 +144,15 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **P2b — Ablaufplan-PDF (RunSheet)** (2026-07-28, keine Migration, Teil von
+  `PLAN-EVENT-PLANUNG.md`): Knopf „Ablaufplan drucken" am Job erzeugt EIN PDF
+  (`RunSheetPdfDocument.tsx` + `lib/runSheetPdf.tsx`, Muster `offerPdf`) mit Ort
+  (P1), Programmpunkten zeitlich sortiert (inkl. Übernachtungs-Fällen — eigenes
+  Datum bei abweichendem Tag) und zugesagten Fremdgewerken (P5, ohne Preis). Ein
+  Schalter „interne Notizen mitdrucken" blendet Crew je Programmpunkt, interne
+  Notizen und die Job-Notiz ein/aus, statt zwei Dokumente zu pflegen. Bewusst
+  erst nach P4/E2 und P5 gebaut, damit er nicht zweimal aufgerissen werden
+  musste (Crew-Zeiten und Fremdgewerke kamen erst mit diesen Etappen dazu).
 - **P5 — Fremdgewerke koordinieren** (2026-07-28, Migration `0055`, Teil von
   `PLAN-EVENT-PLANUNG.md`): neue Karte „Fremdgewerke" am Job (Übersicht-Tab) —
   Partner, Status (angefragt/zugesagt/abgesagt), Zeit vor Ort. Neue Tabelle
