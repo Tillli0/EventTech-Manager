@@ -643,6 +643,31 @@ export interface JobMilestone {
   assignees?: MilestoneAssignee[];
 }
 
+// ============================================================
+// VORLAGEN JE EVENT-ART (P3) — v1: nur Programmpunkte, siehe Migration 0056
+// ============================================================
+
+export interface JobTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  items?: JobTemplateItem[];
+}
+
+export interface JobTemplateItem {
+  id: string;
+  template_id: string;
+  title: string;
+  /** Minuten relativ zu jobs.start_date — kann negativ sein (Vorbereitung vor dem Start). */
+  offset_minutes: number;
+  duration_minutes: number | null;
+  notes: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
 /**
  * Ist ein Job komplett in der Vergangenheit? = der späteste relevante Zeitpunkt
  * (Enddatum, Rückgabe-Termin sowie alle Zeitplan-Termine, die ja auch nach dem

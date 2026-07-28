@@ -31,6 +31,8 @@ import { JobLogisticsCard } from "@/components/jobs/JobLogisticsCard";
 import { JobCostsCard } from "@/components/jobs/JobCostsCard";
 import { JobServicesCard } from "@/components/jobs/JobServicesCard";
 import { RunSheetPdfDialog } from "@/components/jobs/RunSheetPdfDialog";
+import { SaveJobAsTemplateDialog } from "@/components/jobs/SaveJobAsTemplateDialog";
+import { ApplyJobTemplateDialog } from "@/components/jobs/ApplyJobTemplateDialog";
 import { JobCostingCard } from "@/components/jobs/JobCostingCard";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
@@ -61,6 +63,8 @@ export function JobDetailPage() {
   // wie überall. Erst dadurch zieht Block B (Anmietung/Kalkulation) ohne Chaos ein.
   const [section, setSection] = useState<JobSection>("uebersicht");
   const [runSheetOpen, setRunSheetOpen] = useState(false);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [applyTemplateOpen, setApplyTemplateOpen] = useState(false);
 
   async function handleMoveToTrash() {
     if (!job) return;
@@ -169,11 +173,23 @@ export function JobDetailPage() {
               <SelfAvailabilityHint start={new Date(job.start_date)} end={new Date(job.end_date)} />
 
               <Card>
-                <CardHeader>
-                  <h2 className="text-sm font-semibold text-ink">Zeitplan</h2>
-                  <p className="mt-0.5 text-xs text-ink-faint">
-                    Programmablauf des Jobs — z.B. Aufbau, Soundcheck, Eventstart, Abbau. Wird zeitlich sortiert und im Kalender unter dem Job angezeigt.
-                  </p>
+                <CardHeader className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-ink">Zeitplan</h2>
+                    <p className="mt-0.5 text-xs text-ink-faint">
+                      Programmablauf des Jobs — z.B. Aufbau, Soundcheck, Eventstart, Abbau. Wird zeitlich sortiert und im Kalender unter dem Job angezeigt.
+                    </p>
+                  </div>
+                  {mayEdit && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setApplyTemplateOpen(true)}>
+                        Vorlage anwenden
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setSaveTemplateOpen(true)}>
+                        Als Vorlage speichern
+                      </Button>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardBody>
                   <JobMilestonesSection
@@ -311,6 +327,8 @@ export function JobDetailPage() {
       </div>
 
       <RunSheetPdfDialog open={runSheetOpen} onClose={() => setRunSheetOpen(false)} job={job} />
+      <SaveJobAsTemplateDialog open={saveTemplateOpen} onClose={() => setSaveTemplateOpen(false)} job={job} />
+      <ApplyJobTemplateDialog open={applyTemplateOpen} onClose={() => setApplyTemplateOpen(false)} job={job} />
     </div>
   );
 }
