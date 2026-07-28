@@ -27,6 +27,37 @@ export function usePersonalBlocks() {
   });
 }
 
+/** Ein Eintrag aus `personal_busy_ranges` — bewusst NUR diese drei Felder (E-G,
+ * PLAN-MEIN-PLAN.md M5): kein Titel, keine Kategorie, keine Notiz. */
+export interface BusyRange {
+  user_id: string;
+  start_at: string;
+  end_at: string;
+}
+
+/**
+ * Team-Verfügbarkeit (M5): liefert für den Zeitraum, in dem jemand einem Job
+ * zugewiesen werden soll, NUR die (user_id, start_at, end_at)-Tripel aus der
+ * security-definer-Funktion `personal_busy_ranges` (Migration 0052) — die
+ * einzige, bewusst schmale Brücke zwischen den strikt privaten Zeiten
+ * (personal_blocks/personal_recurring_blocks) und der Job-Planung.
+ */
+export function useTeamBusyRanges(from: string | undefined, to: string | undefined) {
+  return useQuery({
+    queryKey: ["team-busy-ranges", from, to],
+    enabled: !!from && !!to,
+    queryFn: async (): Promise<BusyRange[]> => {
+      if (!from || !to) return [];
+      const { data, error } = await supabase.rpc("personal_busy_ranges", {
+        range_from: from,
+        range_to: to,
+      });
+      if (error) throw error;
+      return data as BusyRange[];
+    },
+  });
+}
+
 export function usePersonalRecurringBlocks() {
   const { user } = useAuth();
   return useQuery({

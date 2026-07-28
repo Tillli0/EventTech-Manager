@@ -33,6 +33,7 @@ import { JobCostingCard } from "@/components/jobs/JobCostingCard";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
 import { useSetJobAssignees } from "@/hooks/useJobAssignees";
+import { TeamAvailabilityHint } from "@/components/jobs/TeamAvailabilityHint";
 import { useProfiles, profileLabel, assignableProfiles } from "@/hooks/useProfiles";
 import { useAuth } from "@/auth/AuthProvider";
 import type { Job } from "@/types/database";
@@ -428,33 +429,42 @@ function JobAssigneesCard({ job, canEdit }: { job: Job; canEdit: boolean }) {
           Zugewiesene Nutzer
         </h2>
       </CardHeader>
-      <CardBody>
+      <CardBody className="space-y-3">
         {canEdit ? (
-          <div className="flex flex-wrap gap-2">
-            {(profiles ?? []).map((p) => {
-              const active = assignedIds.includes(p.id);
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => toggle(p.id)}
-                  className={cn(
-                    "flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-xs font-medium transition-all",
-                    active
-                      ? "border-accent bg-accent-soft text-ink"
-                      : "border-border text-ink-muted hover:-translate-y-0.5 hover:border-accent/40 hover:text-ink",
-                  )}
-                >
-                  <Avatar
-                    label={profileLabel(p)}
-                    size="xs"
-                    className={active ? "bg-accent text-accent-on" : "bg-bg-raised text-ink-faint"}
-                  />
-                  {profileLabel(p)}
-                </button>
-              );
-            })}
-          </div>
+          <>
+            <div className="flex flex-wrap gap-2">
+              {(profiles ?? []).map((p) => {
+                const active = assignedIds.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => toggle(p.id)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-xs font-medium transition-all",
+                      active
+                        ? "border-accent bg-accent-soft text-ink"
+                        : "border-border text-ink-muted hover:-translate-y-0.5 hover:border-accent/40 hover:text-ink",
+                    )}
+                  >
+                    <Avatar
+                      label={profileLabel(p)}
+                      size="xs"
+                      className={active ? "bg-accent text-accent-on" : "bg-bg-raised text-ink-faint"}
+                    />
+                    {profileLabel(p)}
+                  </button>
+                );
+              })}
+            </div>
+            {assignedProfiles.length > 0 && (
+              <TeamAvailabilityHint
+                assignedProfiles={assignedProfiles}
+                start={job.start_date}
+                end={job.end_date}
+              />
+            )}
+          </>
         ) : assignedProfiles.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {assignedProfiles.map((p) => (

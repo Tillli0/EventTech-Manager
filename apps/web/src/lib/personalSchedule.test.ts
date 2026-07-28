@@ -67,6 +67,29 @@ describe("resolveRecurringBlock", () => {
     const results = resolveRecurringBlock(rule(), new Date(2025, 0, 1), new Date(2025, 11, 31));
     expect(results).toHaveLength(0);
   });
+
+  it("bleibt über den Herbst-Zeitwechsel korrekt — Gegenprobe zu personal_busy_ranges (0052)", () => {
+    // Dieselbe Regel/Zeitraum wie die psql-Gegenprobe der Migration 0052:
+    // Montag 08:00-15:00, gültig 2026-10-01..2026-11-30, Range 15.10.-01.11.2026.
+    // psql (mit "at time zone 'Europe/Berlin'", also unabhängig von der Server-Zeitzone)
+    // lieferte für dieselbe Regel: 19.10. 06:00-13:00 UTC (Sommerzeit), 26.10. 07:00-14:00 UTC
+    // (Winterzeit) — beides lokal 08:00-15:00 Berlin. Diese lokalen Wanduhrzeiten sind der
+    // Teil, den beide Seiten gemeinsam haben (ein Vergleich der absoluten UTC-Instants wäre
+    // hier von der Zeitzone des Test-Runners abhängig, s. Kommentarkopf lib/personalSchedule.ts).
+    const results = resolveRecurringBlock(
+      rule({ start_time: "08:00", end_time: "15:00", valid_from: "2026-10-01", valid_to: "2026-11-30" }),
+      new Date(2026, 9, 15),
+      new Date(2026, 10, 1),
+    );
+    expect(results).toHaveLength(2);
+    expect(results[0].start.getDate()).toBe(19);
+    expect(results[1].start.getDate()).toBe(26);
+    for (const r of results) {
+      expect(r.start.getHours()).toBe(8);
+      expect(r.end.getHours()).toBe(15);
+      expect(r.end.getMinutes()).toBe(0);
+    }
+  });
 });
 
 describe("resolvePersonalBlocks", () => {
