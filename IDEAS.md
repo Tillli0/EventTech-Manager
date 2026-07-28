@@ -27,11 +27,11 @@
 >    (Beschaffungs-Katalog aus der Anmiet-Historie) gebaut** — alle drei ohne
 >    Browser-Beweis diese Session (kein Preview-Werkzeug verfügbar).
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
-> 5. **`PLAN-EVENT-PLANUNG.md`** (P0–P6) — 🔴 **freigegeben, P0 erledigt (2026-07-28,
->    mit erfundenem Testfall statt echtem Job).** Größter Fund: `offers.job_id` und
->    `invoices.job_id` existieren im Schema, aber keine Anlage-Maske nutzt sie — Rechnung
->    und Job bleiben unverknüpft, „Erlös" am Job bleibt 0 €. Vorschlag: das **vor** P1
->    als kleine Korrektur beheben. Details in `PLAN-EVENT-PLANUNG.md` §2.
+> 5. **`PLAN-EVENT-PLANUNG.md`** (P0–P6) — 🔴 **in Arbeit.** Erledigt: P0 (Probelauf),
+>    Vorbedingung (Job↔Angebot↔Rechnung), P1 (Orte), P2a (Programmpunkte), M5
+>    (Team-Verfügbarkeit), P4/E1 (Crew-Zeiten als Diff) und P4/E2 (Kostenvorschlag
+>    ohne Doppelzählung). Offen: F (P5 Fremdgewerke), G (P2b Ablaufplan-PDF), H (P3
+>    Vorlagen), I (P6 Gesprächsverlauf), Abschluss.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
 > Struktur einziehen. Grundlage des Neuschnitts: `docs/archiv/UI-REVIEW-2026-07-18.md`.
@@ -144,6 +144,19 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **P4/E2 — Kostenvorschlag aus Crew-Zeiten ohne Doppelzählung** (2026-07-28,
+  Migration `0054`, Teil von `PLAN-EVENT-PLANUNG.md`): Knopf „Zeiten übernehmen"
+  in `JobCostsCard.tsx` legt für jede zugewiesene Person eine Personal-Kostenzeile
+  an (Stunden aus `job_assignees.start_at/end_at` × neuer Bereich-`anmietung`-
+  Stundensatz aus `cost_settings`). Zweites Anwenden aktualisiert dieselbe Zeile
+  statt zu duplizieren; handgetippte Kostenzeilen bleiben unberührt.
+  `ConfirmDialog` erklärt vorher, was überschrieben wird. Zwei echte Bugs beim
+  Verifizieren gefunden und behoben: PostgREST kann `ON CONFLICT` nicht gegen
+  einen **partiellen** Unique-Index auflösen (Fehler 42P10) — normaler
+  Unique-Index reicht, weil Postgres NULL-Werte darin ohnehin nie kollidieren;
+  und der `profiles`-Join in `useJobCosts.ts` war seit der zweiten FK auf
+  `profiles` (`assignee_user_id`) mehrdeutig (HTTP 300) — per
+  `!job_costs_profile_id_fkey` fest verdrahtet.
 - **Vier Ideen aus dem Brainstorming: Kann-ich-das-Check, Preis rückwärts,
   Logistik-Faden, Einsatztag-Ansicht** (2026-07-26, keine Migration —
   zusammen mit dem Rückblick unten alle sechs Brainstorming-Ideen umgesetzt):
