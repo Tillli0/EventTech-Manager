@@ -27,6 +27,11 @@
 >    (Beschaffungs-Katalog aus der Anmiet-Historie) gebaut** — alle drei ohne
 >    Browser-Beweis diese Session (kein Preview-Werkzeug verfügbar).
 > 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
+> 5. **`PLAN-EVENT-PLANUNG.md`** (P0–P6) — 🔴 **freigegeben, P0 erledigt (2026-07-28,
+>    mit erfundenem Testfall statt echtem Job).** Größter Fund: `offers.job_id` und
+>    `invoices.job_id` existieren im Schema, aber keine Anlage-Maske nutzt sie — Rechnung
+>    und Job bleiben unverknüpft, „Erlös" am Job bleibt 0 €. Vorschlag: das **vor** P1
+>    als kleine Korrektur beheben. Details in `PLAN-EVENT-PLANUNG.md` §2.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
 > Struktur einziehen. Grundlage des Neuschnitts: `docs/archiv/UI-REVIEW-2026-07-18.md`.
@@ -34,6 +39,12 @@
 ## 🔧 Quick Wins (Auto — kann Claude eigenständig erledigen)
 
 - [ ] **Leere-Zustände/Ladezustände** vereinheitlichen, wo noch nicht (Konsistenz-Pass). · S · ★ · Auto
+- [ ] **Kalkulations-Karte am Job bricht falsch um** — in der schmalen Seitenspalte kleben
+      Beschriftung und Betrag ineinander („Deckungsbeitrag0,00 €", „Anmietung−" mit Betrag
+      in der nächsten Zeile). Beobachtet 2026-07-28 in der Cloud bei 1271 px. · S · ★★ · Auto
+- [ ] **Angebotstabelle auf dem Handy rechts abgeschnitten** — bei 375 px fehlen Kunde,
+      Datum und Brutto, der PDF-Knopf ist angeschnitten; entweder waagerecht scrollbar
+      machen oder als Karten umbrechen. Beobachtet 2026-07-28. · S · ★★ · Auto
 
 ## 🚀 Größere Features (Freigabe nötig — Claude schlägt vor)
 
