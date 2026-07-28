@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { JobCost, JobCostType } from "@/types/database";
+import type { JobAssignee, JobCost, JobCostType, Profile } from "@/types/database";
+import { suggestCostFromAssignment } from "@/lib/jobCosts";
 
 const JOB_COSTS_KEY = ["job-costs"] as const;
-const SELECT = "*, profile:profiles(id, full_name)";
+/** !job_costs_profile_id_fkey grenzt die Einbettung ein — seit Migration 0054 hat
+ * job_costs zwei FKs auf profiles (profile_id, assignee_user_id), PostgREST braucht
+ * sonst eine Auswahl (Fehler 42P17 / HTTP 300 "Multiple Choices"). */
+const SELECT = "*, profile:profiles!job_costs_profile_id_fkey(id, full_name)";
 
 /** Alle Kosten-Positionen (für die Auswertungen-Seite — Deckungsbeitrag über alle Jobs). */
 export function useJobCosts() {
@@ -94,39 +98,42 @@ export function useDeleteJobCost() {
 }
 
 /**
- * Legt für jeden zugewiesenen Nutzer, der noch keine Personal-Kostenzeile hat,
- * eine leere Zeile an (Komfort — Namen nicht erneut abtippen, Stunden/Satz trägt
- * man danach pro Zeile ein).
+ * Übernimmt für jede zugewiesene Person eine Personal-Kostenzeile aus ihrer
+ * Zuweisung (Stunden aus start_at/end_at, Satz aus cost_settings) — P4/E2.
+ *
+ * Upsert auf (job_id, assignee_user_id) statt Insert: eine Zeile pro Person und
+ * Job, egal wie oft der Knopf gedrückt wird (Doppelzähl-Falle). Handgetippte
+ * Kostenzeilen (assignee_user_id = null) bleiben davon unberührt — sie kollidieren
+ * mit dem partiellen Unique-Index nie und werden hier nie angefasst.
  */
 export function useAdoptAssignedAsCosts() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       jobId,
-      profiles,
-      existing,
+      assignees,
+      defaultHourlyRate,
     }: {
       jobId: string;
-      profiles: { id: string; full_name: string | null }[];
-      existing: JobCost[];
+      assignees: (Pick<JobAssignee, "user_id" | "start_at" | "end_at"> & { profile?: Profile })[];
+      defaultHourlyRate: number | null;
     }): Promise<number> => {
-      const existingProfileIds = new Set(existing.filter((c) => c.profile_id).map((c) => c.profile_id));
-      const toInsert = profiles.filter((p) => !existingProfileIds.has(p.id));
-      if (toInsert.length === 0) return 0;
-      const { error } = await supabase.from("job_costs").insert(
-        toInsert.map((p) => ({
+      if (assignees.length === 0) return 0;
+      const rows = assignees.map((a) => {
+        const suggestion = suggestCostFromAssignment(a, defaultHourlyRate);
+        return {
           job_id: jobId,
           cost_type: "personal" as const,
-          profile_id: p.id,
-          description: p.full_name?.trim() || "Personal",
-          hours: null,
-          hourly_rate: null,
-          amount: 0,
+          profile_id: a.user_id,
+          assignee_user_id: a.user_id,
+          description: a.profile?.full_name?.trim() || "Personal",
           cost_date: null,
-        })),
-      );
+          ...suggestion,
+        };
+      });
+      const { error } = await supabase.from("job_costs").upsert(rows, { onConflict: "job_id,assignee_user_id" });
       if (error) throw error;
-      return toInsert.length;
+      return rows.length;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [...JOB_COSTS_KEY, "by-job", variables.jobId] });

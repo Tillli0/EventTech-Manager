@@ -441,6 +441,11 @@ export interface JobCost {
   job_id: string;
   cost_type: JobCostType;
   profile_id: string | null;
+  /** Bindet eine automatisch erzeugte Zeile an die Zuweisung, die sie ausgelöst
+   * hat (E2) — null bei handgetippten Zeilen. Zusammen mit dem partiellen
+   * Unique-Index (job_id, assignee_user_id) verhindert das die Doppelzähl-Falle:
+   * "Zeiten übernehmen" aktualisiert diese Zeile statt eine zweite anzulegen. */
+  assignee_user_id: string | null;
   description: string;
   /** Komfort-Rechner (Stunden × Satz) — die Wahrheit ist `amount`. */
   hours: number | null;
@@ -450,6 +455,15 @@ export interface JobCost {
   created_at: string;
   updated_at: string;
   profile?: Pick<Profile, "id" | "full_name"> | null;
+}
+
+/** Singleton-Zeile für Kalkulations-Voreinstellungen — bewusst NICHT in
+ * company_settings (dort für jeden authentifizierten Nutzer lesbar), sondern
+ * auf den Bereich 'anmietung' beschränkt wie job_costs selbst (Migration 0054). */
+export interface CostSettings {
+  id: true;
+  default_hourly_rate: number | null;
+  updated_at: string;
 }
 
 // ============================================================

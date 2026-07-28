@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/Button";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { useJobCostsForJob, useDeleteJobCost, useAdoptAssignedAsCosts } from "@/hooks/useJobCosts";
+import { useCostSettings } from "@/hooks/useCostSettings";
 import { jobCostsTotal } from "@/lib/jobCosts";
 import { useSubrentalsForJob } from "@/hooks/useSubrentals";
 import { subrentalTotals, isActiveSubrentalStatus } from "@/lib/subrentals";
-import { useProfiles, assignableProfiles, profileLabel } from "@/hooks/useProfiles";
+import { profileLabel } from "@/hooks/useProfiles";
 import { CreateJobCostDialog } from "@/components/jobs/CreateJobCostDialog";
 import { formatDate, formatCurrency } from "@/lib/format";
 import { useAuth } from "@/auth/AuthProvider";
@@ -17,12 +18,13 @@ import { JOB_COST_TYPE_LABELS } from "@/types/database";
 
 /** Kosten-Positionen am Job — Personal/Transport/Fremdleistung/Sonstiges, plus die read-only-Summe aus Anmiet-Vorgängen. */
 export function JobCostsCard({ job }: { job: Pick<Job, "id" | "assignees"> }) {
+  const assignedWithProfile = (job.assignees ?? []).filter((a) => a.profile);
   const { hasArea, canEdit } = useAuth();
   const mayView = hasArea("anmietung");
   const mayEdit = canEdit("anmietung");
   const { data: costs } = useJobCostsForJob(job.id);
   const { data: subrentals } = useSubrentalsForJob(job.id);
-  const { data: allProfiles } = useProfiles();
+  const { data: costSettings } = useCostSettings();
   const deleteCost = useDeleteJobCost();
   const adoptAssigned = useAdoptAssignedAsCosts();
   const confirm = useConfirm();
@@ -39,11 +41,7 @@ export function JobCostsCard({ job }: { job: Pick<Job, "id" | "assignees"> }) {
   const ownCosts = costs ?? [];
   const total = jobCostsTotal(ownCosts) + subrentalTotal;
 
-  const assignedIds = (job.assignees ?? []).map((a) => a.user_id);
-  const assignedProfiles = assignableProfiles(allProfiles).filter((p) => assignedIds.includes(p.id));
-  const hasUnadopted = assignedProfiles.some(
-    (p) => !ownCosts.some((c) => c.profile_id === p.id),
-  );
+  const hasAssignedCrew = assignedWithProfile.length > 0;
 
   async function handleDelete(cost: JobCost) {
     const ok = await confirm({
@@ -57,9 +55,21 @@ export function JobCostsCard({ job }: { job: Pick<Job, "id" | "assignees"> }) {
   }
 
   async function handleAdoptAssigned() {
-    const added = await adoptAssigned.mutateAsync({ jobId: job.id, profiles: assignedProfiles, existing: ownCosts });
-    if (added > 0) toast.success(`${added} ${added === 1 ? "Zeile" : "Zeilen"} für zugewiesene Nutzer angelegt.`);
-    else toast.success("Alle zugewiesenen Nutzer haben bereits eine Kostenzeile.");
+    const ok = await confirm({
+      title: "Zeiten übernehmen",
+      message:
+        "Für jede zugewiesene Person wird eine Personal-Kostenzeile aus ihren Einsatzzeiten neu berechnet " +
+        "(Stunden × Stundensatz). Bereits übernommene Zeilen werden dabei aktualisiert, nicht verdoppelt. " +
+        "Handgetippte Kostenzeilen bleiben unberührt.",
+      confirmLabel: "Übernehmen",
+    });
+    if (!ok) return;
+    await adoptAssigned.mutateAsync({
+      jobId: job.id,
+      assignees: assignedWithProfile,
+      defaultHourlyRate: costSettings?.default_hourly_rate ?? null,
+    });
+    toast.success("Zeiten übernommen.");
   }
 
   return (
@@ -71,10 +81,10 @@ export function JobCostsCard({ job }: { job: Pick<Job, "id" | "assignees"> }) {
         </h2>
         {mayEdit && (
           <div className="flex items-center gap-2">
-            {hasUnadopted && (
+            {hasAssignedCrew && (
               <Button size="sm" variant="ghost" onClick={handleAdoptAssigned} disabled={adoptAssigned.isPending}>
                 <Users size={14} />
-                Zugewiesene übernehmen
+                Zeiten übernehmen
               </Button>
             )}
             <Button size="sm" variant="secondary" onClick={() => setCreateOpen(true)}>
