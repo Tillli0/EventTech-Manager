@@ -30,6 +30,7 @@ import { JobSubrentalsCard } from "@/components/jobs/JobSubrentalsCard";
 import { JobLogisticsCard } from "@/components/jobs/JobLogisticsCard";
 import { JobCostsCard } from "@/components/jobs/JobCostsCard";
 import { JobServicesCard } from "@/components/jobs/JobServicesCard";
+import { RunSheetPdfDialog } from "@/components/jobs/RunSheetPdfDialog";
 import { JobCostingCard } from "@/components/jobs/JobCostingCard";
 import { DocumentsCard } from "@/components/documents/DocumentsCard";
 import { JobStatusBadge } from "@/components/ui/StatusBadge";
@@ -59,6 +60,7 @@ export function JobDetailPage() {
   // Abschnitte statt Endlos-Spalte (PLAN-UI-NEUSCHNITT.md K-D/U6). Dieselbe ui/Tabs
   // wie überall. Erst dadurch zieht Block B (Anmietung/Kalkulation) ohne Chaos ein.
   const [section, setSection] = useState<JobSection>("uebersicht");
+  const [runSheetOpen, setRunSheetOpen] = useState(false);
 
   async function handleMoveToTrash() {
     if (!job) return;
@@ -133,6 +135,10 @@ export function JobDetailPage() {
             <Button variant="secondary" onClick={() => printPacklist(job)}>
               <Printer size={16} />
               Packliste drucken
+            </Button>
+            <Button variant="secondary" onClick={() => setRunSheetOpen(true)}>
+              <Printer size={16} />
+              Ablaufplan drucken
             </Button>
             {mayEdit && (
               <Button variant="ghost" onClick={handleMoveToTrash} disabled={softDeleteJob.isPending}>
@@ -303,6 +309,8 @@ export function JobDetailPage() {
           )}
         </div>
       </div>
+
+      <RunSheetPdfDialog open={runSheetOpen} onClose={() => setRunSheetOpen(false)} job={job} />
     </div>
   );
 }

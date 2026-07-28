@@ -5,24 +5,28 @@ import type { JobService, JobServiceStatus } from "@/types/database";
 const JOB_SERVICES_KEY = ["job-services"] as const;
 const SELECT = "*, supplier:suppliers(id, name, trade, phone)";
 
+async function fetchJobServicesForJob(jobId: string): Promise<JobService[]> {
+  const { data, error } = await supabase
+    .from("job_services")
+    .select(SELECT)
+    .eq("job_id", jobId)
+    .order("on_site_at", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data as JobService[];
+}
+
 /** Fremdgewerke, die zu einem bestimmten Job koordiniert werden (P5). */
 export function useJobServicesForJob(jobId: string | undefined) {
   return useQuery({
     queryKey: [...JOB_SERVICES_KEY, "by-job", jobId],
     enabled: !!jobId,
-    queryFn: async (): Promise<JobService[]> => {
-      if (!jobId) return [];
-      const { data, error } = await supabase
-        .from("job_services")
-        .select(SELECT)
-        .eq("job_id", jobId)
-        .order("on_site_at", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return data as JobService[];
-    },
+    queryFn: () => fetchJobServicesForJob(jobId!),
   });
 }
+
+/** Für den Ablaufplan-PDF (P2b) — außerhalb von React, direkter Abruf. */
+export { fetchJobServicesForJob };
 
 export interface JobServiceInput {
   job_id: string;
