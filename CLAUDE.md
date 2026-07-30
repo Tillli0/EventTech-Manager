@@ -48,7 +48,7 @@ Drei Leitprinzipien prägen jede Entscheidung:
 | `DEPLOY.md` | Produktions-Setup (Cloudflare Pages + Supabase Cloud), Runbook, **Backup & Restore** | Deploy-/Infra-Änderung |
 | `WORKFLOW.md` | Technischer Alltag lokal → live | Änderung am Entwicklungs-Ablauf |
 | `.claude/skills/` | Runbooks/Rezepte: Dev-Umgebung, Feature-Abschluss, Migrationen, große Features | neuem/geändertem Rezept |
-| `docs/archiv/` | Erledigte/überholte Pläne (u. a. `PLAN-V1-ABSICHERN.md`, `PLAN-UI-NEUSCHNITT.md`, `PLAN-FABLE5.md`, `UI-REVIEW-2026-07-18.md`) — nur noch Referenz, wird **nicht** mehr gepflegt | nie (Ablage-Ordner) |
+| `docs/archiv/` | Erledigte/überholte Pläne (u. a. `PLAN-V1-ABSICHERN.md`, `PLAN-UI-NEUSCHNITT.md`, `PLAN-FABLE5.md`, `UI-REVIEW-2026-07-18.md`, `PLAN-EVENT-PLANUNG.md`) — nur noch Referenz, wird **nicht** mehr gepflegt | nie (Ablage-Ordner) |
 
 **Bei jeder neuen Session zuerst lesen** (Reihenfolge nach Bedarf, nicht alles auf Vorrat):
 `IDEAS.md` (was steht an, inkl. „Aktuelle Reihenfolge") → **`PLAN-NEUAUSRICHTUNG.md`
@@ -56,12 +56,12 @@ Drei Leitprinzipien prägen jede Entscheidung:
 `ROADMAP.md` nur, wenn die große Richtung unklar ist. `ARBEITSWEISE.md` und
 `apps/web/CLAUDE.md` situativ (Skill-Wahl bzw. Frontend-Arbeit).
 
-**Die aktuelle Reihenfolge der Großvorhaben** (Stand 2026-07-25) — nicht eigenmächtig
-umstellen: `docs/archiv/PLAN-V1-ABSICHERN.md` (A1–A4) und
-`docs/archiv/PLAN-UI-NEUSCHNITT.md` (U1–U6, zog M1+M2 mit) sind **komplett und
-archiviert**. Aktiv: `PLAN-NEUAUSRICHTUNG.md` Block B (im Kern fertig, drei Rest-Punkte
-offen) → danach `PLAN-MEIN-PLAN.md` (M3–M6). Begründung: Erst das Sicherheitsnetz, dann
-die Struktur, dann die Features, die in diese Struktur eingezogen sind.
+**Die aktuelle Reihenfolge der Großvorhaben** (Stand 2026-07-28) — nicht eigenmächtig
+umstellen: `docs/archiv/PLAN-V1-ABSICHERN.md` (A1–A4), `docs/archiv/PLAN-UI-NEUSCHNITT.md`
+(U1–U6, zog M1+M2 mit) und `docs/archiv/PLAN-EVENT-PLANUNG.md` (P0–P6 + Vorbedingung +
+M5, vorgezogen) sind **komplett und archiviert**. Aktiv: `PLAN-NEUAUSRICHTUNG.md` Block B
+(im Kern fertig, drei Rest-Punkte offen) → danach `PLAN-MEIN-PLAN.md` (M3–M6, M5 bereits
+erledigt). Begründung: Erst das Sicherheitsnetz, dann die Struktur, dann die Features.
 
 **Faustregel fürs Pflegen:** jede erledigte Aufgabe braucht **mindestens** einen Eintrag in
 `IDEAS.md`. Nur bei aktiven Großvorhaben zusätzlich das passende `PLAN-*.md`. Ist ein
@@ -139,6 +139,15 @@ Details + typische Fehlerbilder: Skill `feature-fertigstellen`.
   (service_role); Unique `(invoice_id, level)` verhindert Doppelversand. Ohne
   `RESEND_API_KEY`-Secret geht keine Mail raus — dieses „standardmäßig ruhig"-Muster
   gilt für alle künftigen nach-außen-wirkenden Features.
+- **Kostenvorschlag ohne Doppelzählung:** `job_costs.assignee_user_id` bindet eine
+  automatisch aus einer Crew-Zuweisung erzeugte Personalkosten-Zeile an genau diese
+  Zuweisung (Unique-Index `(job_id, assignee_user_id)`, **nicht partiell** — PostgREST
+  kann `ON CONFLICT` nur gegen einen Index ohne `WHERE`-Klausel auflösen, Postgres
+  behandelt NULL darin ohnehin nie als gleich). Handgetippte Kostenzeilen lassen die
+  Spalte `NULL` und werden nie überschrieben.
+- **Fremdgewerke ohne Preis:** `job_services` (Bereich `jobs`, Koordination: wer/wann)
+  führt bewusst **keine Preisspalte** — Geld lebt ausschließlich in `job_costs`
+  (Bereich `anmietung`). Eine Tabelle kann laut RLS nicht in zwei Bereichen liegen.
 
 ## Stolpersteine (teuer bezahlt — nicht wiederholen)
 

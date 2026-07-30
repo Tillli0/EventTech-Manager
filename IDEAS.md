@@ -26,13 +26,11 @@
 >    (Kategorie an Anmiet-Positionen), E10 (Eigentümer-Feld am Gerät) und E11
 >    (Beschaffungs-Katalog aus der Anmiet-Historie) gebaut** — alle drei ohne
 >    Browser-Beweis diese Session (kein Preview-Werkzeug verfügbar).
-> 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter, Team-Verfügbarkeit.
-> 5. **`PLAN-EVENT-PLANUNG.md`** (P0–P6) — 🔴 **in Arbeit.** Erledigt: P0 (Probelauf),
->    Vorbedingung (Job↔Angebot↔Rechnung), P1 (Orte), P2a (Programmpunkte), M5
->    (Team-Verfügbarkeit), P4/E1 (Crew-Zeiten als Diff), P4/E2 (Kostenvorschlag
->    ohne Doppelzählung), P5 (Fremdgewerke koordinieren), P2b (Ablaufplan-PDF)
->    und P3 (Vorlagen, v1 nur Programmpunkte). Offen: I (P6 Gesprächsverlauf),
->    Abschluss.
+> 4. **`PLAN-MEIN-PLAN.md`** (M3–M6) — Schichten, Regel-Wächter. **M5
+>    (Team-Verfügbarkeit) ist bereits erledigt**, vorgezogen im Rahmen von
+>    `PLAN-EVENT-PLANUNG.md` (s. Punkt 5), da P4 dort davon abhing.
+> 5. ~~`PLAN-EVENT-PLANUNG.md`~~ ✅ **komplett** (P0–P6 + Vorbedingung + M5,
+>    2026-07-28) — nach `docs/archiv/` verschoben.
 >
 > Begründung: erst das Sicherheitsnetz, dann die Struktur, dann die Features, die in diese
 > Struktur einziehen. Grundlage des Neuschnitts: `docs/archiv/UI-REVIEW-2026-07-18.md`.
@@ -145,6 +143,14 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **P6 — Gesprächsverlauf am Job** (2026-07-28, Migration `0057`, letzte Etappe von
+  `PLAN-EVENT-PLANUNG.md`): neue Karte „Gesprächsverlauf" — mehrere datierte
+  Einträge mit Verfasser (`author_id default auth.uid()`), absteigend sortiert.
+  `jobs.notes` bleibt die Kopfnotiz, `job_notes` ist der Verlauf daneben.
+  Bewusst kein UPDATE (weder Policy noch GRANT) — ein Protokoll wird bei Fehlern
+  gelöscht, nicht nachträglich umgeschrieben. Browser- und DB-bewiesen: zwei
+  Einträge, absteigend sortiert, Verfasser stimmt. **Damit ist
+  `PLAN-EVENT-PLANUNG.md` komplett umgesetzt** — nach `docs/archiv/` verschoben.
 - **P3 — Vorlagen je Event-Art** (2026-07-28, Migration `0056`, Teil von
   `PLAN-EVENT-PLANUNG.md`): „Als Vorlage speichern" + „Vorlage anwenden" am
   Job (Zeitplan-Karte), **kein Editor** — genau wie im Plan vorgesehen.

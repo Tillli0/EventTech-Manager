@@ -1,11 +1,11 @@
 # PLAN — Die Planungs-Seite des Jobs
 
-> **Großes Vorhaben, freigegeben.** Stand: **2026-07-28** — Till hat die Umsetzung
-> freigegeben; P0 (Probelauf) ist erledigt, siehe §2 für Ergebnis und den wichtigsten Fund
-> (Angebot↔Job↔Rechnung-Verknüpfung fehlt in der UI trotz vorhandenem Schema).
-> **P4 hat eine echte Abhängigkeit zu M5** (`PLAN-MEIN-PLAN.md`) — siehe dort.
+> **✅ UMGESETZT — Stand 2026-07-28.** Alle Etappen (P0–P6, Vorbedingung, M5)
+> sind fertig, verifiziert, committet und gepusht. Dieses Dokument ist nur noch
+> Referenz — Details je Etappe siehe Commits `4fb5846`…`205071e` auf `main` und
+> den Verlauf in `IDEAS.md`. Nicht mehr aktiv gepflegt.
 >
-> `ROADMAP.md` sagt WOHIN, `CLAUDE.md` WIE, hier stehen die **Details**.
+> `ROADMAP.md` sagt WOHIN, `CLAUDE.md` WIE, hier stehen die **Details** von damals.
 
 ---
 
