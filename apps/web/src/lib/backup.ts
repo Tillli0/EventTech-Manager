@@ -42,6 +42,7 @@ export const FULL_BACKUP_TABLES: string[] = [
   "job_services",
   "job_templates",
   "job_template_items",
+  "job_notes",
   "job_retrospectives",
   "packlist_items",
   "offers",

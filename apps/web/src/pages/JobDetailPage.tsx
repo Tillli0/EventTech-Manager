@@ -31,6 +31,7 @@ import { JobLogisticsCard } from "@/components/jobs/JobLogisticsCard";
 import { JobCostsCard } from "@/components/jobs/JobCostsCard";
 import { JobServicesCard } from "@/components/jobs/JobServicesCard";
 import { RunSheetPdfDialog } from "@/components/jobs/RunSheetPdfDialog";
+import { JobConversationCard } from "@/components/jobs/JobConversationCard";
 import { SaveJobAsTemplateDialog } from "@/components/jobs/SaveJobAsTemplateDialog";
 import { ApplyJobTemplateDialog } from "@/components/jobs/ApplyJobTemplateDialog";
 import { JobCostingCard } from "@/components/jobs/JobCostingCard";
@@ -204,6 +205,7 @@ export function JobDetailPage() {
               <JobServicesCard jobId={job.id} />
 
               <JobNotesCard job={job} mayEdit={mayEdit} />
+              <JobConversationCard jobId={job.id} mayEdit={mayEdit} />
               <JobRetrospectiveCard job={job} mayEdit={mayEdit} />
             </>
           )}

@@ -644,6 +644,19 @@ export interface JobMilestone {
 }
 
 // ============================================================
+// GESPRÄCHSVERLAUF AM JOB (P6) — jobs.notes bleibt die Kopfnotiz
+// ============================================================
+
+export interface JobNote {
+  id: string;
+  job_id: string;
+  author_id: string | null;
+  body: string;
+  created_at: string;
+  author?: Pick<Profile, "id" | "full_name"> | null;
+}
+
+// ============================================================
 // VORLAGEN JE EVENT-ART (P3) — v1: nur Programmpunkte, siehe Migration 0056
 // ============================================================
 
