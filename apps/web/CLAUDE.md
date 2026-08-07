@@ -73,31 +73,8 @@ nackte Tabellen:
 - UI-Texte deutsch, kurz, in Tills Sprache („Rechnung stellen", „ausgebucht"). Destruktives
   immer über `ConfirmDialog` mit klarer Folge-Beschreibung; Erfolg/Fehler über `Toast`.
 
-## Bewegung & Rhythmus (seit dem Startseiten-Neuschnitt 2026-08-07)
-
-- **Keine Einblend-Choreografie auf Seiten, die täglich vielfach geöffnet werden.**
-  Das Hochzählen der Kennzahlen auf der Startseite ist deshalb entfernt: Was man
-  zwanzig Mal am Tag sieht, soll sofort lesbar sein, nicht erst animiert werden.
-  Bewegung nur dort, wo sie einen Zustand zeigt (Öffnen/Schließen, Drücken, Laden).
-- **Nie `transition-all`** — immer die Eigenschaft benennen
-  (`transition-colors`, `transition-[background-color,transform]`). Dauer 150–250 ms.
-- `ease-out` ist projektweit auf `cubic-bezier(0.23, 1, 0.32, 1)` gesetzt
-  (`tailwind.config.js`); die eingebaute Kurve ist zu weich und wirkt zäh.
-- Drückbare Flächen bekommen `active:scale-[0.98]` — sonst fühlt sich die Oberfläche
-  taub an. Hover läuft über `hoverOnlyWhenSupported`, damit auf Touch kein
-  Hover-Zustand kleben bleibt.
-- **Radien nur aus der Token-Skala** (`rounded-sm` 4 · `rounded` 6 · `rounded-md` 8 ·
-  `rounded-lg` 10). `rounded-xl` gehört nicht dazu und ist kein Fallback.
-- **Zahlen immer `font-mono tabular-nums`** — sonst springen Beträge und Zähler beim
-  Aktualisieren in der Breite.
-
 ## Qualität
 
-- **Gitter-Elemente brauchen `min-w-0`.** CSS gibt ihnen sonst `min-width: auto`;
-  eine Spalte schrumpft dann nicht unter ihren längsten Inhalt und lange Titel oder
-  Dateinamen schieben die Seite auf dem Handy seitlich raus. Der Überlauf versteckt
-  sich im scrollenden `<main>` und fällt im Desktop-Test nicht auf — bei 375 px
-  deshalb immer `main.scrollWidth - main.clientWidth` prüfen.
 - ESLint mit `--max-warnings 0`: ungenutzte Importe/Variablen (auch nach Refactors) und
   ungenutzte eslint-disable-Direktiven brechen den Build. Absichtlich Ungenutztes mit
   `_`-Präfix benennen.

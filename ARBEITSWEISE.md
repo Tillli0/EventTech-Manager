@@ -60,7 +60,7 @@ kontrollierte Änderungen — und spart nebenbei Tokens.
   2. Bei UI: **Mockup zeigen, bevor gebaut wird** (Till entscheidet visuell).
      Design-Skills siehe unten.
   3. Bauen, dabei `feature-fertigstellen` (Projekt-Skill) als Abschluss-Checkliste.
-  4. Bei Schema-Änderung: **immer** `db-migration` (Projekt-Skill) + Agent 
+  4. Bei Schema-Änderung: **immer** `db-migration` (Projekt-Skill) + Agent
      `migrations-pruefer` vor dem Anwenden.
   5. `IDEAS.md` pflegen, Commit + Push.
 

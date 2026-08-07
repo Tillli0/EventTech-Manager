@@ -1,10 +1,26 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { CalendarClock, MapPin, Package, ArrowRight, Settings } from "lucide-react";
+import {
+  CalendarClock,
+  MapPin,
+  Package,
+  Briefcase,
+  Globe,
+  ListChecks,
+  ArrowRight,
+  AlertCircle,
+  Settings,
+  ArrowUpRight,
+  Receipt,
+  Files,
+  Truck,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { AccountDialog } from "@/components/account/AccountDialog";
 import { LoadingState, ErrorState, EmptyState } from "@/components/ui/States";
-import { JobStatusBadge } from "@/components/ui/StatusBadge";
+import { JobStatusBadge, SubrentalStatusBadge } from "@/components/ui/StatusBadge";
+import { TaskPriorityBadge } from "@/components/ui/TaskBadges";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useWebsiteLeads } from "@/hooks/useWebsiteLeads";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -13,37 +29,22 @@ import { subrentalTotals } from "@/lib/subrentals";
 import { useAllDocuments, openDocumentInNewTab } from "@/hooks/useDocuments";
 import { CATEGORY_META } from "@/components/documents/categoryMeta";
 import { NextJobHero } from "@/components/dashboard/NextJobHero";
-import { MetricRail, type Metric } from "@/components/dashboard/MetricRail";
-import { ActionList } from "@/components/dashboard/ActionList";
-import { buildActionItems, type OffenerPosten } from "@/lib/dashboardActions";
 import { useAuth } from "@/auth/AuthProvider";
 import { DEVICE_STATUS_OPTIONS, invoiceDerivedStatus, offerTotals, invoicePaidSum } from "@/types/database";
-import { formatDate, formatCurrency, formatNumber } from "@/lib/format";
+import { formatDate, formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import type { Customer, Job } from "@/types/database";
-import { deviceTone } from "@/lib/statusTone";
+import type { Job, Subrental, Task } from "@/types/database";
+import { deviceTone, kpiToneClass, type KpiTone } from "@/lib/statusTone";
+import { Avatar } from "@/components/ui/Avatar";
 
-/**
- * Startseite — nach dem Neuschnitt in vier Zonen statt einer Kartenwand:
- *
- *   1. Anrede auf dem Seitengrund (ohne Karton)
- *   2. Zahlenband: die Kennzahlen als Leiste, nicht als fünf gleich schwere Kacheln
- *   3. Nächster Einsatz: die einzige Fläche mit echtem Gewicht
- *   4. „Was jetzt zählt": EINE sortierte Handlungsliste statt vier Kästen
- *      (überfällige Aufgaben + offene Rechnungen + Anmietungen + Anfragen)
- *   5. Anstehende Jobs (dicht) und zuletzt abgelegte Dokumente (leise)
- *
- * Bewusst ohne Einblend-Choreografie: Diese Seite wird am Tag viele Male
- * geöffnet, jede Animation beim Laden würde sie mit der Zeit zäh wirken lassen.
- */
-
-function personLabel(c: Customer | null | undefined): string | null {
-  if (!c) return null;
-  return c.company_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || null;
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
 function customerLabel(job: Job): string | null {
-  return personLabel(job.customer);
+  const c = job.customer;
+  if (!c) return null;
+  return c.company_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || null;
 }
 
 export function DashboardPage() {
@@ -55,194 +56,258 @@ export function DashboardPage() {
   const { data: documents } = useAllDocuments();
   const { user, profile, isAdmin, hasArea } = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
-  const heute = useMemo(() => new Date(), []);
-
-  const darfGeldSehen = hasArea("angebote");
-  const darfAnmietungSehen = hasArea("anmietung");
-
-  const newLeads = useMemo(() => (leads ?? []).filter((l) => l.status === "neu"), [leads]);
-  const upcomingCount = todayJobs.length + upcomingJobs.length;
-  const openTaskCount = overdueTasks.length + otherOpenTasks.length;
-
-  // Offene Rechnungssumme: gestellt, noch nicht bezahlt, ohne Storno. Der Status
-  // wird abgeleitet (nie gespeichert) — deshalb hier über invoiceDerivedStatus.
-  const { offenePosten, offeneSumme, ueberfaellig } = useMemo(() => {
-    if (!darfGeldSehen) return { offenePosten: [] as OffenerPosten[], offeneSumme: 0, ueberfaellig: 0 };
-    const posten: OffenerPosten[] = [];
-    let summe = 0;
-    let mahnfaellig = 0;
-    for (const inv of invoices ?? []) {
-      const status = invoiceDerivedStatus(inv, inv.items, inv.payments);
-      if (status !== "gestellt" && status !== "teilbezahlt" && status !== "ueberfaellig") continue;
-      const { gross } = offerTotals(inv.items ?? [], inv.tax_rate);
-      const rest = Math.max(0, gross - invoicePaidSum(inv.payments));
-      summe += rest;
-      if (status === "ueberfaellig") mahnfaellig += 1;
-      posten.push({
-        id: inv.id,
-        nummer: inv.invoice_number,
-        titel: inv.title,
-        kunde: personLabel(inv.customer),
-        faelligAm: inv.due_date,
-        restbetrag: rest,
-        ueberfaellig: status === "ueberfaellig",
-      });
-    }
-    return { offenePosten: posten, offeneSumme: summe, ueberfaellig: mahnfaellig };
-  }, [invoices, darfGeldSehen]);
-
-  // Handlungsbedarf = noch nicht bestätigt (entwurf/angefragt) — sobald bestätigt,
-  // liegt der Ball beim Verleiher, nicht mehr bei uns.
-  const offeneAnmietungen = useMemo(() => {
-    if (!darfAnmietungSehen) return [];
-    return (subrentals ?? [])
-      .filter((s) => s.status === "entwurf" || s.status === "angefragt")
-      .sort((a, b) => a.start_date.localeCompare(b.start_date));
-  }, [subrentals, darfAnmietungSehen]);
-
-  const anmietungsSumme = offeneAnmietungen.reduce((sum, s) => sum + subrentalTotals(s.items ?? []).total, 0);
-
-  // Wer die Firma führt, sieht alles Fällige; wer nur zugewiesen bekommt, sieht
-  // seine eigenen Aufgaben — sonst wäre die Liste für ihn fremde Post.
-  const meineAufgaben = useMemo(
-    () => [...overdueTasks, ...otherOpenTasks].filter((t) => t.assigned_user_id === user?.id),
-    [overdueTasks, otherOpenTasks, user?.id],
-  );
-
-  const actionItems = useMemo(
-    () =>
-      buildActionItems({
-        ueberfaelligeAufgaben: isAdmin ? overdueTasks : meineAufgaben,
-        offenePosten,
-        anmietungen: offeneAnmietungen,
-        neueAnfragen: newLeads,
-        heute,
-      }),
-    [isAdmin, overdueTasks, meineAufgaben, offenePosten, offeneAnmietungen, newLeads, heute],
-  );
 
   if (isLoading) return <LoadingState label="Überblick wird geladen …" />;
   if (error) return <ErrorState message={error.message} />;
+
+  const newLeads = (leads ?? []).filter((l) => l.status === "neu");
+  const myTasks = [...overdueTasks, ...otherOpenTasks].filter((t) => t.assigned_user_id === user?.id);
+  const upcomingCount = todayJobs.length + upcomingJobs.length;
+  const openTaskCount = overdueTasks.length + otherOpenTasks.length;
+  // Offene Rechnungssumme: gestellt, noch nicht bezahlt, ohne Storno. Der Status
+  // wird abgeleitet (nie gespeichert) — deshalb hier über invoiceDerivedStatus.
+  const offeneRechnungen = (invoices ?? []).filter((inv) => {
+    const status = invoiceDerivedStatus(inv, inv.items, inv.payments);
+    return status === "gestellt" || status === "teilbezahlt" || status === "ueberfaellig";
+  });
+  const offeneSumme = offeneRechnungen.reduce((summe, inv) => {
+    const { gross } = offerTotals(inv.items ?? [], inv.tax_rate);
+    return summe + Math.max(0, gross - invoicePaidSum(inv.payments));
+  }, 0);
+  const ueberfaellig = offeneRechnungen.filter(
+    (inv) => invoiceDerivedStatus(inv, inv.items, inv.payments) === "ueberfaellig",
+  ).length;
+  const darfGeldSehen = hasArea("angebote");
+  const darfAnmietungSehen = hasArea("anmietung");
+  // Handlungsbedarf = noch nicht bestätigt (entwurf/angefragt) — sobald bestätigt,
+  // liegt der Ball beim Verleiher, nicht mehr bei uns.
+  const subrentalsNeedingAction = (subrentals ?? [])
+    .filter((s) => s.status === "entwurf" || s.status === "angefragt")
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  const subrentalsOpenSum = subrentalsNeedingAction.reduce(
+    (sum, s) => sum + subrentalTotals(s.items ?? []).total,
+    0,
+  );
 
   const available = deviceStatusCounts["verfuegbar"] ?? 0;
   const onLoan = deviceStatusCounts["ausgeliehen"] ?? 0;
   const utilization = totalDevices > 0 ? Math.round((onLoan / totalDevices) * 100) : 0;
 
-  const metrics: Metric[] = [
-    {
-      to: "/jobs",
-      label: "Anstehende Jobs",
-      value: formatNumber(upcomingCount),
-      sub: todayJobs.length > 0 ? `${todayJobs.length} heute aktiv` : "in 14 Tagen",
-    },
-    darfGeldSehen
-      ? {
-          to: "/rechnungen",
-          label: "Offene Rechnungen",
-          value: formatCurrency(offeneSumme),
-          sub: ueberfaellig > 0 ? `${ueberfaellig} überfällig` : "nichts überfällig",
-          alarm: ueberfaellig > 0,
-        }
-      : {
-          to: "/inventar",
-          label: "Geräte verfügbar",
-          value: formatNumber(available),
-          sub: `von ${totalDevices} gesamt`,
-        },
-    {
-      to: "/kunden",
-      label: "Neue Anfragen",
-      value: formatNumber(newLeads.length),
-      sub: newLeads.length > 0 ? "warten auf Sichtung" : "alles gesichtet",
-    },
-    {
-      to: "/aufgaben",
-      label: "Offene Aufgaben",
-      value: formatNumber(openTaskCount),
-      sub: overdueTasks.length > 0 ? `${overdueTasks.length} überfällig` : "nichts überfällig",
-      alarm: overdueTasks.length > 0,
-    },
-  ];
-  if (darfAnmietungSehen) {
-    metrics.push({
-      to: "/anmietung",
-      label: "Offene Anmietungen",
-      value: formatNumber(offeneAnmietungen.length),
-      sub: offeneAnmietungen.length > 0 ? `${formatCurrency(anmietungsSumme)} EK offen` : "nichts offen",
-    });
-  }
-
-  const hour = heute.getHours();
+  const hour = new Date().getHours();
   const hello = hour < 11 ? "Guten Morgen" : hour < 18 ? "Guten Tag" : "Guten Abend";
   const firstName = profile?.full_name?.split(" ")[0];
   const greeting = firstName ? `${hello}, ${firstName}` : "Überblick";
+  const subParts = [
+    `${formatDate(new Date().toISOString())}`,
+    newLeads.length > 0 ? `${newLeads.length} neue Anfrage${newLeads.length === 1 ? "" : "n"}` : null,
+  ].filter(Boolean);
 
   return (
-    <div className="space-y-6">
-      <header className="flex items-start justify-between gap-3">
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">{greeting}</h1>
-          <p className="mt-0.5 text-sm text-ink-muted">
-            {heute.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-          </p>
+          <h1 className="text-xl font-semibold text-ink">{greeting}</h1>
+          <p className="mt-0.5 text-sm text-ink-muted">{subParts.join(" · ")}</p>
         </div>
         <Button variant="secondary" onClick={() => setAccountOpen(true)} className="md:hidden">
           <Settings size={16} />
           Konto
         </Button>
-      </header>
+      </div>
       <AccountDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
 
-      <MetricRail metrics={metrics} />
+      {/* Kopf der Seite: der eine Job, der als Nächstes zählt (Leitidee U3).
+          Für Nutzer, die Jobs nur zugewiesen bekommen, heißt er „Dein nächster Einsatz". */}
+      {nextJob && (
+        <NextJobHero job={nextJob} eigenerEinsatz={!isAdmin} zeigeDokumente={darfGeldSehen} />
+      )}
 
-      {/* Der eine Job, der als Nächstes zählt (Leitidee U3). Für Nutzer, die Jobs
-          nur zugewiesen bekommen, heißt er „Dein nächster Einsatz". */}
-      {nextJob && <NextJobHero job={nextJob} eigenerEinsatz={!isAdmin} zeigeDokumente={darfGeldSehen} />}
+      {/* Kennzahlen */}
+      <div className={cn("grid grid-cols-2 gap-3", darfAnmietungSehen ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
+        <MetricCard
+          to="/jobs"
+          icon={Briefcase}
+          tone="accent"
+          label="Anstehende Jobs"
+          value={upcomingCount}
+          sub={todayJobs.length > 0 ? `${todayJobs.length} heute aktiv` : "in 14 Tagen"}
+        />
+        {darfGeldSehen ? (
+          <MetricCard
+            to="/rechnungen"
+            icon={Receipt}
+            tone={ueberfaellig > 0 ? "schlecht" : "gut"}
+            label="Offene Rechnungen"
+            value={offeneSumme}
+            format={(v) => formatCurrency(v)}
+            sub={ueberfaellig > 0 ? `${ueberfaellig} überfällig` : "nichts überfällig"}
+          />
+        ) : (
+          <MetricCard
+            to="/inventar"
+            icon={Package}
+            tone="gut"
+            label="Geräte verfügbar"
+            value={available}
+            sub={`von ${totalDevices} gesamt`}
+          />
+        )}
+        <MetricCard
+          to="/kunden"
+          icon={Globe}
+          tone="accent"
+          label="Offene Anfragen"
+          value={newLeads.length}
+          sub={newLeads.length > 0 ? "warten auf Sichtung" : "alles gesichtet"}
+        />
+        <MetricCard
+          to="/aufgaben"
+          icon={ListChecks}
+          tone="mittel"
+          label="Offene Aufgaben"
+          value={openTaskCount}
+          sub={overdueTasks.length > 0 ? `${overdueTasks.length} überfällig` : "nichts überfällig"}
+        />
+        {darfAnmietungSehen && (
+          <MetricCard
+            to="/anmietung"
+            icon={Truck}
+            tone={subrentalsNeedingAction.length > 0 ? "mittel" : "gut"}
+            label="Offene Anmietungen"
+            value={subrentalsNeedingAction.length}
+            sub={subrentalsNeedingAction.length > 0 ? `${formatCurrency(subrentalsOpenSum)} EK offen` : "nichts offen"}
+          />
+        )}
+      </div>
 
-      <ActionList items={actionItems} />
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          {!isAdmin && myTasks.length > 0 && (
+            <SectionCard title="Mir zugewiesen" action={<CardLink to="/aufgaben" label="Alle Aufgaben" />}>
+              <div className="space-y-2">
+                {myTasks.slice(0, 5).map((task) => (
+                  <TaskRow key={task.id} task={task} />
+                ))}
+              </div>
+            </SectionCard>
+          )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* min-w-0: Gitter-Elemente schrumpfen sonst nicht unter die Breite ihres
-            längsten Inhalts — lange Job-Titel und Dateinamen schieben die Seite
-            auf dem Handy sonst seitlich raus. */}
-        <section className="min-w-0 lg:col-span-2" aria-labelledby="anstehende-jobs">
-          <SectionHead id="anstehende-jobs" title="Anstehende Jobs" to="/jobs" linkLabel="Alle Jobs" />
-          {upcomingCount > 0 ? (
-            <div className="overflow-hidden rounded-lg border border-border bg-bg-surface">
-              <ul className="divide-y divide-border-subtle">
-                {[...todayJobs, ...upcomingJobs].slice(0, 6).map((job) => (
+          <SectionCard title="Anstehende Jobs" action={<CardLink to="/jobs" label="Alle Jobs" />}>
+            {nextJob || upcomingCount > 0 ? (
+              <div className="space-y-2">
+                {[...todayJobs, ...upcomingJobs].slice(0, 5).map((job) => (
                   <JobRow key={job.id} job={job} />
                 ))}
-              </ul>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-border bg-bg-surface">
+              </div>
+            ) : (
               <EmptyState
                 icon={CalendarClock}
                 title="Keine anstehenden Jobs"
                 description="In den nächsten 14 Tagen ist nichts geplant."
               />
-            </div>
-          )}
-        </section>
+            )}
+          </SectionCard>
+        </div>
 
-        <section className="min-w-0" aria-labelledby="zuletzt-abgelegt">
-          <SectionHead id="zuletzt-abgelegt" title="Zuletzt abgelegt" to="/dokumente" linkLabel="Alle Dokumente" />
-          {!documents || documents.length === 0 ? (
-            <p className="border-t border-border py-4 text-sm text-ink-faint">Noch keine Dokumente abgelegt.</p>
-          ) : (
-            <ul className="divide-y divide-border-subtle border-t border-border">
-              {documents.slice(0, 6).map((doc) => {
-                const meta = CATEGORY_META[doc.category] ?? CATEGORY_META.sonstiges;
-                const Icon = meta.icon;
-                return (
-                  <li key={doc.id}>
+        <div className="space-y-5">
+          <SectionCard
+            title={
+              <span className="flex items-center gap-2">
+                <Globe size={15} className="text-accent" />
+                Neue Anfragen
+              </span>
+            }
+            action={
+              newLeads.length > 0 ? (
+                <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-on">
+                  {newLeads.length}
+                </span>
+              ) : undefined
+            }
+          >
+            {newLeads.length === 0 ? (
+              <p className="py-3 text-center text-sm text-ink-faint">Keine neuen Website-Anfragen.</p>
+            ) : (
+              <div className="space-y-3">
+                {newLeads.slice(0, 4).map((lead) => (
+                  <div key={lead.id} className="flex items-center gap-2.5">
+                    <Avatar label={lead.name} size="md" className="font-medium" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink">{lead.name}</p>
+                      <p className="truncate text-xs text-ink-faint">
+                        {[lead.event_type, lead.event_date ? formatDate(lead.event_date) : null]
+                          .filter(Boolean)
+                          .join(" · ") || "Website-Anfrage"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                <Link
+                  to="/kunden"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-md bg-accent-soft py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+                >
+                  Anfragen bearbeiten
+                  <ArrowRight size={14} />
+                </Link>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Fällige Aufgaben" action={<CardLink to="/aufgaben" label="Alle" />}>
+            {openTaskCount === 0 ? (
+              <p className="py-3 text-center text-sm text-ink-faint">Keine offenen Aufgaben.</p>
+            ) : (
+              <div className="space-y-2">
+                {overdueTasks.slice(0, 4).map((task) => (
+                  <TaskRow key={task.id} task={task} overdue />
+                ))}
+                {otherOpenTasks.slice(0, Math.max(0, 4 - overdueTasks.length)).map((task) => (
+                  <TaskRow key={task.id} task={task} />
+                ))}
+              </div>
+            )}
+          </SectionCard>
+
+          {darfAnmietungSehen && (
+            <SectionCard title="Anmietungen mit Handlungsbedarf" action={<CardLink to="/anmietung" label="Alle" />}>
+              {subrentalsNeedingAction.length === 0 ? (
+                <p className="py-3 text-center text-sm text-ink-faint">Nichts offen.</p>
+              ) : (
+                <div className="space-y-2">
+                  {subrentalsNeedingAction.slice(0, 4).map((s) => (
+                    <SubrentalRow key={s.id} subrental={s} />
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          )}
+
+          <SectionCard
+            title={
+              <span className="flex items-center gap-2">
+                <Files size={15} className="text-accent" />
+                Zuletzt abgelegte Dokumente
+              </span>
+            }
+            action={<CardLink to="/dokumente" label="Alle Dokumente" />}
+          >
+            {!documents || documents.length === 0 ? (
+              <p className="py-3 text-center text-sm text-ink-faint">Noch keine Dokumente abgelegt.</p>
+            ) : (
+              <div className="space-y-1">
+                {documents.slice(0, 5).map((doc) => {
+                  const meta = CATEGORY_META[doc.category] ?? CATEGORY_META.sonstiges;
+                  const Icon = meta.icon;
+                  return (
                     <button
+                      key={doc.id}
                       type="button"
                       onClick={() => void openDocumentInNewTab(doc)}
-                      className="flex w-full min-w-0 items-center gap-2.5 py-2.5 pr-2 text-left transition-colors duration-150 ease-out hover:bg-bg-raised"
+                      className="flex w-full items-center gap-2.5 rounded-md py-1.5 text-left transition-colors hover:bg-bg-raised"
                     >
-                      <Icon size={15} strokeWidth={1.75} aria-hidden className={cn("shrink-0", meta.text)} />
+                      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", meta.bg)}>
+                        <Icon size={15} className={meta.text} strokeWidth={1.75} />
+                      </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-ink">{doc.title}</p>
                         <p className="truncate text-xs text-ink-faint">
@@ -250,29 +315,29 @@ export function DashboardPage() {
                         </p>
                       </div>
                     </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+                  );
+                })}
+              </div>
+            )}
+          </SectionCard>
+        </div>
       </div>
 
       {/* Rest-Inventar: seit der Neuausrichtung nur noch Randnotiz, keine eigene
           Kachel mehr wert (PLAN-UI-NEUSCHNITT.md, U3). */}
       <Link
         to="/inventar"
-        className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border px-1 py-3 text-xs transition-colors duration-150 ease-out hover:bg-bg-raised"
+        className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-border bg-bg-surface px-4 py-3 text-xs transition-colors hover:border-accent/40"
       >
         <span className="flex items-center gap-1.5 font-medium text-ink-muted">
-          <Package size={14} aria-hidden />
+          <Package size={14} />
           Rest-Inventar
         </span>
         <div className="flex flex-wrap items-center gap-4">
           {DEVICE_STATUS_OPTIONS.map((opt) => (
             <span key={opt.value} className="flex items-center gap-1.5 text-ink-muted">
-              <span className={cn("h-1.5 w-1.5 rounded-full", deviceTone(opt.value).solid)} aria-hidden />
-              {opt.label} <span className="font-mono tabular-nums font-medium text-ink">{deviceStatusCounts[opt.value] ?? 0}</span>
+              <span className={cn("h-1.5 w-1.5 rounded-full", deviceTone(opt.value).solid)} />
+              {opt.label} <span className="font-mono font-medium text-ink">{deviceStatusCounts[opt.value] ?? 0}</span>
             </span>
           ))}
         </div>
@@ -288,57 +353,164 @@ export function DashboardPage() {
 // Bausteine
 // ============================================================
 
-function SectionHead({
-  id,
-  title,
+function MetricCard({
   to,
-  linkLabel,
+  icon: Icon,
+  tone,
+  label,
+  value,
+  sub,
+  format,
 }: {
-  id: string;
-  title: ReactNode;
   to: string;
-  linkLabel: string;
+  icon: LucideIcon;
+  tone: KpiTone;
+  label: string;
+  value: number;
+  sub: string;
+  /** Optionale Aufbereitung, z. B. als Währung. Ohne sie zählt die Zahl hoch. */
+  format?: (v: number) => string;
 }) {
   return (
-    <div className="mb-2 flex items-baseline justify-between gap-3">
-      <h2 id={id} className="text-sm font-semibold text-ink">
-        {title}
-      </h2>
-      <Link
-        to={to}
-        className="flex shrink-0 items-center gap-1 text-xs text-ink-muted transition-colors duration-150 ease-out hover:text-ink"
-      >
-        {linkLabel} <ArrowRight size={12} aria-hidden />
-      </Link>
-    </div>
+    <Link
+      to={to}
+      className="rounded-xl border border-border bg-bg-surface p-3.5 transition-all hover:-translate-y-0.5 hover:border-accent/40"
+    >
+      <div className="flex items-start justify-between">
+        <span className="text-xs text-ink-muted">{label}</span>
+        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", kpiToneClass(tone))}>
+          <Icon size={16} />
+        </span>
+      </div>
+      <p className="mt-2 text-2xl font-semibold text-ink">
+        {format ? format(value) : <CountUp value={value} />}
+      </p>
+      <p className="mt-0.5 text-xs text-ink-faint">{sub}</p>
+    </Link>
+  );
+}
+
+function CountUp({ value }: { value: number }) {
+  const [display, setDisplay] = useState(value);
+  useEffect(() => {
+    if (prefersReducedMotion() || value === 0) {
+      setDisplay(value);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const dur = 700;
+    const tick = (t: number) => {
+      const p = Math.min((t - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(value * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    setDisplay(0);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <>{display}</>;
+}
+
+function SectionCard({
+  title,
+  action,
+  children,
+}: {
+  title: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-bg-surface">
+      <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        {action}
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+function CardLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Link to={to} className="flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-ink">
+      {label} <ArrowRight size={12} />
+    </Link>
   );
 }
 
 function JobRow({ job }: { job: Job }) {
   return (
-    <li>
-      <Link
-        to={`/jobs/${job.id}`}
-        className="flex min-w-0 items-center gap-3 px-4 py-2.5 transition-colors duration-150 ease-out hover:bg-bg-raised"
-      >
-        <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: job.color }} aria-hidden />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ink">{job.title}</p>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-muted">
-            <span className="font-mono tabular-nums">
-              {formatDate(job.start_date)} – {formatDate(job.end_date)}
+    <Link
+      to={`/jobs/${job.id}`}
+      className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-bg-raised"
+    >
+      <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: job.color }} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-ink">{job.title}</p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-muted">
+          <span>
+            {formatDate(job.start_date)} – {formatDate(job.end_date)}
+          </span>
+          {customerLabel(job) && <span>{customerLabel(job)}</span>}
+          {job.location && (
+            <span className="flex items-center gap-1">
+              <MapPin size={11} />
+              {job.location}
             </span>
-            {customerLabel(job) && <span className="truncate">{customerLabel(job)}</span>}
-            {job.location && (
-              <span className="flex items-center gap-1 truncate">
-                <MapPin size={11} aria-hidden />
-                {job.location}
-              </span>
-            )}
-          </div>
+          )}
         </div>
-        <JobStatusBadge status={job.status} />
-      </Link>
-    </li>
+      </div>
+      <JobStatusBadge status={job.status} />
+    </Link>
+  );
+}
+
+function SubrentalRow({ subrental }: { subrental: Subrental }) {
+  return (
+    <Link
+      to={`/jobs/${subrental.job_id}`}
+      className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-bg-raised"
+    >
+      <Truck size={14} className="shrink-0 text-ink-faint" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-ink">
+          {subrental.supplier?.name ?? "Verleih-Partner"}
+          {subrental.job?.title && <span className="text-ink-faint"> · {subrental.job.title}</span>}
+        </p>
+        <p className="mt-0.5 text-xs text-ink-muted">
+          {formatDate(subrental.start_date)} – {formatDate(subrental.end_date)}
+        </p>
+      </div>
+      <SubrentalStatusBadge status={subrental.status} />
+    </Link>
+  );
+}
+
+function TaskRow({ task, overdue }: { task: Task; overdue?: boolean }) {
+  return (
+    <Link
+      to="/aufgaben"
+      className={cn(
+        "flex items-start gap-2 rounded-lg px-3 py-2 transition-colors",
+        overdue ? "bg-status-defekt-bg hover:opacity-80" : "bg-bg-raised hover:bg-bg-raised/70",
+      )}
+    >
+      {overdue ? (
+        <AlertCircle size={14} className="mt-0.5 shrink-0 text-status-defekt" />
+      ) : (
+        <ListChecks size={14} className="mt-0.5 shrink-0 text-ink-faint" />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-ink">{task.title}</p>
+        <div className={cn("mt-0.5 flex items-center gap-2 text-xs", overdue ? "text-status-defekt" : "text-ink-muted")}>
+          {task.due_date ? <span>Fällig: {formatDate(task.due_date)}</span> : <span>Kein Termin</span>}
+          <TaskPriorityBadge priority={task.priority} />
+        </div>
+      </div>
+      {overdue && <ArrowUpRight size={13} className="mt-0.5 shrink-0 text-status-defekt/70" />}
+    </Link>
   );
 }
