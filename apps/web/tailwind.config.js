@@ -12,6 +12,11 @@ const v = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
 export default {
   // Themes laufen über data-theme am <html>, nicht über die dark-Klasse.
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  future: {
+    // Auf Touch-Geräten löst ein Tipp sonst den Hover-Zustand aus und lässt ihn
+    // stehen — Karten bleiben „angefasst", bis man woanders hintippt.
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     extend: {
       colors: {
@@ -66,6 +71,11 @@ export default {
         DEFAULT: "6px",
         md: "8px",
         lg: "10px",
+      },
+      transitionTimingFunction: {
+        // Die eingebauten CSS-Kurven sind zu weich; diese startet spürbar
+        // schneller und wirkt dadurch antwortbereit statt zäh.
+        out: "cubic-bezier(0.23, 1, 0.32, 1)",
       },
     },
   },

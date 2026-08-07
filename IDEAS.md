@@ -143,6 +143,29 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Startseite optisch grundlegend überarbeitet** (2026-08-07, keine Migration): statt
+  einer Wand aus ~10 gleich aussehenden Karten jetzt vier Zonen mit klarer Rangfolge.
+  Die fünf Kennzahl-Kacheln sind ein **Zahlenband** ohne Rahmen und Icon-Quadrate
+  (`components/dashboard/MetricRail.tsx`); der **nächste Einsatz** ist die einzige
+  Fläche mit echtem Gewicht (Titel 24 px, 3 px Oberkante in der Job-Statusfarbe, die
+  Kleinschrift-Zeile über dem Titel ist in die Kontextzeile gewandert); neu ist
+  **„Was jetzt zählt"** — EINE nach Dringlichkeit sortierte Handlungsliste, die
+  überfällige Aufgaben, offene Rechnungen, unbestätigte Anmietungen und neue Anfragen
+  zusammenführt (vorher vier getrennte Kästen). Sortierlogik als reine Funktion in
+  `lib/dashboardActions.ts` mit 9 Vitest-Tests. Zusätzlich: Zahlen durchgehend `font-mono`
+  + `tabular-nums`, Radien auf die Token-Skala zurückgeholt (`rounded-xl` raus), das
+  Hochzählen der Kennzahlen beim Laden entfernt (die Seite wird täglich vielfach
+  geöffnet), `transition-all` → benannte Eigenschaften mit eigener Ease-Kurve
+  (`cubic-bezier(0.23, 1, 0.32, 1)` als `ease-out` in `tailwind.config.js`),
+  Druck-Rückmeldung (`active:scale-[0.98]`) auf den Hero-Knöpfen und
+  `hoverOnlyWhenSupported` (auf Touch bleibt der Hover-Zustand sonst kleben).
+  **Nebenbei gefixt:** die Startseite lief bei 375 px waagerecht über (Gitter-Elemente
+  ohne `min-w-0` schrumpfen nicht unter ihren längsten Inhalt) — jetzt 0 px Überlauf.
+  Browser-bewiesen mit Testdaten (Sortierung „seit 7 Tagen" → „seit gestern" → „heute"
+  → Anfragen, Zähler „2 überfällig" korrekt, Konsole fehlerfrei), Testdaten wieder
+  entfernt. **Kein Screenshot möglich** — die Browser-Vorschau hat in dieser Session
+  keine Bilder gerendert; geprüft wurde über ausgelesenen Seiteninhalt und
+  berechnete CSS-Werte.
 - **P6 — Gesprächsverlauf am Job** (2026-07-28, Migration `0057`, letzte Etappe von
   `PLAN-EVENT-PLANUNG.md`): neue Karte „Gesprächsverlauf" — mehrere datierte
   Einträge mit Verfasser (`author_id default auth.uid()`), absteigend sortiert.
