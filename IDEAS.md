@@ -143,6 +143,27 @@ dezente Animationen (Mockups abgestimmt). Token-first, Seite für Seite.
 
 ## ✅ Kürzlich umgesetzt (Verlauf)
 
+- **Startseite: Instrumentenbrett-Neugestaltung** (2026-08-07, via Skill `impeccable`):
+  vollständige visuelle Neugestaltung der Startseite auf Wunsch „wunderschön,
+  aufwendig, visuell sehr ansprechend". Struktur bleibt nah am bisherigen
+  Grundgerüst (laut `apps/web/PRODUCT.md` explizit „Ausgangsmaterial, nicht
+  gescheiterte Idee" — der erste Redesign-Versuch vom selben Tag, Commit `6fb6ee9`,
+  wurde nicht wegen der Struktur zurückgerollt, sondern weil er handwerklich nicht
+  überzeugte). Neu: ein echter Zeit-Fortschritts-Ring als Hauptinstrument für den
+  nächsten Einsatz (`lib/jobProgress.ts` + `components/dashboard/ProgressRing.tsx`,
+  nie ein erfundener Wert — leerer Ring vor Start, echter Anteil während der
+  Laufzeit), die fünf Kennzahlen als EINE durchgehende Instrumenten-Leiste
+  (Haarlinien-Trenner) statt fünf einzelner Kacheln, keine farbigen
+  Akzentbalken/Hover-Lift-Karten mehr. Kompromiss mit Till im Chat abgestimmt:
+  Kennzahlen bleiben zahlengeführt statt als Zeiger-Dials (Scanbarkeit bei
+  täglicher Mehrfachnutzung). Prüfkette grün (tsc/lint/201 Tests/build), Browser
+  live mit echten Testdaten geprüft (Desktop-Screenshot), 375px-Layout über
+  Layout-Messung ohne Überlauf bestätigt (kein Screenshot möglich — Browser-Pane
+  hat in dieser Session zwischenzeitlich nicht kompositiert). Erstmals
+  `apps/web/DESIGN.md` geschrieben (Design-System aus dem Code extrahiert, degradierter
+  Dokumentierer-Durchlauf ohne Subagent). Bildgenerierung für den Skill-eigenen
+  Auswahlprozess war in dieser Session ohne Guthaben (Gemini + kie.ai) — Richtung
+  direkt im Chat mit Till abgestimmt statt über generierte Skizzen.
 - **P6 — Gesprächsverlauf am Job** (2026-07-28, Migration `0057`, letzte Etappe von
   `PLAN-EVENT-PLANUNG.md`): neue Karte „Gesprächsverlauf" — mehrere datierte
   Einträge mit Verfasser (`author_id default auth.uid()`), absteigend sortiert.

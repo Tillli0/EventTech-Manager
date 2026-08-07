@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-07T23:00:00Z",
+  "title": "Design System: EventTech Manager",
+  "extensions": {
+    "colorMeta": {
+      "creme-accent": { "role": "primary", "displayName": "Creme-Schwarz", "canonical": "rgb(31 29 26)" },
+      "weiss-accent": { "role": "primary", "displayName": "Weiß-Indigo", "canonical": "rgb(79 70 229)" },
+      "creme-bg": { "role": "neutral", "displayName": "Creme-Grund", "canonical": "rgb(242 239 233)" },
+      "creme-ink-faint": { "role": "neutral", "displayName": "Tinte matt (dekorativ, nicht für Fließtext)", "canonical": "rgb(155 149 138)" }
+    },
+    "typographyMeta": {
+      "numeric": { "displayName": "Mono-Ziffern", "purpose": "Jede Zahl, jeder Betrag, jeder Code — nie Fließtext." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "ring-fill", "value": "stroke-dashoffset 700ms ease-out", "purpose": "Der eine Fortschritts-Ring auf der Startseite zeichnet seinen echten Wert beim Laden ein." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Hauptaktion, z. B. „Job öffnen".",
+      "html": "<a class=\"ds-btn-primary\">Job öffnen</a>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; gap:8px; background:rgb(31 29 26); color:#fff; padding:8px 16px; border-radius:6px; font-size:14px; font-weight:500; transition:background-color .15s ease-out; } .ds-btn-primary:hover { background:rgb(56 52 46); }"
+    },
+    {
+      "name": "Kennzahlen-Instrumentenleiste (Segment)",
+      "kind": "custom",
+      "refersTo": "metric-readout",
+      "description": "Ein Segment der durchgehenden Kennzahlenleiste auf der Startseite — kein eigenständiges Kartenobjekt.",
+      "html": "<a class=\"ds-metric\"><span class=\"ds-metric-label\">Anstehende Jobs</span><span class=\"ds-metric-value\">5</span><span class=\"ds-metric-sub\">1 heute aktiv</span></a>",
+      "css": ".ds-metric { display:flex; flex-direction:column; gap:12px; background:#fff; padding:14px; } .ds-metric-label { font-size:12px; color:rgb(107 102 93); } .ds-metric-value { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-size:24px; font-weight:600; color:rgb(26 24 21); } .ds-metric-sub { font-size:12px; color:rgb(107 102 93); }"
+    },
+    {
+      "name": "Fortschritts-Ring",
+      "kind": "custom",
+      "refersTo": "progress-ring",
+      "description": "Signature-Instrument: zeigt echten Zeit-Fortschritt des nächsten Einsatzes, nie erfunden.",
+      "html": "<svg width=\"112\" height=\"112\" viewBox=\"0 0 112 112\"><circle cx=\"56\" cy=\"56\" r=\"53\" fill=\"none\" stroke=\"rgb(227 222 212)\" stroke-width=\"6\"/><circle cx=\"56\" cy=\"56\" r=\"53\" fill=\"none\" stroke=\"rgb(31 29 26)\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-dasharray=\"333\" stroke-dashoffset=\"100\" transform=\"rotate(-90 56 56)\"/></svg>",
+      "css": ""
+    }
+  ],
+  "narrative": {
+    "northStar": "Das Werkzeug-Regal, nicht die Vitrine",
+    "overview": "EventTech Manager ist eine interne Betriebssoftware für ein kleines Event-Technik-Team, täglich vielfach geöffnet — nicht eine Marketingfläche, die einmal beeindrucken muss. Die Oberfläche ist hell, ruhig und werkzeug-ehrlich: Farbe wird ausschließlich als Signal eingesetzt (Status, Handlungsbedarf), nie als Dekoration. Zahlen sind das zentrale Material des Produkts und tragen deshalb konsequent eine eigene, tabellarische Schrift.",
+    "keyCharacteristics": [
+      "Ein Farbsystem, zwei helle Varianten (Creme/Schwarz Standard, Weiß/Indigo Alternative)",
+      "Zahlen immer font-mono + tabular-nums",
+      "Flache Flächen, Haarlinien statt Schatten",
+      "Domänenfarbe ausschließlich aus lib/statusTone.ts"
+    ],
+    "rules": [
+      { "name": "Token-Only", "body": "Niemals Hex-Werte in Komponenten außer DB-Nutzerfarben, PDF-Erzeugung, Theme-Vorschau.", "section": "colors" },
+      { "name": "Faint-Is-Not-Body", "body": "ink-faint ist Dekoration, nicht lesbarer Text — mindestens ink-muted für alles, was gelesen werden muss.", "section": "colors" },
+      { "name": "Mono-Numbers", "body": "Jede Zahl, jeder Code, jeder Betrag in font-mono tabular-nums.", "section": "typography" },
+      { "name": "Flat-By-Default", "body": "Karten und Instrumente bekommen keinen Schatten und keinen Hover-Lift.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do Farben ausschließlich über Tailwind-Token/CSS-Variablen beziehen.",
+      "Do jede Zahl/jeden Betrag in font-mono tabular-nums setzen.",
+      "Do ink-muted statt ink-faint für echten Lesetext.",
+      "Do Statuspunkte statt Farbbalken für Domänenfarben in Zeilen."
+    ],
+    "donts": [
+      "Don't farbige border-l-Akzentbalken als Standard-Stilmittel neu einführen.",
+      "Don't Schlagschatten oder Hover-Lift als Standard-Kartenzustand einführen.",
+      "Don't neue Ring-/Zeiger-Instrumente für reine Kennzahlen bauen.",
+      "Don't ink-faint für Beschriftungen mit echtem Informationswert verwenden."
+    ]
+  }
+}

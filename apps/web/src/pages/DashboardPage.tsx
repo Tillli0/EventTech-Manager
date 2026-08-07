@@ -34,7 +34,7 @@ import { DEVICE_STATUS_OPTIONS, invoiceDerivedStatus, offerTotals, invoicePaidSu
 import { formatDate, formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Job, Subrental, Task } from "@/types/database";
-import { deviceTone, kpiToneClass, type KpiTone } from "@/lib/statusTone";
+import { deviceTone, levelTone, type ToneLevel } from "@/lib/statusTone";
 import { Avatar } from "@/components/ui/Avatar";
 
 function prefersReducedMotion(): boolean {
@@ -116,24 +116,31 @@ export function DashboardPage() {
       </div>
       <AccountDialog open={accountOpen} onClose={() => setAccountOpen(false)} />
 
-      {/* Kopf der Seite: der eine Job, der als Nächstes zählt (Leitidee U3).
-          Für Nutzer, die Jobs nur zugewiesen bekommen, heißt er „Dein nächster Einsatz". */}
+      {/* Hauptinstrument: der eine Job, der als Nächstes zählt (Leitidee U3,
+          jetzt mit echtem Zeit-Fortschritts-Ring statt Kicker-Zeile). */}
       {nextJob && (
         <NextJobHero job={nextJob} eigenerEinsatz={!isAdmin} zeigeDokumente={darfGeldSehen} />
       )}
 
-      {/* Kennzahlen */}
-      <div className={cn("grid grid-cols-2 gap-3", darfAnmietungSehen ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
-        <MetricCard
+      {/* Kennzahlen als EINE durchgehende Instrumenten-Leiste (Haarlinien-Trenner
+          statt fünf einzelner Kacheln) — bewusster Kompromiss: zahlengeführt statt
+          Zeiger-Dials, weil die Seite täglich mehrfach auf einen Blick gelesen wird. */}
+      <div
+        className={cn(
+          "grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-lg border border-border sm:divide-y-0",
+          darfAnmietungSehen ? "sm:grid-cols-3 lg:grid-cols-5" : "sm:grid-cols-2 lg:grid-cols-4",
+        )}
+      >
+        <MetricReadout
           to="/jobs"
           icon={Briefcase}
-          tone="accent"
+          tone="neutral"
           label="Anstehende Jobs"
           value={upcomingCount}
           sub={todayJobs.length > 0 ? `${todayJobs.length} heute aktiv` : "in 14 Tagen"}
         />
         {darfGeldSehen ? (
-          <MetricCard
+          <MetricReadout
             to="/rechnungen"
             icon={Receipt}
             tone={ueberfaellig > 0 ? "schlecht" : "gut"}
@@ -143,7 +150,7 @@ export function DashboardPage() {
             sub={ueberfaellig > 0 ? `${ueberfaellig} überfällig` : "nichts überfällig"}
           />
         ) : (
-          <MetricCard
+          <MetricReadout
             to="/inventar"
             icon={Package}
             tone="gut"
@@ -152,15 +159,15 @@ export function DashboardPage() {
             sub={`von ${totalDevices} gesamt`}
           />
         )}
-        <MetricCard
+        <MetricReadout
           to="/kunden"
           icon={Globe}
-          tone="accent"
+          tone="neutral"
           label="Offene Anfragen"
           value={newLeads.length}
           sub={newLeads.length > 0 ? "warten auf Sichtung" : "alles gesichtet"}
         />
-        <MetricCard
+        <MetricReadout
           to="/aufgaben"
           icon={ListChecks}
           tone="mittel"
@@ -169,7 +176,7 @@ export function DashboardPage() {
           sub={overdueTasks.length > 0 ? `${overdueTasks.length} überfällig` : "nichts überfällig"}
         />
         {darfAnmietungSehen && (
-          <MetricCard
+          <MetricReadout
             to="/anmietung"
             icon={Truck}
             tone={subrentalsNeedingAction.length > 0 ? "mittel" : "gut"}
@@ -184,7 +191,7 @@ export function DashboardPage() {
         <div className="space-y-5 lg:col-span-2">
           {!isAdmin && myTasks.length > 0 && (
             <SectionCard title="Mir zugewiesen" action={<CardLink to="/aufgaben" label="Alle Aufgaben" />}>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {myTasks.slice(0, 5).map((task) => (
                   <TaskRow key={task.id} task={task} />
                 ))}
@@ -194,7 +201,7 @@ export function DashboardPage() {
 
           <SectionCard title="Anstehende Jobs" action={<CardLink to="/jobs" label="Alle Jobs" />}>
             {nextJob || upcomingCount > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {[...todayJobs, ...upcomingJobs].slice(0, 5).map((job) => (
                   <JobRow key={job.id} job={job} />
                 ))}
@@ -213,7 +220,7 @@ export function DashboardPage() {
           <SectionCard
             title={
               <span className="flex items-center gap-2">
-                <Globe size={15} className="text-accent" />
+                <Globe size={15} className="text-ink-faint" />
                 Neue Anfragen
               </span>
             }
@@ -244,7 +251,7 @@ export function DashboardPage() {
                 ))}
                 <Link
                   to="/kunden"
-                  className="flex w-full items-center justify-center gap-1.5 rounded-md bg-accent-soft py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-md border border-border py-2 text-sm font-medium text-ink transition-colors hover:bg-bg-raised"
                 >
                   Anfragen bearbeiten
                   <ArrowRight size={14} />
@@ -257,7 +264,7 @@ export function DashboardPage() {
             {openTaskCount === 0 ? (
               <p className="py-3 text-center text-sm text-ink-faint">Keine offenen Aufgaben.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {overdueTasks.slice(0, 4).map((task) => (
                   <TaskRow key={task.id} task={task} overdue />
                 ))}
@@ -273,7 +280,7 @@ export function DashboardPage() {
               {subrentalsNeedingAction.length === 0 ? (
                 <p className="py-3 text-center text-sm text-ink-faint">Nichts offen.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {subrentalsNeedingAction.slice(0, 4).map((s) => (
                     <SubrentalRow key={s.id} subrental={s} />
                   ))}
@@ -285,7 +292,7 @@ export function DashboardPage() {
           <SectionCard
             title={
               <span className="flex items-center gap-2">
-                <Files size={15} className="text-accent" />
+                <Files size={15} className="text-ink-faint" />
                 Zuletzt abgelegte Dokumente
               </span>
             }
@@ -305,9 +312,7 @@ export function DashboardPage() {
                       onClick={() => void openDocumentInNewTab(doc)}
                       className="flex w-full items-center gap-2.5 rounded-md py-1.5 text-left transition-colors hover:bg-bg-raised"
                     >
-                      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", meta.bg)}>
-                        <Icon size={15} className={meta.text} strokeWidth={1.75} />
-                      </span>
+                      <Icon size={15} className="shrink-0 text-ink-faint" strokeWidth={1.75} aria-hidden />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-ink">{doc.title}</p>
                         <p className="truncate text-xs text-ink-faint">
@@ -327,7 +332,7 @@ export function DashboardPage() {
           Kachel mehr wert (PLAN-UI-NEUSCHNITT.md, U3). */}
       <Link
         to="/inventar"
-        className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-border bg-bg-surface px-4 py-3 text-xs transition-colors hover:border-accent/40"
+        className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-border bg-bg-surface px-4 py-3 text-xs transition-colors hover:border-ink/30"
       >
         <span className="flex items-center gap-1.5 font-medium text-ink-muted">
           <Package size={14} />
@@ -337,7 +342,7 @@ export function DashboardPage() {
           {DEVICE_STATUS_OPTIONS.map((opt) => (
             <span key={opt.value} className="flex items-center gap-1.5 text-ink-muted">
               <span className={cn("h-1.5 w-1.5 rounded-full", deviceTone(opt.value).solid)} />
-              {opt.label} <span className="font-mono font-medium text-ink">{deviceStatusCounts[opt.value] ?? 0}</span>
+              {opt.label} <span className="font-mono font-medium tabular-nums text-ink">{deviceStatusCounts[opt.value] ?? 0}</span>
             </span>
           ))}
         </div>
@@ -353,7 +358,13 @@ export function DashboardPage() {
 // Bausteine
 // ============================================================
 
-function MetricCard({
+/**
+ * Ein Segment der Kennzahlen-Instrumentenleiste. Bewusst KEIN eigenes
+ * Karten-/Icon-Farbbox-Design (das wäre die Standard-Metrik-Kachel) — die
+ * fünf Segmente bilden EIN durchgehendes Instrument mit Haarlinien-Trennern,
+ * dazu ein kleiner Ampel-Punkt statt einer Icon-Farbfläche.
+ */
+function MetricReadout({
   to,
   icon: Icon,
   tone,
@@ -364,7 +375,7 @@ function MetricCard({
 }: {
   to: string;
   icon: LucideIcon;
-  tone: KpiTone;
+  tone: ToneLevel;
   label: string;
   value: number;
   sub: string;
@@ -372,20 +383,18 @@ function MetricCard({
   format?: (v: number) => string;
 }) {
   return (
-    <Link
-      to={to}
-      className="rounded-xl border border-border bg-bg-surface p-3.5 transition-all hover:-translate-y-0.5 hover:border-accent/40"
-    >
-      <div className="flex items-start justify-between">
-        <span className="text-xs text-ink-muted">{label}</span>
-        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", kpiToneClass(tone))}>
-          <Icon size={16} />
-        </span>
+    <Link to={to} className="group flex flex-col justify-between gap-3 bg-bg-surface p-3.5 transition-colors hover:bg-bg-raised">
+      <span className="flex items-center gap-1.5 text-xs text-ink-muted">
+        <Icon size={13} className="shrink-0 text-ink-faint" aria-hidden />
+        {label}
+        {tone !== "neutral" && <span className={cn("ml-auto h-1.5 w-1.5 rounded-full", levelTone(tone).solid)} aria-hidden />}
+      </span>
+      <div>
+        <p className="font-mono text-2xl font-semibold tabular-nums text-ink">
+          {format ? format(value) : <CountUp value={value} />}
+        </p>
+        <p className="mt-0.5 truncate text-xs text-ink-muted">{sub}</p>
       </div>
-      <p className="mt-2 text-2xl font-semibold text-ink">
-        {format ? format(value) : <CountUp value={value} />}
-      </p>
-      <p className="mt-0.5 text-xs text-ink-faint">{sub}</p>
     </Link>
   );
 }
@@ -423,8 +432,8 @@ function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-bg-surface">
-      <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+    <section className="rounded-lg border border-border bg-bg-surface">
+      <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
         <h2 className="text-sm font-semibold text-ink">{title}</h2>
         {action}
       </div>
@@ -445,13 +454,13 @@ function JobRow({ job }: { job: Job }) {
   return (
     <Link
       to={`/jobs/${job.id}`}
-      className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-bg-raised"
+      className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-bg-raised"
     >
-      <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: job.color }} aria-hidden />
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: job.color }} aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-ink">{job.title}</p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-muted">
-          <span>
+          <span className="font-mono tabular-nums">
             {formatDate(job.start_date)} – {formatDate(job.end_date)}
           </span>
           {customerLabel(job) && <span>{customerLabel(job)}</span>}
@@ -472,7 +481,7 @@ function SubrentalRow({ subrental }: { subrental: Subrental }) {
   return (
     <Link
       to={`/jobs/${subrental.job_id}`}
-      className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-bg-raised"
+      className="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-bg-raised"
     >
       <Truck size={14} className="shrink-0 text-ink-faint" />
       <div className="min-w-0 flex-1">
@@ -480,7 +489,7 @@ function SubrentalRow({ subrental }: { subrental: Subrental }) {
           {subrental.supplier?.name ?? "Verleih-Partner"}
           {subrental.job?.title && <span className="text-ink-faint"> · {subrental.job.title}</span>}
         </p>
-        <p className="mt-0.5 text-xs text-ink-muted">
+        <p className="mt-0.5 font-mono text-xs tabular-nums text-ink-muted">
           {formatDate(subrental.start_date)} – {formatDate(subrental.end_date)}
         </p>
       </div>
@@ -494,8 +503,8 @@ function TaskRow({ task, overdue }: { task: Task; overdue?: boolean }) {
     <Link
       to="/aufgaben"
       className={cn(
-        "flex items-start gap-2 rounded-lg px-3 py-2 transition-colors",
-        overdue ? "bg-status-defekt-bg hover:opacity-80" : "bg-bg-raised hover:bg-bg-raised/70",
+        "flex items-start gap-2.5 rounded-md px-2 py-1.5 transition-colors",
+        overdue ? "bg-status-defekt-bg hover:opacity-90" : "hover:bg-bg-raised",
       )}
     >
       {overdue ? (
@@ -506,7 +515,7 @@ function TaskRow({ task, overdue }: { task: Task; overdue?: boolean }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-ink">{task.title}</p>
         <div className={cn("mt-0.5 flex items-center gap-2 text-xs", overdue ? "text-status-defekt" : "text-ink-muted")}>
-          {task.due_date ? <span>Fällig: {formatDate(task.due_date)}</span> : <span>Kein Termin</span>}
+          {task.due_date ? <span className="font-mono tabular-nums">Fällig: {formatDate(task.due_date)}</span> : <span>Kein Termin</span>}
           <TaskPriorityBadge priority={task.priority} />
         </div>
       </div>
